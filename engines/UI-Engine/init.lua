@@ -350,7 +350,9 @@ end
 
 -- --- Global API ---
 
-_G.UIEngine = {
+-- NOTE: In CET's sandboxed Lua environment, _G is nil.
+-- Use rawset or direct assignment to set globals.
+UIEngine = {
     Register = Register,
     Unregister = Unregister,
     GetContext = GetContext,
@@ -372,6 +374,6 @@ _G.UIEngine = {
 -- --- CET Entry Points ---
 
 -- These are called by CET when the mod is loaded/unloaded
-_G.onInit = onInit
-_G.onDraw = onDraw
-_G.onShutdown = onShutdown
+onInit = onInit
+onDraw = onDraw
+onShutdown = onShutdown

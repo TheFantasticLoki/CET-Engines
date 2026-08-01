@@ -50,10 +50,10 @@ function M.testIdempotentInit()
     local Init = require("engines.UI-Engine.init")
 
     -- Call onInit multiple times
-    if _G.onInit then
-        _G.onInit()
-        _G.onInit()
-        _G.onInit()
+    if onInit then
+        onInit()
+        onInit()
+        onInit()
     end
 
     -- Should not error
@@ -66,26 +66,26 @@ function M.testPublicAPI()
     -- Load init.lua to set up _G.UIEngine
     local Init = require("engines.UI-Engine.init")
 
-    -- Verify _G.UIEngine exists
-    assert.assert_not_nil(_G.UIEngine, "_G.UIEngine should exist")
+    -- Verify UIEngine global exists (CET uses direct assignment, not _G)
+    assert.assert_not_nil(UIEngine, "UIEngine global should exist")
 
     -- Verify all required methods exist
-    assert.assert_type(_G.UIEngine.Register, "function", "Register should be a function")
-    assert.assert_type(_G.UIEngine.Unregister, "function", "Unregister should be a function")
-    assert.assert_type(_G.UIEngine.GetContext, "function", "GetContext should be a function")
-    assert.assert_type(_G.UIEngine.GetTheme, "function", "GetTheme should be a function")
-    assert.assert_type(_G.UIEngine.SetTheme, "function", "SetTheme should be a function")
-    assert.assert_type(_G.UIEngine.GetThemeList, "function", "GetThemeList should be a function")
-    assert.assert_type(_G.UIEngine.On, "function", "On should be a function")
-    assert.assert_type(_G.UIEngine.Emit, "function", "Emit should be a function")
-    assert.assert_type(_G.UIEngine.Off, "function", "Off should be a function")
-    assert.assert_type(_G.UIEngine.Deprecated, "function", "Deprecated should be a function")
-    assert.assert_type(_G.UIEngine.IsRegistered, "function", "IsRegistered should be a function")
-    assert.assert_type(_G.UIEngine.GetRegisteredMods, "function", "GetRegisteredMods should be a function")
-    assert.assert_type(_G.UIEngine.GetVersion, "function", "GetVersion should be a function")
-    assert.assert_type(_G.UIEngine.Enable, "function", "Enable should be a function")
-    assert.assert_type(_G.UIEngine.Disable, "function", "Disable should be a function")
-    assert.assert_type(_G.UIEngine.Log, "function", "Log should be a function")
+    assert.assert_type(UIEngine.Register, "function", "Register should be a function")
+    assert.assert_type(UIEngine.Unregister, "function", "Unregister should be a function")
+    assert.assert_type(UIEngine.GetContext, "function", "GetContext should be a function")
+    assert.assert_type(UIEngine.GetTheme, "function", "GetTheme should be a function")
+    assert.assert_type(UIEngine.SetTheme, "function", "SetTheme should be a function")
+    assert.assert_type(UIEngine.GetThemeList, "function", "GetThemeList should be a function")
+    assert.assert_type(UIEngine.On, "function", "On should be a function")
+    assert.assert_type(UIEngine.Emit, "function", "Emit should be a function")
+    assert.assert_type(UIEngine.Off, "function", "Off should be a function")
+    assert.assert_type(UIEngine.Deprecated, "function", "Deprecated should be a function")
+    assert.assert_type(UIEngine.IsRegistered, "function", "IsRegistered should be a function")
+    assert.assert_type(UIEngine.GetRegisteredMods, "function", "GetRegisteredMods should be a function")
+    assert.assert_type(UIEngine.GetVersion, "function", "GetVersion should be a function")
+    assert.assert_type(UIEngine.Enable, "function", "Enable should be a function")
+    assert.assert_type(UIEngine.Disable, "function", "Disable should be a function")
+    assert.assert_type(UIEngine.Log, "function", "Log should be a function")
 end
 
 -- --- Test OnShutdown ---
@@ -95,8 +95,8 @@ function M.testOnShutdown()
     local Init = require("engines.UI-Engine.init")
 
     -- Call onShutdown
-    if _G.onShutdown then
-        _G.onShutdown()
+    if onShutdown then
+        onShutdown()
     end
 
     -- Should not error

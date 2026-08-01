@@ -135,6 +135,7 @@ These practices must be followed throughout all development. They are enforced b
 32. **Lua 5.1 only** — no `goto`, no `__gc` metamethods, no `table.pack`/`table.unpack`.
 33. **Load-order awareness** — mods may load before or after UI-Engine. Use `GetMod()` lazy resolution, not direct `require()`.
 34. **Idempotent initialization** — `onInit` may fire multiple times (CET overlay toggle). Registration must be safe to repeat.
+35. **No `_G` in CET** — CET's sandboxed Lua environment does not expose `_G`. Use direct global assignment (e.g., `UIEngine = {}`) instead of `_G.UIEngine = {}`. This applies to all global assignments including `onInit`, `onDraw`, `onShutdown`.
 
 ---
 
