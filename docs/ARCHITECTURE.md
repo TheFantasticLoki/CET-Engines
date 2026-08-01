@@ -13,57 +13,57 @@ Consumer mods register with UI-Engine and receive a `ctx` (context) object that 
 ```mermaid
 graph TB
     subgraph Public["Public API"]
-        REG["Registry<br/>api/registry.lua"]
-        CTX["Context<br/>api/context.lua"]
-        EVENTS["Events<br/>api/events.lua"]
+        REG["Registry<br/>api/registry.lua<br/>(Phase 5)"]
+        CTX["Context<br/>api/context.lua<br/>(Phase 5)"]
+        EVENTS["Events<br/>api/events.lua<br/>✅"]
     end
 
     subgraph Core["Core Systems"]
-        CORE["Core<br/>core.lua"]
-        INIT["Init<br/>init.lua"]
-        LOGGER["Logger<br/>modules/logger.lua"]
-        STORAGE["Storage<br/>modules/storage.lua"]
+        CORE["Core<br/>core.lua<br/>✅"]
+        INIT["Init<br/>init.lua<br/>✅"]
+        LOGGER["Logger<br/>modules/logger.lua<br/>✅"]
+        STORAGE["Storage<br/>modules/storage.lua<br/>✅"]
     end
 
     subgraph Theme["Theme Engine"]
-        THEME["Theme<br/>ui/theme.lua"]
-        COLOR["ColorEngine<br/>ui/color_engine.lua"]
-        TOKENS["Tokens<br/>ui/tokens.lua"]
-        THEMES["Theme Defs<br/>config/themes.lua"]
+        THEME["Theme<br/>ui/theme.lua<br/>✅"]
+        COLOR["ColorEngine<br/>ui/color_engine.lua<br/>✅"]
+        TOKENS["Tokens<br/>ui/tokens.lua<br/>✅"]
+        THEMES["Theme Defs<br/>config/themes.lua<br/>✅"]
     end
 
     subgraph Window["Window System"]
-        WIN["Window<br/>ui/window.lua"]
-        SIDEBAR["Sidebar<br/>ui/sidebar.lua"]
-        CONTENT["ContentArea<br/>ui/content_area.lua"]
-        CARD["Card<br/>ui/card.lua"]
-        SETTINGS["SettingsPanel<br/>ui/settings_panel.lua"]
-        DOCS["Docs<br/>ui/docs.lua"]
+        WIN["Window<br/>ui/window.lua<br/>(Phase 4)"]
+        SIDEBAR["Sidebar<br/>ui/sidebar.lua<br/>(Phase 4)"]
+        CONTENT["ContentArea<br/>ui/content_area.lua<br/>(Phase 4)"]
+        CARD["Card<br/>ui/card.lua<br/>(Phase 4)"]
+        SETTINGS["SettingsPanel<br/>ui/settings_panel.lua<br/>(Phase 4)"]
+        DOCS["Docs<br/>ui/docs.lua<br/>(Phase 4)"]
     end
 
     subgraph Components["Component Library"]
-        COMPOSE["Compose<br/>ui/components/compose.lua"]
-        BUTTONS["Buttons<br/>ui/components/buttons.lua"]
-        INPUTS["Inputs<br/>ui/components/inputs.lua"]
-        SLIDERS["Sliders<br/>ui/components/sliders.lua"]
-        DISPLAY["Display<br/>ui/components/display.lua"]
-        CONTAINERS["Containers<br/>ui/components/containers.lua"]
-        ADVANCED["Advanced<br/>ui/components/advanced.lua"]
-        LAYOUT["Layout<br/>ui/components/layout.lua"]
-        CONSOLE["Console<br/>ui/components/console.lua"]
-        TABLES["Tables<br/>ui/components/tables.lua"]
-        ICONS["Icons<br/>ui/components/icons.lua"]
-        PRIMITIVES["Primitives<br/>ui/components/primitives.lua"]
-        COMP_INIT["Components Init<br/>ui/components/init.lua"]
+        COMPOSE["Compose<br/>ui/components/compose.lua<br/>(Phase 3)"]
+        BUTTONS["Buttons<br/>ui/components/buttons.lua<br/>(Phase 3)"]
+        INPUTS["Inputs<br/>ui/components/inputs.lua<br/>(Phase 3)"]
+        SLIDERS["Sliders<br/>ui/components/sliders.lua<br/>(Phase 3)"]
+        DISPLAY["Display<br/>ui/components/display.lua<br/>(Phase 3)"]
+        CONTAINERS["Containers<br/>ui/components/containers.lua<br/>(Phase 3)"]
+        ADVANCED["Advanced<br/>ui/components/advanced.lua<br/>(Phase 3)"]
+        LAYOUT["Layout<br/>ui/components/layout.lua<br/>(Phase 3)"]
+        CONSOLE["Console<br/>ui/components/console.lua<br/>(Phase 3)"]
+        TABLES["Tables<br/>ui/components/tables.lua<br/>(Phase 3)"]
+        ICONS["Icons<br/>ui/components/icons.lua<br/>(Phase 3)"]
+        PRIMITIVES["Primitives<br/>ui/components/primitives.lua<br/>(Phase 3)"]
+        COMP_INIT["Components Init<br/>ui/components/init.lua<br/>(Phase 3)"]
     end
 
     subgraph Features["Features"]
-        FAV["Favorites<br/>features/favorites.lua"]
-        PRESETS["Presets<br/>features/presets.lua"]
+        FAV["Favorites<br/>features/favorites.lua<br/>(Phase 5)"]
+        PRESETS["Presets<br/>features/presets.lua<br/>(Phase 5)"]
     end
 
     subgraph Utils["Utilities"]
-        UTILS["Utils<br/>ui/utils.lua"]
+        UTILS["Utils<br/>ui/utils.lua<br/>✅"]
     end
 
     INIT --> CORE

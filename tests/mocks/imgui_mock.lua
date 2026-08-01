@@ -355,6 +355,11 @@ function ImGui.IsWindowHovered(flags)
     return false
 end
 
+-- --- Text functions ---
+
+function ImGui.Text(text)
+end
+
 function ImGui.GetContentRegionAvail()
     return 200, 200
 end
@@ -615,3 +620,175 @@ ImGui.ColFlags_NoResizeY = 4
 ImGui.ColFlags_NoSort = 8
 
 ImGui.ComboFlags_None = 0
+
+-- --- ImGuiCol namespace (for ImGuiCol.Button, etc.) ---
+
+ImGuiCol = {
+    Button = ImGui.Col_Button,
+    ButtonHovered = ImGui.Col_ButtonHovered,
+    ButtonActive = ImGui.Col_ButtonActive,
+    FrameBg = ImGui.Col_FrameBg,
+    FrameBgHovered = ImGui.Col_FrameBgHovered,
+    FrameBgActive = ImGui.Col_FrameBgActive,
+    Text = ImGui.Col_Text,
+    TextDisabled = ImGui.Col_TextDisabled,
+    WindowBg = ImGui.Col_WindowBg,
+    ChildBg = ImGui.Col_ChildBg,
+    Border = ImGui.Col_Border,
+    Header = ImGui.Col_Header,
+    HeaderHovered = ImGui.Col_HeaderHovered,
+    HeaderActive = ImGui.Col_HeaderActive,
+    SliderGrab = ImGui.Col_SliderGrab,
+    SliderGrabActive = ImGui.Col_SliderGrabActive,
+    CheckMark = ImGui.Col_CheckMark,
+    ScrollbarGrab = ImGui.Col_ScrollbarGrab,
+    ScrollbarGrabHovered = ImGui.Col_ScrollbarGrabHovered,
+    ScrollbarGrabActive = ImGui.Col_ScrollbarGrabActive,
+    ResizeGrip = ImGui.Col_ResizeGrip,
+    ResizeGripHovered = ImGui.Col_ResizeGripHovered,
+    ResizeGripActive = ImGui.Col_ResizeGripActive,
+    Tab = ImGui.Col_Tab,
+    TabHovered = ImGui.Col_TabHovered,
+    TabActive = ImGui.Col_TabActive,
+    TitleBg = ImGui.Col_TitleBg,
+    TitleBgActive = ImGui.Col_TitleBgActive,
+}
+
+-- --- ImGuiStyleVar namespace ---
+
+ImGuiStyleVar = {
+    WindowPadding = ImGui.StyleVar_WindowPadding,
+    FramePadding = ImGui.StyleVar_FramePadding,
+    ItemSpacing = ImGui.StyleVar_ItemSpacing,
+    WindowRounding = ImGui.StyleVar_WindowRounding,
+    ChildRounding = ImGui.StyleVar_ChildRounding,
+    FrameRounding = ImGui.StyleVar_FrameRounding,
+    GrabRounding = ImGui.StyleVar_GrabRounding,
+    TabRounding = ImGui.StyleVar_TabRounding,
+    WindowBorderSize = ImGui.StyleVar_WindowBorderSize,
+    ChildBorderSize = ImGui.StyleVar_ChildBorderSize,
+}
+
+-- --- ImGui.Cond namespace ---
+
+ImGuiCond = {
+    Always = 1,
+    Once = 2,
+    FirstUseEver = 4,
+    Appearing = 8,
+}
+
+-- --- ImGui.WindowFlags namespace ---
+
+ImGui.WindowFlags = {
+    None = 0,
+    NoDecoration = 1,
+    NoScrollbar = 8,
+    NoFocusOnAppearing = 0,
+    NoNav = 0,
+}
+
+-- --- ImGui.InputTextFlags namespace ---
+
+ImGui.InputTextFlags = {
+    None = 0,
+    EnterReturnsTrue = 4,
+    CharsDecimal = 1,
+    CharsHexadecimal = 2,
+    CharsScientific = 4,
+}
+
+-- --- ImGui.TableFlags namespace ---
+
+ImGui.TableFlags = {
+    None = 0,
+    Borders = 1,
+    BordersH = 2,
+    BordersV = 4,
+    RowBg = 8,
+}
+
+-- --- ImGui.Key namespace ---
+
+ImGui.Key = {
+    UpArrow = 0,
+    DownArrow = 1,
+    LeftArrow = 2,
+    RightArrow = 3,
+}
+
+-- --- ImGuiTreeNodeFlags namespace ---
+
+ImGui.TreeNodeFlags = {
+    None = 0,
+    Selected = 1,
+    Framed = 2,
+    AllowOverlap = 4,
+    NoTreePushOnOpen = 8,
+    NoAutoOpenOnLog = 16,
+    DefaultOpen = 32,
+}
+
+-- Global alias for ImGuiTreeNodeFlags (used by some CET mods)
+ImGuiTreeNodeFlags = ImGui.TreeNodeFlags
+
+-- --- Text functions ---
+
+function ImGui.Text(text)
+end
+
+function ImGui.TextColored(r, g, b, a, text)
+end
+
+function ImGui.TextDisabled(text)
+end
+
+function ImGui.TextWrapped(text)
+end
+
+function ImGui.BulletText(text)
+end
+
+function ImGui.SeparatorText(text)
+end
+
+-- --- Widget functions ---
+
+function ImGui.SetNextItemWidth(width)
+end
+
+function ImGui.CalcTextSize(text)
+    if text then
+        return #text * 8, 16
+    end
+    return 0, 0
+end
+
+function ImGui.MenuItem(label, selected, enabled)
+    return false
+end
+
+function ImGui.SetColumnWidth(index, width)
+end
+
+function ImGui.SetCursorPosX(x)
+end
+
+function ImGui.SetScrollHereY(center_y_ratio)
+end
+
+function ImGui.SetNextWindowPos(pos_x, pos_y, cond)
+end
+
+function ImGui.SetNextWindowSize(size_x, size_y, cond)
+end
+
+function ImGui.IsKeyPressed(key, repeat_flag)
+    return false
+end
+
+-- --- Popup functions ---
+
+function ImGui.BeginPopupContextWindow(id, flags)
+    return false
+end

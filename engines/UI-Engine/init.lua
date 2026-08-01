@@ -39,8 +39,14 @@ local Storage = SafeRequire("engines.UI-Engine.modules.storage")
 local Events = SafeRequire("engines.UI-Engine.api.events")
 local Utils = SafeRequire("engines.UI-Engine.ui.utils")
 
--- Phase 2+ modules (loaded if available)
+-- Phase 2 modules (loaded if available)
+local ThemeDefs = SafeRequire("engines.UI-Engine.config.themes")
+local ColorEngine = SafeRequire("engines.UI-Engine.ui.color_engine")
+local Tokens = SafeRequire("engines.UI-Engine.ui.tokens")
+local DefaultConfig = SafeRequire("engines.UI-Engine.config.default_config")
 local Theme = SafeRequire("engines.UI-Engine.ui.theme")
+
+-- Phase 3+ modules (loaded if available)
 local Window = SafeRequire("engines.UI-Engine.ui.window")
 local Registry = SafeRequire("engines.UI-Engine.api.registry")
 local Context = SafeRequire("engines.UI-Engine.api.context")
@@ -154,8 +160,10 @@ end
 --- Get the list of available themes
 -- @return table Array of theme names
 local function GetThemeList()
-    -- Phase 2+ — return default list
-    return { "Dark", "Light", "Red", "Blue", "Green", "Purple" }
+    if Theme then
+        return Theme.GetThemeList()
+    end
+    return { "Dark" }
 end
 
 --- Subscribe to an event
@@ -302,6 +310,11 @@ local function onInit()
         Core.init()
     end
 
+    -- Initialize theme engine (Phase 2)
+    if Theme and Theme.init then
+        Theme.init(Core, ColorEngine, Tokens, ThemeDefs, Logger)
+    end
+
     -- Emit init complete event
     if Events then
         Events.emit("uiengine:initComplete")
@@ -317,10 +330,24 @@ local function onDraw()
         Logger.SetFrame(frameCount)
     end
 
+    -- Push theme (Phase 2)
+    if Theme then
+        pcall(function()
+            Theme.PushTheme()
+        end)
+    end
+
     -- Draw window (if available)
     if Window then
         pcall(function()
             Window.draw()
+        end)
+    end
+
+    -- Pop theme (Phase 2)
+    if Theme then
+        pcall(function()
+            Theme.PopTheme()
         end)
     end
 

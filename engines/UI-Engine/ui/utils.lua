@@ -100,4 +100,49 @@ function M.FormatColor(color)
     return color.r or 1, color.g or 1, color.b or 1, color.a or 1
 end
 
+--- Safe pcall-wrapped ImGui call (supports multiple return values)
+-- @param fn Function to call
+-- @param ... Arguments
+-- @return any|nil Result or nil on error
+function M.SafeImGuiCall(fn, ...)
+    local n = select("#", ...)
+    local r1, r2, r3, r4, r5, r6, r7, r8, r9, r10 = pcall(fn, ...)
+    if not r1 then
+        if _G.UIEngine and _G.UIEngine.Logger then
+            _G.UIEngine.Logger.Log("Utils", "ImGui error: " .. tostring(r2), "error")
+        end
+        return nil
+    end
+    -- Return all results from the function call (skip the ok status)
+    if n == 0 then return end
+    if n == 1 then return r2 end
+    if n == 2 then return r2, r3 end
+    if n == 3 then return r2, r3, r4 end
+    if n == 4 then return r2, r3, r4, r5 end
+    if n == 5 then return r2, r3, r4, r5, r6 end
+    return r2, r3, r4, r5, r6, r7, r8, r9, r10
+end
+
+--- Validate component parameters against a schema
+-- @param params Parameter table to validate
+-- @param schema Schema table {name = type, ...} where type is string type name
+-- @return boolean, string|nil success, error message
+function M.ValidateComponentParams(params, schema)
+    if type(params) ~= "table" then
+        return false, "Parameters must be a table"
+    end
+
+    for name, expectedType in pairs(schema) do
+        local value = params[name]
+        if value ~= nil and type(value) ~= expectedType then
+            return false, string.format(
+                "Invalid type for '%s': expected %s, got %s",
+                name, expectedType, type(value)
+            )
+        end
+    end
+
+    return true, nil
+end
+
 return M

@@ -24,7 +24,20 @@ Complete directory structure with file descriptions and module relationships.
 
 ## `engines/` — Mods We Develop
 
-> **Note:** The engines listed below are the planned architecture. Currently `engines/UI-Engine/` and `engines/Config-Engine/` contain only `.gitkeep` placeholder files. The detailed structure below will be created during implementation phases.
+> **Note:** Phases 0-2 are complete. The following files exist in `engines/UI-Engine/`:
+> - `init.lua` (406 lines) — Entry point, SafeRequire, public API ✅
+> - `core.lua` (362 lines) — Centralized state store ✅
+> - `api/events.lua` (150 lines) — Pub/sub event system ✅
+> - `modules/logger.lua` (264 lines) — Leveled logging ✅
+> - `modules/storage.lua` (195 lines) — Atomic JSON key-value ✅
+> - `ui/utils.lua` (103 lines) — Shared utilities ✅
+> - `config/default_config.lua` (88 lines) — Default configuration values ✅
+> - `config/themes.lua` (359 lines) — 16 built-in themes ✅
+> - `ui/color_engine.lua` (280 lines) — WCAG color science ✅
+> - `ui/tokens.lua` (203 lines) — Design tokens ✅
+> - `ui/theme.lua` (562 lines) — Theme push/pop engine ✅
+>
+> The detailed structure below shows the planned architecture for all phases.
 
 ```
 engines/
