@@ -310,15 +310,19 @@ function ImGui.PopStyleVar(count)
 end
 
 function ImGui.PushFont(font)
+    ImGui._pushCount = ImGui._pushCount + 1
 end
 
 function ImGui.PopFont()
+    ImGui._popCount = ImGui._popCount + 1
 end
 
 function ImGui.PushID(id)
+    ImGui._pushCount = ImGui._pushCount + 1
 end
 
 function ImGui.PopID()
+    ImGui._popCount = ImGui._popCount + 1
 end
 
 function ImGui.GetID(id)

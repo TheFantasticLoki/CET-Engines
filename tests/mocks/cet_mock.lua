@@ -78,24 +78,43 @@ _G.json = {}
 --- Mock json.encode()
 -- @param value Value to encode
 function _G.json.encode(value)
-    -- Simple implementation for testing
-    if type(value) == "table" then
-        local parts = {}
-        for k, v in pairs(value) do
-            local vk = tostring(k)
-            local vv
-            if type(v) == "string" then
-                vv = '"' .. v .. '"'
-            elseif type(v) == "table" then
-                vv = _G.json.encode(v)
-            else
-                vv = tostring(v)
-            end
-            table.insert(parts, '"' .. vk .. '": ' .. vv)
-        end
-        return "{" .. table.concat(parts, ", ") .. "}"
+    -- Proper JSON encoder for testing
+    if value == nil then
+        return "null"
+    elseif type(value) == "boolean" then
+        return tostring(value)
+    elseif type(value) == "number" then
+        return tostring(value)
     elseif type(value) == "string" then
-        return '"' .. value .. '"'
+        -- Escape special characters
+        local escaped = value:gsub('\\', '\\\\'):gsub('"', '\\"'):gsub('\n', '\\n'):gsub('\r', '\\r'):gsub('\t', '\\t')
+        return '"' .. escaped .. '"'
+    elseif type(value) == "table" then
+        -- Check if it's an array (sequential integer keys starting at 1)
+        local isArray = true
+        local maxIndex = 0
+        for k, _ in pairs(value) do
+            if type(k) ~= "number" or k ~= math.floor(k) or k < 1 then
+                isArray = false
+                break
+            end
+            if k > maxIndex then maxIndex = k end
+        end
+        if isArray and maxIndex == #value then
+            -- Array
+            local parts = {}
+            for i = 1, #value do
+                table.insert(parts, _G.json.encode(value[i]))
+            end
+            return "[" .. table.concat(parts, ",") .. "]"
+        else
+            -- Object
+            local parts = {}
+            for k, v in pairs(value) do
+                table.insert(parts, _G.json.encode(tostring(k)) .. ":" .. _G.json.encode(v))
+            end
+            return "{" .. table.concat(parts, ",") .. "}"
+        end
     else
         return tostring(value)
     end
@@ -104,13 +123,95 @@ end
 --- Mock json.decode()
 -- @param str JSON string to decode
 function _G.json.decode(str)
-    -- Very simple parser for testing
-    -- In real tests, use a proper JSON library
+    -- Simple recursive JSON parser for testing
+    if not str or str == "" then return nil end
+
+    str = str:match("^%s*(.-)%s*$")  -- trim whitespace
+
+    -- null
     if str == "null" then return nil end
+    -- boolean
     if str == "true" then return true end
     if str == "false" then return false end
+    -- number
     if tonumber(str) then return tonumber(str) end
-    -- Return the string as-is for complex values
+    -- string
+    if str:sub(1, 1) == '"' and str:sub(-1) == '"' then
+        local s = str:sub(2, -2)
+        -- Unescape
+        s = s:gsub('\\"', '"'):gsub('\\n', '\n'):gsub('\\r', '\r'):gsub('\\t', '\t'):gsub('\\\\', '\\')
+        return s
+    end
+    -- array
+    if str:sub(1, 1) == '[' and str:sub(-1) == ']' then
+        local inner = str:sub(2, -2)
+        local result = {}
+        if inner ~= "" then
+            -- Simple split by comma (not handling nested commas)
+            local depth = 0
+            local current = ""
+            local inString = false
+            for i = 1, #inner do
+                local c = inner:sub(i, i)
+                if c == '"' then
+                    inString = not inString
+                elseif not inString then
+                    if c == '[' or c == '{' then depth = depth + 1
+                    elseif c == ']' or c == '}' then depth = depth - 1
+                    end
+                end
+                if c == ',' and depth == 0 and not inString then
+                    table.insert(result, _G.json.decode(current))
+                    current = ""
+                else
+                    current = current .. c
+                end
+            end
+            if current ~= "" then
+                table.insert(result, _G.json.decode(current))
+            end
+        end
+        return result
+    end
+    -- object
+    if str:sub(1, 1) == '{' and str:sub(-1) == '}' then
+        local inner = str:sub(2, -2)
+        local result = {}
+        if inner ~= "" then
+            local depth = 0
+            local current = ""
+            local inString = false
+            for i = 1, #inner do
+                local c = inner:sub(i, i)
+                if c == '"' then
+                    inString = not inString
+                elseif not inString then
+                    if c == '[' or c == '{' then depth = depth + 1
+                    elseif c == ']' or c == '}' then depth = depth - 1
+                    end
+                end
+                if c == ',' and depth == 0 and not inString then
+                    local pair = current:match("^%s*(.-)%s*$")
+                    local key, val = pair:match("^\"(.-)\"%s*:%s*(.*)$")
+                    if key and val then
+                        result[key] = _G.json.decode(val)
+                    end
+                    current = ""
+                else
+                    current = current .. c
+                end
+            end
+            if current ~= "" then
+                local pair = current:match("^%s*(.-)%s*$")
+                local key, val = pair:match("^\"(.-)\"%s*:%s*(.*)$")
+                if key and val then
+                    result[key] = _G.json.decode(val)
+                end
+            end
+        end
+        return result
+    end
+    -- fallback
     return str
 end
 
