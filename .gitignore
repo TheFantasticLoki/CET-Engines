@@ -7,3 +7,8 @@
 /reference
 .serena/
 .vscode/settings.json
+
+# Storage files created during testing
+uiengine_storage.json
+uiengine_storage.json.bak
+uiengine_storage.json.tmp
