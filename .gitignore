@@ -1,0 +1,9 @@
+/versions
+/docs/plans
+/deployment/game
+/deployment/vortex
+/dependencies
+/patched
+/reference
+.serena/
+.vscode/settings.json
