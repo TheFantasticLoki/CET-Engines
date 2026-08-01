@@ -164,10 +164,10 @@ Tests run without the game using mocked CET, ImGui, and GameUI APIs.
 
 ## Commit Messages
 
-Use clear, descriptive commit messages:
+Use clear, descriptive commit messages with the `Label(Scope): Message` format:
 
 ```
-feat: Add AdvancedSlider component with modifier keys
+feat(UI-Engine): Add AdvancedSlider component with modifier keys
 
 - Support Alt/Shift/Ctrl for fine/coarse/batch adjustment
 - Add tick marks at configurable intervals
@@ -180,24 +180,67 @@ Refs: Phase 3, Step 7
 ### Commit Format
 
 ```
-<type>: <short description>
+<Label>(<Scope>): <short description>
 
 <detailed description>
 
 <optional references>
 ```
 
-### Types
+### Labels
 
-| Type | Description |
-|------|-------------|
-| `feat` | New feature |
-| `fix` | Bug fix |
-| `docs` | Documentation only |
-| `test` | Adding or updating tests |
+| Label | Description |
+|-------|-------------|
+| `feat`, `feature` | New feature |
+| `fix`, `bugfix`, `fixed` | Bug fix |
+| `hotfix` | Critical hotfix |
+| `docs`, `doc`, `documentation` | Documentation only |
+| `test`, `tests`, `testing` | Adding or updating tests |
 | `refactor` | Code change that neither fixes a bug nor adds a feature |
 | `chore` | Build process, tooling, or infrastructure |
-| `style` | Code style change (formatting, whitespace) |
+| `style`, `css` | Code style change (formatting, whitespace) |
+| `ui` | UI changes |
+| `perf`, `performance` | Performance improvements |
+| `optimize` | Optimization |
+| `build` | Build system changes |
+| `ci` | Continuous integration |
+| `cd` | Continuous deployment |
+| `deploy`, `release` | Deployment or release |
+| `deps`, `dep`, `dependencies` | Dependency changes |
+| `revert` | Revert a previous commit |
+| `wip` | Work in progress |
+| `security` | Security changes |
+| `i18n` | Internationalization |
+| `a11y` | Accessibility |
+| `api` | API changes |
+| `data` | Data changes |
+| `config` | Configuration changes |
+| `init` | Initialization |
+| `added`, `add` | Adding new files or features |
+| `update`, `updated` | Updating existing features |
+| `removed`, `remove`, `delete`, `del` | Removing files or features |
+
+### Scopes
+
+| Scope | Description |
+|-------|-------------|
+| `UI-Engine` | UI-Engine module changes |
+| `Config-Engine` | Config-Engine module changes |
+| `core` | Core state store |
+| `logger` | Logger module |
+| `storage` | Storage module |
+| `events` | Events module |
+| `utils` | Utilities module |
+| `init` | Entry point |
+| `theme` | Theme system |
+| `components` | Component library |
+| `window` | Window system |
+| `context` | Context proxy |
+| `registry` | Registration system |
+| `tests` | Test infrastructure |
+| `scripts` | Build/deploy scripts |
+| `docs` | Documentation |
+| `mocks` | Mock infrastructure |
 
 ---
 
