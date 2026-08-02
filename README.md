@@ -7,7 +7,7 @@ Multi-engine CET (Cyber Engine Tweaks) mod development environment for Cyberpunk
 ## Directory Structure
 
 ```
-0-Lokis-CET-Engine/
+CET-Engines/
 ├── AGENTS.md                               # AI agent guidelines (source of truth)
 ├── README.md                               # This file
 │

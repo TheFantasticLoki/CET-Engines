@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: General Questions
+    url: https://github.com/TheFantasticLoki/CET-Engines/discussions
+    about: Ask questions and discuss ideas in GitHub Discussions
+  - name: CET Documentation
+    url: https://docs.redscript.keenfootman.com/
+    about: Official CET documentation for reference

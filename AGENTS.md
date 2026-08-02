@@ -15,7 +15,7 @@ The workspace is designed so agentic AI agents can start coding UI-Engine with a
 ## Directory Structure
 
 ```
-0-Lokis-CET-Engine/                         # Root workspace
+CET-Engines/                         # Root workspace
 ├── AGENTS.md                               # AI agent guidelines (this file)
 ├── README.md                               # Workspace overview, quick start
 │

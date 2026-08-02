@@ -1,0 +1,24 @@
+# Code Owners for CET Engine
+# These owners will be automatically requested for review
+# when someone opens a pull request.
+
+# Default owner for everything
+* @TheFantasticLoki
+
+# UI-Engine
+/engines/UI-Engine/ @TheFantasticLoki
+
+# Config-Engine
+/engines/Config-Engine/ @TheFantasticLoki
+
+# Documentation
+/docs/ @TheFantasticLoki
+
+# Scripts and automation
+/scripts/ @TheFantasticLoki
+
+# Dependencies (read-only)
+/dependencies/ @TheFantasticLoki
+
+# Patched mods
+/patched/ @TheFantasticLoki

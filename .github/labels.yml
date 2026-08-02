@@ -1,0 +1,100 @@
+# Label Definitions for CET Engine
+# Reference document for GitHub label management
+# Create labels via: gh label create "name" --color "hex" --description "desc"
+# Or use GitHub UI: Repository → Issues → Labels → New Label
+
+# =============================================================================
+# TYPE LABELS (for issue/PR classification)
+# =============================================================================
+
+- name: bug
+  color: "d73a4a"
+  description: "Something isn't working"
+
+- name: enhancement
+  color: "a2eeef"
+  description: "New feature or request"
+
+- name: docs
+  color: "0075ca"
+  description: "Documentation improvements"
+
+- name: refactor
+  color: "e99695"
+  description: "Code restructuring without behavior change"
+
+- name: chore
+  color: "ffffff"
+  description: "Maintenance, cleanup, tooling"
+
+- name: test
+  color: "bfd4f2"
+  description: "Adding or updating tests"
+
+# =============================================================================
+# ENGINE LABELS (for Project filtering)
+# =============================================================================
+
+- name: ui-engine
+  color: "7057ff"
+  description: "UI-Engine framework"
+
+- name: config-engine
+  color: "fbca04"
+  description: "Config-Engine framework"
+
+- name: cross-engine
+  color: "d876e3"
+  description: "Affects both engines"
+
+# =============================================================================
+# PHASE LABELS (for milestone tracking)
+# =============================================================================
+
+- name: phase-0
+  color: "c5def5"
+  description: "Infrastructure setup"
+
+- name: phase-1
+  color: "c5def5"
+  description: "Core foundation"
+
+- name: phase-2
+  color: "c5def5"
+  description: "Theme engine"
+
+- name: phase-3
+  color: "c5def5"
+  description: "Component library"
+
+- name: phase-4
+  color: "c5def5"
+  description: "Window infrastructure"
+
+- name: phase-5
+  color: "c5def5"
+  description: "Refinement and polish"
+
+# =============================================================================
+# PRIORITY LABELS
+# =============================================================================
+
+- name: "priority:high"
+  color: "b60205"
+  description: "Must be done soon"
+
+- name: "priority:medium"
+  color: "fbca04"
+  description: "Important but not urgent"
+
+- name: "priority:low"
+  color: "0e8a16"
+  description: "Nice to have"
+
+# =============================================================================
+# DEPENDENCY LABELS (for Dependabot)
+# =============================================================================
+
+- name: dependencies
+  color: "0366d6"
+  description: "Dependencies update"

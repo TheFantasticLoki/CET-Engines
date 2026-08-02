@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run linter
+        run: ./scripts/lint.sh
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Lua 5.1
+        uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "5.1"
+
+      - name: Set LUA_PATH
+        run: echo "LUA_PATH=${{ github.workspace }}/?.lua;${{ github.workspace }}/?/init.lua;;" >> $GITHUB_ENV
+
+      - name: Run tests
+        run: ./scripts/test.sh
