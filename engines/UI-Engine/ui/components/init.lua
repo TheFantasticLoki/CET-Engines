@@ -2,10 +2,10 @@
     Components — UI-Engine Component Library
 
     Barrel re-export for all component sub-modules.
-    All ~50+ widgets accessible via single require("engines.UI-Engine.ui.components").
+    All ~50+ widgets accessible via single require("ui.components").
 
     Usage:
-        local Components = require("engines.UI-Engine.ui.components")
+        local Components = require("ui.components")
         Components.Button("Click me")
         Components.Text("Hello world")
 ]]
@@ -13,18 +13,18 @@
 local M = {}
 
 -- Import all sub-modules
-M.primitives = require("engines.UI-Engine.ui.components.primitives")
-M.buttons = require("engines.UI-Engine.ui.components.buttons")
-M.display = require("engines.UI-Engine.ui.components.display")
-M.layout = require("engines.UI-Engine.ui.components.layout")
-M.inputs = require("engines.UI-Engine.ui.components.inputs")
-M.sliders = require("engines.UI-Engine.ui.components.sliders")
-M.containers = require("engines.UI-Engine.ui.components.containers")
-M.advanced = require("engines.UI-Engine.ui.components.advanced")
-M.compose = require("engines.UI-Engine.ui.components.compose")
-M.console = require("engines.UI-Engine.ui.components.console")
-M.tables = require("engines.UI-Engine.ui.components.tables")
-M.icons = require("engines.UI-Engine.ui.components.icons")
+M.primitives = require("ui.components.primitives")
+M.buttons = require("ui.components.buttons")
+M.display = require("ui.components.display")
+M.layout = require("ui.components.layout")
+M.inputs = require("ui.components.inputs")
+M.sliders = require("ui.components.sliders")
+M.containers = require("ui.components.containers")
+M.advanced = require("ui.components.advanced")
+M.compose = require("ui.components.compose")
+M.console = require("ui.components.console")
+M.tables = require("ui.components.tables")
+M.icons = require("ui.components.icons")
 
 -- Flatten into single API (only functions, don't overwrite sub-module tables)
 local subModules = {

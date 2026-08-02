@@ -46,9 +46,11 @@ function M.CETWorkaround(name, fn)
     return function(...)
         local ok, result = pcall(fn, ...)
         if not ok then
-            -- Log error but don't crash
-            if _G.print then
-                _G.print("[CET Workaround] " .. name .. ": " .. tostring(result))
+            local errMsg = "[CET Workaround] " .. name .. ": " .. tostring(result)
+            if _G.UIEngine and _G.UIEngine.Logger then
+                _G.UIEngine.Logger.Log("Utils", errMsg, "warn")
+            else
+                print("[UIEngine] " .. errMsg)
             end
             return nil
         end
@@ -108,8 +110,11 @@ function M.SafeImGuiCall(fn, ...)
     local n = select("#", ...)
     local r1, r2, r3, r4, r5, r6, r7, r8, r9, r10 = pcall(fn, ...)
     if not r1 then
+        local errMsg = "ImGui error: " .. tostring(r2)
         if _G.UIEngine and _G.UIEngine.Logger then
-            _G.UIEngine.Logger.Log("Utils", "ImGui error: " .. tostring(r2), "error")
+            _G.UIEngine.Logger.Log("Utils", errMsg, "error")
+        else
+            print("[UIEngine] " .. errMsg)
         end
         return nil
     end
@@ -143,6 +148,41 @@ function M.ValidateComponentParams(params, schema)
     end
 
     return true, nil
+end
+
+-- --- Auto-Save Debounce Utilities ---
+
+-- Auto-save debounce (frame-based, since CET's onDraw has no deltaTime)
+local _dirtyFrame = 0
+local _currentFrame = 0
+local SAVE_DELAY_FRAMES = 30  -- ~0.5s at 60fps
+
+--- Mark state as dirty (triggers auto-save debounce)
+function M.markDirty()
+    _dirtyFrame = _currentFrame + SAVE_DELAY_FRAMES
+end
+
+--- Update frame counter (called each frame)
+-- @param frame number Current frame number
+function M.updateFrame(frame)
+    _currentFrame = frame or 0
+end
+
+--- Check if save is pending
+-- @return boolean
+function M.isSavePending()
+    return _dirtyFrame > 0 and _currentFrame >= _dirtyFrame
+end
+
+--- Clear pending save
+function M.clearPendingSave()
+    _dirtyFrame = 0
+end
+
+--- Check if state is dirty
+-- @return boolean
+function M.isDirty()
+    return _dirtyFrame > 0
 end
 
 return M

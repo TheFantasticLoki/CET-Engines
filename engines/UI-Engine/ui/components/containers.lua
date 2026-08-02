@@ -9,8 +9,8 @@
 
 local M = {}
 
-local Utils = require("engines.UI-Engine.ui.utils")
-local Tokens = require("engines.UI-Engine.ui.tokens")
+local Utils = require("ui.utils")
+local Tokens = require("ui.tokens")
 
 -- Lazy-loaded Core for section state
 local _core = nil

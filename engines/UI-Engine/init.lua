@@ -27,34 +27,44 @@ local function SafeRequire(path)
     if ok then
         return mod
     end
+    -- Distinguish "module not found" (expected during phased dev) from real errors
+    local err = tostring(mod)
+    if not err:find("not found") and not err:find("no field") then
+        print("[UIEngine] FAILED to load '" .. path .. "': " .. err)
+    end
     return nil
 end
 
 -- --- Module Loading ---
 
 -- Phase 1 modules (always loaded)
-local Core = SafeRequire("engines.UI-Engine.core")
-local Logger = SafeRequire("engines.UI-Engine.modules.logger")
-local Storage = SafeRequire("engines.UI-Engine.modules.storage")
-local Events = SafeRequire("engines.UI-Engine.api.events")
-local Utils = SafeRequire("engines.UI-Engine.ui.utils")
+local Core = SafeRequire("core")
+local Logger = SafeRequire("modules.logger")
+local Storage = SafeRequire("modules.storage")
+local Events = SafeRequire("api.events")
+local Utils = SafeRequire("ui.utils")
 
 -- Phase 2 modules (loaded if available)
-local ThemeDefs = SafeRequire("engines.UI-Engine.config.themes")
-local ColorEngine = SafeRequire("engines.UI-Engine.ui.color_engine")
-local Tokens = SafeRequire("engines.UI-Engine.ui.tokens")
-local DefaultConfig = SafeRequire("engines.UI-Engine.config.default_config")
-local Theme = SafeRequire("engines.UI-Engine.ui.theme")
+local ThemeDefs = SafeRequire("config.themes")
+local ColorEngine = SafeRequire("ui.color_engine")
+local Tokens = SafeRequire("ui.tokens")
+local DefaultConfig = SafeRequire("config.default_config")
+local Theme = SafeRequire("ui.theme")
 
 -- Phase 3+ modules (loaded if available)
-local Window = SafeRequire("engines.UI-Engine.ui.window")
-local Registry = SafeRequire("engines.UI-Engine.api.registry")
-local Context = SafeRequire("engines.UI-Engine.api.context")
+local Window = SafeRequire("ui.window")
+local Components = SafeRequire("ui.components")
+local Registry = SafeRequire("api.registry")
+local Context = SafeRequire("api.context")
+
+-- Phase 4 modules (loaded if available)
+local Windows = SafeRequire("api.windows")
 
 -- --- Initialization State ---
 
 local initialized = false
 local frameCount = 0
+local overlayOpen = false  -- Phase 4: overlay detection
 
 -- --- Public API ---
 
@@ -315,9 +325,37 @@ local function onInit()
         Theme.init(Core, ColorEngine, Tokens, ThemeDefs, Logger)
     end
 
+    -- Phase 4: Initialize framework APIs
+    if Registry and Registry.init then
+        Registry.init({ Core = Core, Events = Events, Logger = Logger })
+    end
+
+    if Context and Context.init then
+        Context.init({ Core = Core, Events = Events, Components = Components, Tokens = Tokens, Utils = Utils })
+    end
+
+    if Windows and Windows.init then
+        Windows.init({ Core = Core, Events = Events, Logger = Logger })
+    end
+
     -- Emit init complete event
     if Events then
         Events.emit("uiengine:initComplete")
+    end
+
+    -- Startup summary — always prints so failures are visible
+    print("[UIEngine] v0.4.0-phase4 loaded")
+    local phases = {
+        {"Phase1", Core=Core, Logger=Logger, Storage=Storage, Events=Events, Utils=Utils},
+        {"Phase2", ThemeDefs=ThemeDefs, ColorEngine=ColorEngine, Tokens=Tokens, DefaultConfig=DefaultConfig, Theme=Theme},
+        {"Phase3", Window=Window, Components=Components, Registry=Registry, Context=Context},
+        {"Phase4", Windows=Windows},
+    }
+    for _, phase in ipairs(phases) do
+        local label = table.remove(phase, 1)
+        for name, mod in pairs(phase) do
+            print("[UIEngine]   " .. label .. "/" .. name .. ": " .. (mod and "OK" or "MISSING"))
+        end
     end
 end
 
@@ -325,30 +363,46 @@ end
 local function onDraw()
     frameCount = frameCount + 1
 
-    -- Update frame counter
+    -- Update frame counter for Logger
     if Logger then
         Logger.SetFrame(frameCount)
     end
 
+    -- Update frame counter for auto-save debounce (Phase 4)
+    if Utils and Utils.updateFrame then
+        Utils.updateFrame(frameCount)
+    end
+
     -- Push theme (Phase 2)
     if Theme then
-        pcall(function()
-            Theme.PushTheme()
-        end)
+        local ok, err = pcall(Theme.PushTheme)
+        if not ok then
+            print("[UIEngine] Theme.PushTheme error: " .. tostring(err))
+        end
+    end
+
+    -- Draw standalone windows (Phase 4)
+    if Windows and Windows.drawAll then
+        local ok, err = pcall(Windows.drawAll)
+        if not ok then
+            print("[UIEngine] Windows.drawAll error: " .. tostring(err))
+        end
     end
 
     -- Draw window (if available)
     if Window then
-        pcall(function()
-            Window.draw()
-        end)
+        local ok, err = pcall(Window.draw)
+        if not ok then
+            print("[UIEngine] Window.draw error: " .. tostring(err))
+        end
     end
 
     -- Pop theme (Phase 2)
     if Theme then
-        pcall(function()
-            Theme.PopTheme()
-        end)
+        local ok, err = pcall(Theme.PopTheme)
+        if not ok then
+            print("[UIEngine] Theme.PopTheme error: " .. tostring(err))
+        end
     end
 
     -- Draw logger overlay
@@ -359,8 +413,8 @@ end
 
 --- onShutdown handler — called when CET unloads the mod
 local function onShutdown()
-    -- Flush pending saves
-    if Storage and Storage.IsDirty() then
+    -- Flush pending saves on shutdown
+    if Storage and Storage.IsDirty and Storage.IsDirty() then
         Storage.Save()
     end
 
@@ -375,11 +429,35 @@ local function onShutdown()
     end
 end
 
+-- --- Overlay Detection (Phase 4) ---
+
+-- Register for overlay events (must be at module level, not in functions)
+if registerForEvent then
+    registerForEvent("onOverlayOpen", function()
+        overlayOpen = true
+    end)
+
+    registerForEvent("onOverlayClose", function()
+        overlayOpen = false
+        -- Flush pending auto-saves on overlay close
+        if Storage and Storage.IsDirty and Storage.IsDirty() then
+            Storage.Save()
+        end
+    end)
+end
+
+--- Check if the CET overlay is open
+-- @return boolean True if overlay is visible
+local function IsOverlayOpen()
+    return overlayOpen
+end
+
 -- --- Global API ---
 
 -- NOTE: In CET's sandboxed Lua environment, _G is nil.
 -- Use rawset or direct assignment to set globals.
 UIEngine = {
+    -- Phase 1 public API
     Register = Register,
     Unregister = Unregister,
     GetContext = GetContext,
@@ -396,6 +474,12 @@ UIEngine = {
     Enable = Enable,
     Disable = Disable,
     Log = Log,
+
+    -- Phase 4 public API (framework-level)
+    IsOverlayOpen = IsOverlayOpen,
+    Registry = Registry,
+    Context = Context,
+    Windows = Windows,
 }
 
 -- --- CET Entry Points ---
@@ -404,3 +488,6 @@ UIEngine = {
 onInit = onInit
 onDraw = onDraw
 onShutdown = onShutdown
+
+-- Return public API for GetMod() resolution
+return UIEngine

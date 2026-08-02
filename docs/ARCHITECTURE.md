@@ -2,9 +2,39 @@
 
 ## Overview
 
-UI-Engine is a CET mod that provides a unified, themed UI framework for Cyberpunk 2077 mod configuration. It wraps ImGui with a high-level component API, theme system, and mod registration infrastructure.
+UI-Engine is a **framework/library** for CET mod configuration UIs. It provides a component library, theme system, and mod registration infrastructure. **UI-Engine does not have its own UI** — that's Config-Engine's job.
 
-Consumer mods register with UI-Engine and receive a `ctx` (context) object that provides access to all UI components. UI-Engine handles window management, overlay detection, theme application, and error isolation.
+Consumer mods (like Config-Engine) register with UI-Engine and receive a `ctx` (context) object that provides access to all UI components. UI-Engine provides the toolbox; Config-Engine builds the house.
+
+### Key Separation
+
+| Module | Role | Owner |
+|--------|------|-------|
+| UI-Engine | Framework/library (components, themes, core, events) | This workspace |
+| Config-Engine | Consumer mod (window, sidebar, settings UI) | This workspace |
+| Consumer Mods | Other mods using UI-Engine API | External |
+
+### UI-Engine Responsibilities (Framework)
+- Component library (50+ ImGui widgets)
+- Theme engine (push/pop, color science, tokens)
+- Core state store (panels, windows, settings)
+- Events system (pub/sub)
+- Registry API (mod registration with validation)
+- Context API (ctx proxy for component access)
+- Window Management API (standalone windows)
+- Storage (persistence)
+- Logger (ring buffer, overlay)
+- Auto-save utilities
+
+### Config-Engine Responsibilities (Consumer App)
+- Main window orchestrator
+- Sidebar with mod list, search, favorites
+- Content area for mod settings
+- Settings panel (5 tabs)
+- Card header component
+- In-game wiki viewer
+- Preset management
+- Category management
 
 ---
 
@@ -13,9 +43,10 @@ Consumer mods register with UI-Engine and receive a `ctx` (context) object that 
 ```mermaid
 graph TB
     subgraph Public["Public API"]
-        REG["Registry<br/>api/registry.lua<br/>(Phase 5)"]
-        CTX["Context<br/>api/context.lua<br/>(Phase 5)"]
+        REG["Registry<br/>api/registry.lua<br/>(Phase 4)"]
+        CTX["Context<br/>api/context.lua<br/>(Phase 4)"]
         EVENTS["Events<br/>api/events.lua<br/>✅"]
+        WINDOWS["Windows<br/>api/windows.lua<br/>(Phase 4)"]
     end
 
     subgraph Core["Core Systems"]
@@ -30,15 +61,6 @@ graph TB
         COLOR["ColorEngine<br/>ui/color_engine.lua<br/>✅"]
         TOKENS["Tokens<br/>ui/tokens.lua<br/>✅"]
         THEMES["Theme Defs<br/>config/themes.lua<br/>✅"]
-    end
-
-    subgraph Window["Window System"]
-        WIN["Window<br/>ui/window.lua<br/>(Phase 4)"]
-        SIDEBAR["Sidebar<br/>ui/sidebar.lua<br/>(Phase 4)"]
-        CONTENT["ContentArea<br/>ui/content_area.lua<br/>(Phase 4)"]
-        CARD["Card<br/>ui/card.lua<br/>(Phase 4)"]
-        SETTINGS["SettingsPanel<br/>ui/settings_panel.lua<br/>(Phase 4)"]
-        DOCS["Docs<br/>ui/docs.lua<br/>(Phase 4)"]
     end
 
     subgraph Components["Component Library"]
@@ -57,11 +79,6 @@ graph TB
         COMP_INIT["Components Init<br/>ui/components/init.lua<br/>(Phase 3)"]
     end
 
-    subgraph Features["Features"]
-        FAV["Favorites<br/>features/favorites.lua<br/>(Phase 5)"]
-        PRESETS["Presets<br/>features/presets.lua<br/>(Phase 5)"]
-    end
-
     subgraph Utils["Utilities"]
         UTILS["Utils<br/>ui/utils.lua<br/>✅"]
     end
@@ -70,13 +87,58 @@ graph TB
     INIT --> EVENTS
     INIT --> LOGGER
     INIT --> THEME
-    INIT --> WIN
+    INIT --> REG
+    INIT --> CTX
+    INIT --> WINDOWS
 
-    WIN --> SIDEBAR
-    WIN --> CONTENT
-    WIN --> CARD
-    WIN --> SETTINGS
-    WIN --> DOCS
+    REG --> CORE
+    CTX --> COMPONENTS
+    WINDOWS --> CORE
+
+    THEME --> COLOR
+    THEME --> TOKENS
+    THEME --> THEMES
+
+    COMPOSE --> BUTTONS
+    COMPOSE --> INPUTS
+    COMPOSE --> SLIDERS
+    COMPOSE --> DISPLAY
+    COMPOSE --> CONTAINERS
+    COMPOSE --> ADVANCED
+    COMPOSE --> LAYOUT
+    COMPOSE --> CONSOLE
+    COMPOSE --> TABLES
+    COMPOSE --> ICONS
+    COMPOSE --> PRIMITIVES
+```
+
+---
+
+## Consumer Mods
+
+UI-Engine is a framework. Consumer mods (like Config-Engine) build the actual UI:
+
+```
+┌─────────────────────────────────────────────┐
+│  Config-Engine (Consumer Mod)               │
+│  ┌─────────┐ ┌──────────┐ ┌──────────────┐ │
+│  │ Window  │ │ Sidebar  │ │Settings Panel│ │
+│  └────┬────┘ └────┬─────┘ └──────┬───────┘ │
+│       └───────────┼──────────────┘          │
+│                   ▼                         │
+│           ┌──────────────┐                  │
+│           │ UIEngine API │                  │
+│           └──────────────┘                  │
+└─────────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────┐
+│  UI-Engine (Framework)                      │
+│  Components │ Theme │ Core │ Events │ ...   │
+└─────────────────────────────────────────────┘
+```
+
+**See:** `docs/plans/ConfigEngine-ModManager.md` for the full Config-Engine plan.
 
     CONTENT --> CTX
     SIDEBAR --> CORE
