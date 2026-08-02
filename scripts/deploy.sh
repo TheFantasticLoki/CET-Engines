@@ -60,6 +60,7 @@ VORTEX_DIR="$WORKSPACE_ROOT/deployment/vortex"
 
 UI_ENGINE_SRC="$ENGINES_DIR/UI-Engine"
 CONFIG_ENGINE_SRC="$ENGINES_DIR/Config-Engine"
+LOG_ENGINE_SRC="$ENGINES_DIR/Log-Engine"
 ENGINE_0_SRC="$DEPS_DIR/0-Engine"
 
 # --- Validate deployment target ---
@@ -105,7 +106,14 @@ deploy_to_target() {
     else
         echo -e "${YELLOW}  ⊘ Config-Engine skipped (empty)${NC}"
     fi
-
+    # Deploy Log-Engine
+    if [ -d "$LOG_ENGINE_SRC" ] && [ "$(ls -A "$LOG_ENGINE_SRC" 2>/dev/null)" ]; then
+        mkdir -p "$target_dir/0-Engine-Log"
+        cp -r "$LOG_ENGINE_SRC"/* "$target_dir/0-Engine-Log/"
+        echo -e "${GREEN}  \u2713 Log-Engine -> ${target_name}/0-Engine-Log/${NC}"
+    else
+        echo -e "${YELLOW}  \u2298 Log-Engine skipped (empty)${NC}"
+    fi
     # Deploy 0-Engine dependency
     if [ -d "$ENGINE_0_SRC" ] && [ "$(ls -A "$ENGINE_0_SRC" 2>/dev/null)" ]; then
         mkdir -p "$target_dir/0-Engine"

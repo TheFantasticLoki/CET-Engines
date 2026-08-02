@@ -20,6 +20,7 @@ local initialized = false
 local Core = nil
 local Events = nil
 local Logger = nil
+local log = nil  -- Log-Engine fallback
 
 -- --- Schema Validation ---
 
@@ -77,6 +78,15 @@ function M.init(deps)
     Core = deps and deps.Core
     Events = deps and deps.Events
     Logger = deps and deps.Logger
+
+    -- Resolve Log-Engine as fallback
+    if not Logger then
+        local ok, le = pcall(GetMod, "0-Engine-Log")
+        if ok and le then
+            local ok2, lgr = pcall(le.CreateLogger, "UI-Engine-Registry", { minLevel = "warn" })
+            if ok2 and lgr then log = lgr end
+        end
+    end
 end
 
 --- Register a mod with UI-Engine
@@ -135,8 +145,13 @@ function M.unregister(id)
     -- Call onDisable if available
     if spec.onDisable then
         local ok, err = pcall(spec.onDisable)
-        if not ok and Logger then
-            Logger.Log("Registry", "Error calling onDisable for " .. id .. ": " .. tostring(err), "error")
+        if not ok then
+            local msg = "Error calling onDisable for " .. id .. ": " .. tostring(err)
+            if Logger then
+                Logger.Log("Registry", msg, "error")
+            elseif log then
+                log.error(msg)
+            end
         end
     end
 

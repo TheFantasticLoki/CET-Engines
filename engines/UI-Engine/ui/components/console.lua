@@ -87,9 +87,10 @@ function M.RichInput(prompt, onSubmit, options)
     local submitted = false
 
     -- Render input
+    -- CET InputTextWithHint: (label, hint, text, buf_size [, flags])
     local changed, newText = Utils.SafeImGuiCall(ImGui.InputTextWithHint,
         "##rich_input", placeholder, text,
-        ImGui.InputTextFlags.EnterReturnsTrue, nil, nil)
+        256, ImGui.InputTextFlags.EnterReturnsTrue)
 
     if changed and newText and newText ~= "" then
         submitted = true
@@ -104,8 +105,8 @@ function M.RichInput(prompt, onSubmit, options)
         end
     end
 
-    -- Keyboard shortcuts
-    if ImGui.IsKeyPressed and ImGui.IsKeyPressed(ImGui.Key.UpArrow) then
+    -- Keyboard shortcuts (skip if ImGui.Key not available in this CET version)
+    if ImGui.IsKeyPressed and ImGui.Key and ImGui.IsKeyPressed(ImGui.Key.UpArrow) then
         -- Navigate history up
         if #history > 0 then
             text = history[#history]

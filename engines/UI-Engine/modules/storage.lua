@@ -23,6 +23,7 @@ local data = {}
 local dirty = false
 local initialized = false
 local Logger = nil  -- Lazy-loaded dependency
+local log = nil  -- Log-Engine fallback
 
 -- --- Helper Functions ---
 
@@ -66,6 +67,8 @@ end
 local function logError(msg)
     if Logger then
         Logger.Log("Storage", msg, "error")
+    elseif log then
+        log.error(msg)
     end
 end
 
@@ -74,6 +77,8 @@ end
 local function logInfo(msg)
     if Logger then
         Logger.Log("Storage", msg, "info")
+    elseif log then
+        log.info(msg)
     end
 end
 
@@ -88,6 +93,15 @@ function M.init(logger)
     initialized = true
 
     Logger = logger
+
+    -- Resolve Log-Engine as fallback
+    if not Logger then
+        local ok, le = pcall(GetMod, "0-Engine-Log")
+        if ok and le then
+            local ok2, lgr = pcall(le.CreateLogger, "UI-Engine-Storage", { minLevel = "warn" })
+            if ok2 and lgr then log = lgr end
+        end
+    end
 
     -- Try to load from primary file
     local content = readFile(STORAGE_FILE)

@@ -77,11 +77,14 @@ function M.InputText(label, value, options)
     end
 
     -- Use hint variant if placeholder provided
+    -- CET InputText requires buf_size as 3rd arg: (label, text, buf_size [, flags])
     local changed, newValue
     if placeholder and placeholder ~= "" then
-        changed, newValue = Utils.SafeImGuiCall(ImGui.InputTextWithHint, label, placeholder, value, flags, nil, nil)
+        -- CET InputTextWithHint: (label, hint, text, buf_size [, flags])
+        changed, newValue = Utils.SafeImGuiCall(ImGui.InputTextWithHint, label, placeholder, value, 256, flags)
     else
-        changed, newValue = Utils.SafeImGuiCall(ImGui.InputText, label, value, flags, nil, nil)
+        -- CET InputText: (label, text, buf_size [, flags])
+        changed, newValue = Utils.SafeImGuiCall(ImGui.InputText, label, value, 256, flags)
     end
 
     if not changed then

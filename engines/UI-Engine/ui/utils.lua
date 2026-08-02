@@ -28,13 +28,8 @@ end
 -- @param selected Whether the item is selected
 -- @return boolean, boolean clicked, selected
 function M.SafeSelectable(label, selected)
-    -- CET workaround: use pcall to handle hover state issues
-    local ok, clicked, nowSelected = pcall(function()
-        return ImGui.Selectable(label, selected)
-    end)
-    if not ok then
-        return false, selected
-    end
+    -- Direct call — CET's FFI breaks with pcall
+    local clicked, nowSelected = ImGui.Selectable(label, selected)
     return clicked, nowSelected
 end
 
@@ -102,30 +97,15 @@ function M.FormatColor(color)
     return color.r or 1, color.g or 1, color.b or 1, color.a or 1
 end
 
---- Safe pcall-wrapped ImGui call (supports multiple return values)
+--- Direct ImGui call wrapper (no pcall — CET's LuaJIT FFI breaks with pcall)
+-- Previously wrapped in pcall which broke CET's FFI binding.
+-- Now passes through directly. Errors propagate to the caller's
+-- top-level pcall in onDraw.
 -- @param fn Function to call
 -- @param ... Arguments
--- @return any|nil Result or nil on error
+-- @return any|nil Result
 function M.SafeImGuiCall(fn, ...)
-    local n = select("#", ...)
-    local r1, r2, r3, r4, r5, r6, r7, r8, r9, r10 = pcall(fn, ...)
-    if not r1 then
-        local errMsg = "ImGui error: " .. tostring(r2)
-        if _G.UIEngine and _G.UIEngine.Logger then
-            _G.UIEngine.Logger.Log("Utils", errMsg, "error")
-        else
-            print("[UIEngine] " .. errMsg)
-        end
-        return nil
-    end
-    -- Return all results from the function call (skip the ok status)
-    if n == 0 then return end
-    if n == 1 then return r2 end
-    if n == 2 then return r2, r3 end
-    if n == 3 then return r2, r3, r4 end
-    if n == 4 then return r2, r3, r4, r5 end
-    if n == 5 then return r2, r3, r4, r5, r6 end
-    return r2, r3, r4, r5, r6, r7, r8, r9, r10
+    return fn(...)
 end
 
 --- Validate component parameters against a schema

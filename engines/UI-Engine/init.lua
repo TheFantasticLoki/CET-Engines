@@ -5,6 +5,7 @@
     initialization, and the public API surface.
 
     Module loading order matches ARCHITECTURE.md exactly:
+    0. Log-Engine        (safety-net logging — first thing loaded)
     1. core.lua          (state store — no dependencies)
     2. modules/logger.lua (logging — no dependencies)
     3. modules/storage.lua (persistence — depends on logger)
@@ -17,23 +18,83 @@
     Public API: _G.UIEngine
 ]]
 
+-- ============================================================================
+-- TRACE: Top-level execution begins (print ALWAYS goes to CET console)
+-- ============================================================================
+print("[UIEngine TRACE] >>>>>> TOP-LEVEL CODE START <<<<<<")
+
+-- --- Direct File Debug (last resort — works even if Log-Engine is broken) ---
+
+local _debugFile = nil
+local function dbgWrite(msg)
+    -- Write to a debug trace file that we can always check
+    local f = io.open("UIEngine_DEBUG.trace", "a")
+    if f then
+        f:write(os.date("%H:%M:%S") .. " " .. msg .. "\n")
+        f:close()
+    end
+end
+dbgWrite("TOP-LEVEL CODE START")
+
+-- Clear previous debug trace
+do
+    local f = io.open("UIEngine_DEBUG.trace", "w")
+    if f then f:write("--- UIEngine Debug Trace ---\n"); f:close() end
+end
+dbgWrite("trace file cleared")
+
+-- --- Log-Engine Integration (FIRST, before anything else) ---
+
+print("[UIEngine TRACE] Resolving Log-Engine...")
+dbgWrite("resolving Log-Engine")
+
+local LogEngine = GetMod("0-Engine-Log")
+local log = nil
+
+if LogEngine then
+    print("[UIEngine TRACE] Log-Engine found, creating logger...")
+    dbgWrite("Log-Engine found")
+    local ok, logger = pcall(LogEngine.CreateLogger, "UI-Engine", { minLevel = "debug", maxDebugPerFrame = 5 })
+    if ok and logger then
+        log = logger
+        print("[UIEngine] Log-Engine connected")
+        dbgWrite("Log-Engine logger created")
+    else
+        print("[UIEngine] WARNING: Log-Engine CreateLogger failed: " .. tostring(logger))
+        dbgWrite("Log-Engine CreateLogger FAILED: " .. tostring(logger))
+    end
+else
+    print("[UIEngine] WARNING: 0-Engine-Log not found — errors will only go to CET console")
+    dbgWrite("Log-Engine NOT FOUND")
+end
+
 -- --- SafeRequire Pattern ---
 
---- Safely require a module with pcall
+print("[UIEngine TRACE] Defining SafeRequire...")
+dbgWrite("defining SafeRequire")
+
+--- Safely require a module with pcall, logging success/failure to Log-Engine
 -- @param path Module path
 -- @return table|nil Module table or nil if not found
 local function SafeRequire(path)
     local ok, mod = pcall(require, path)
     if ok then
+        if log then log.info("Loaded: " .. path) end
         print("[UIEngine] Loaded: " .. path)
+        dbgWrite("LOADED: " .. path)
         return mod
     end
     local err = tostring(mod)
+    if log then log.error("FAILED to load '" .. path .. "': " .. err) end
     print("[UIEngine] FAILED to load '" .. path .. "': " .. err)
+    dbgWrite("FAILED: " .. path .. " — " .. err)
     return nil
 end
 
 -- --- Module Loading ---
+
+print("[UIEngine TRACE] Starting module loading...")
+dbgWrite("module loading start")
 
 -- Phase 1 modules (always loaded)
 local Core = SafeRequire("core")
@@ -57,6 +118,9 @@ local Context = SafeRequire("api/context")
 
 -- Phase 4 modules (loaded if available)
 local Windows = SafeRequire("api/windows")
+
+print("[UIEngine TRACE] All modules loaded — starting function definitions")
+dbgWrite("all modules loaded, defining functions")
 
 -- --- Initialization State ---
 
@@ -158,11 +222,18 @@ end
 
 --- Set the current theme
 -- @param themeName Theme name
+-- @return boolean success
 local function SetTheme(themeName)
+    -- Delegate to Theme module for validation when available
+    if Theme and Theme.SetTheme then
+        return Theme.SetTheme(themeName)
+    end
+    -- Fallback: no validation
     if not Core then
-        return
+        return false
     end
     Core.setCurrentTheme(themeName)
+    return true
 end
 
 --- Get the list of available themes
@@ -210,8 +281,10 @@ end
 -- @param oldName Old API name
 -- @param newName New API name
 local function Deprecated(oldName, newName)
+    local msg = "DEPRECATED: " .. oldName .. " — use " .. (newName or "the new API")
+    if log then log.warn(msg) end
     if Logger then
-        Logger.Log("UIEngine", "DEPRECATED: " .. oldName .. " — use " .. (newName or "the new API"), "warn")
+        Logger.Log("UIEngine", msg, "warn")
     end
 end
 
@@ -282,13 +355,18 @@ local function Disable(id)
     return true, nil
 end
 
---- Log a message via the Logger
+--- Log a message via both Logger and Log-Engine
 -- @param modName Module name
 -- @param message Log message
 -- @param level Level name string
 local function Log(modName, message, level)
+    -- Log to UI-Engine's internal Logger (overlay, ring buffer)
     if Logger then
         Logger.Log(modName, message, level)
+    end
+    -- Also log to Log-Engine (file output, cross-mod visibility)
+    if log then
+        log.log(level or "info", "[" .. modName .. "] " .. message)
     end
 end
 
@@ -296,44 +374,86 @@ end
 
 --- onInit handler — called when CET loads the mod
 local function onInit()
+    print("[UIEngine TRACE] >>>>>> onInit() CALLED <<<<<<")
+    dbgWrite("onInit() CALLED, initialized=" .. tostring(initialized))
+
     if initialized then
+        print("[UIEngine TRACE] onInit: already initialized, skipping")
+        dbgWrite("onInit: already initialized, skipping")
+        if log then log.debug("onInit called again — idempotent guard, skipping") end
         return  -- Idempotent: safe to call multiple times
     end
     initialized = true
 
+    print("[UIEngine TRACE] onInit: starting module initialization")
+    dbgWrite("onInit: starting module initialization")
+    if log then log.info("=== onInit START ===") end
+
     -- Initialize modules in order
+    print("[UIEngine TRACE] onInit: Logger=" .. tostring(Logger ~= nil))
     if Logger then
+        if log then log.info("Initializing Logger module") end
         Logger.init()
+        print("[UIEngine TRACE] onInit: Logger.init() done")
     end
 
+    print("[UIEngine TRACE] onInit: Storage=" .. tostring(Storage ~= nil))
     if Storage then
+        if log then log.info("Initializing Storage module") end
         Storage.init(Logger)
+        print("[UIEngine TRACE] onInit: Storage.init() done")
     end
 
+    print("[UIEngine TRACE] onInit: Events=" .. tostring(Events ~= nil))
     if Events then
+        if log then log.info("Initializing Events module") end
         Events.init(Logger, Core)
+        print("[UIEngine TRACE] onInit: Events.init() done")
     end
 
+    print("[UIEngine TRACE] onInit: Core=" .. tostring(Core ~= nil))
     if Core then
+        if log then log.info("Initializing Core module") end
         Core.init()
+        print("[UIEngine TRACE] onInit: Core.init() done")
     end
 
     -- Initialize theme engine (Phase 2)
+    print("[UIEngine TRACE] onInit: Theme=" .. tostring(Theme ~= nil))
     if Theme and Theme.init then
+        if log then log.info("Initializing Theme module") end
         Theme.init(Core, ColorEngine, Tokens, ThemeDefs, Logger)
+        print("[UIEngine TRACE] onInit: Theme.init() done")
     end
 
     -- Phase 4: Initialize framework APIs
+    print("[UIEngine TRACE] onInit: Registry=" .. tostring(Registry ~= nil))
     if Registry and Registry.init then
+        if log then log.info("Initializing Registry module") end
         Registry.init({ Core = Core, Events = Events, Logger = Logger })
+        print("[UIEngine TRACE] onInit: Registry.init() done")
     end
 
+    print("[UIEngine TRACE] onInit: Context=" .. tostring(Context ~= nil))
     if Context and Context.init then
+        if log then log.info("Initializing Context module") end
         Context.init({ Core = Core, Events = Events, Components = Components, Tokens = Tokens, Utils = Utils })
+        print("[UIEngine TRACE] onInit: Context.init() done")
     end
 
+    print("[UIEngine TRACE] onInit: Windows=" .. tostring(Windows ~= nil))
     if Windows and Windows.init then
+        if log then log.info("Initializing Windows module") end
         Windows.init({ Core = Core, Events = Events, Logger = Logger })
+        print("[UIEngine TRACE] onInit: Windows.init() done")
+    end
+
+    -- Initialize Components (Phase 3)
+    print("[UIEngine TRACE] onInit: Components=" .. tostring(Components ~= nil))
+    if Components and Components.init then
+        if log then log.info("Initializing Components module") end
+        Components.init(Logger, Core, Theme)
+        print("[UIEngine TRACE] onInit: Components.init() done")
     end
 
     -- Emit init complete event
@@ -342,8 +462,10 @@ local function onInit()
     end
 
     -- Startup summary — always prints so failures are visible
-    print("[UIEngine] v0.4.0-phase4 loaded")
+    if log then log.info("=== UIEngine v0.5.0-phase4 loaded ===") end
+    print("[UIEngine] v0.5.0-phase4 loaded")
     local phases = {
+        {"Phase0", LogEngine=LogEngine, log=log},
         {"Phase1", Core=Core, Logger=Logger, Storage=Storage, Events=Events, Utils=Utils},
         {"Phase2", ThemeDefs=ThemeDefs, ColorEngine=ColorEngine, Tokens=Tokens, DefaultConfig=DefaultConfig, Theme=Theme},
         {"Phase3", Window=Window, Components=Components, Registry=Registry, Context=Context},
@@ -352,13 +474,32 @@ local function onInit()
     for _, phase in ipairs(phases) do
         local label = table.remove(phase, 1)
         for name, mod in pairs(phase) do
-            print("[UIEngine]   " .. label .. "/" .. name .. ": " .. (mod and "OK" or "MISSING"))
+            local status = mod and "OK" or "MISSING"
+            if log then
+                if mod then
+                    log.info("  " .. label .. "/" .. name .. ": OK")
+                else
+                    log.warn("  " .. label .. "/" .. name .. ": MISSING")
+                end
+            end
+            print("[UIEngine]   " .. label .. "/" .. name .. ": " .. status)
         end
     end
+
+    if log then log.info("=== onInit END ===") end
+    print("[UIEngine TRACE] >>>>>> onInit() COMPLETE <<<<<<")
+    dbgWrite("onInit() COMPLETE")
 end
 
 --- onDraw handler — called each frame
 local function onDraw()
+    -- Only log first call and every 300 frames to avoid spam
+    if frameCount == 0 then
+        print("[UIEngine TRACE] >>>>>> onDraw() FIRST CALL <<<<<<")
+        dbgWrite("onDraw() FIRST CALL")
+    elseif frameCount % 300 == 0 then
+        print("[UIEngine TRACE] onDraw() frame " .. frameCount)
+    end
     frameCount = frameCount + 1
 
     -- Update frame counter for Logger
@@ -371,48 +512,41 @@ local function onDraw()
         Utils.updateFrame(frameCount)
     end
 
-    -- Push theme (Phase 2)
-    if Theme then
-        local ok, err = pcall(Theme.PushTheme)
-        if not ok then
-            print("[UIEngine] Theme.PushTheme error: " .. tostring(err))
-        end
-    end
+    -- SINGLE pcall wrapping all ImGui calls — CET's FFI breaks with per-call pcall
+    local drawOk, drawErr = pcall(function()
+        -- Push theme (Phase 2)
+        if Theme then Theme.PushTheme() end
 
-    -- Draw standalone windows (Phase 4)
-    if Windows and Windows.drawAll then
-        local ok, err = pcall(Windows.drawAll)
-        if not ok then
-            print("[UIEngine] Windows.drawAll error: " .. tostring(err))
-        end
-    end
+        -- Draw standalone windows (Phase 4)
+        if Windows and Windows.drawAll then Windows.drawAll() end
 
-    -- Draw window (if available)
-    if Window then
-        local ok, err = pcall(Window.draw)
-        if not ok then
-            print("[UIEngine] Window.draw error: " .. tostring(err))
-        end
-    end
+        -- Draw window (if available)
+        if Window then Window.draw() end
 
-    -- Pop theme (Phase 2)
-    if Theme then
-        local ok, err = pcall(Theme.PopTheme)
-        if not ok then
-            print("[UIEngine] Theme.PopTheme error: " .. tostring(err))
-        end
-    end
+        -- Pop theme (Phase 2)
+        if Theme then Theme.PopTheme() end
 
-    -- Draw logger overlay
-    if Logger then
-        Logger.Draw()
+        -- Draw logger overlay
+        if Logger then Logger.Draw() end
+    end)
+
+    if not drawOk then
+        if log then log.error("onDraw error: " .. tostring(drawErr)) end
+        print("[UIEngine] onDraw error: " .. tostring(drawErr))
+        -- Attempt to pop theme if it was pushed before the error
+        if Theme then pcall(Theme.PopTheme) end
     end
 end
 
 --- onShutdown handler — called when CET unloads the mod
 local function onShutdown()
+    print("[UIEngine TRACE] >>>>>> onShutdown() CALLED <<<<<<")
+    dbgWrite("onShutdown() CALLED")
+    if log then log.info("=== onShutdown START ===") end
+
     -- Flush pending saves on shutdown
     if Storage and Storage.IsDirty and Storage.IsDirty() then
+        if log then log.info("Flushing pending storage saves") end
         Storage.Save()
     end
 
@@ -425,23 +559,42 @@ local function onShutdown()
     if Logger then
         Logger.Log("UIEngine", "Shutdown complete", "info")
     end
+
+    -- Flush Log-Engine
+    if log then
+        log.info("=== onShutdown END ===")
+        log.flush()
+    end
 end
 
 -- --- Overlay Detection (Phase 4) ---
 
 -- Register for overlay events (must be at module level, not in functions)
+print("[UIEngine TRACE] registerForEvent available: " .. tostring(registerForEvent ~= nil))
+dbgWrite("registerForEvent: " .. tostring(registerForEvent ~= nil))
+
 if registerForEvent then
     registerForEvent("onOverlayOpen", function()
         overlayOpen = true
+        print("[UIEngine TRACE] onOverlayOpen fired")
+        dbgWrite("onOverlayOpen fired")
+        if log then log.info("CET overlay opened") end
     end)
 
     registerForEvent("onOverlayClose", function()
         overlayOpen = false
+        print("[UIEngine TRACE] onOverlayClose fired")
+        dbgWrite("onOverlayClose fired")
+        if log then log.info("CET overlay closed") end
         -- Flush pending auto-saves on overlay close
         if Storage and Storage.IsDirty and Storage.IsDirty() then
+            if log then log.info("Flushing pending storage on overlay close") end
             Storage.Save()
         end
     end)
+else
+    print("[UIEngine TRACE] WARNING: registerForEvent is nil!")
+    dbgWrite("WARNING: registerForEvent is nil")
 end
 
 --- Check if the CET overlay is open
@@ -455,6 +608,9 @@ end
 -- NOTE: In CET's sandboxed Lua environment, _G is nil.
 -- Use rawset or direct assignment to set globals.
 UIEngine = {
+    -- Phase 0: Log-Engine access
+    Log = Log,
+
     -- Phase 1 public API
     Register = Register,
     Unregister = Unregister,
@@ -471,21 +627,54 @@ UIEngine = {
     GetVersion = GetVersion,
     Enable = Enable,
     Disable = Disable,
-    Log = Log,
 
-    -- Phase 4 public API (framework-level)
-    IsOverlayOpen = IsOverlayOpen,
+    -- Phase 1 core modules (exposed for consumer access)
+    Core = Core,
+    Events = Events,
+
+    -- Phase 2 theme modules
+    Theme = Theme,
+    Tokens = Tokens,
+
+    -- Phase 3 component modules
+    Components = Components,
     Registry = Registry,
     Context = Context,
+
+    -- Phase 4 framework APIs
+    IsOverlayOpen = IsOverlayOpen,
     Windows = Windows,
 }
 
 -- --- CET Entry Points ---
 
--- These are called by CET when the mod is loaded/unloaded
+-- CET's global onInit/onDraw/onShutdown callbacks are NOT being called for our mod.
+-- Evidence: scripting.log shows globals set to true but no "onInit() CALLED" trace.
+-- Fix: Use registerForEvent() which we've proven works (onOverlayOpen fires correctly).
+
+print("[UIEngine TRACE] Registering CET events via registerForEvent...")
+dbgWrite("registering CET events")
+
+registerForEvent("onInit", onInit)
+print("[UIEngine TRACE] registerForEvent('onInit') registered")
+dbgWrite("registerForEvent('onInit') done")
+
+registerForEvent("onDraw", onDraw)
+print("[UIEngine TRACE] registerForEvent('onDraw') registered")
+dbgWrite("registerForEvent('onDraw') done")
+
+registerForEvent("onShutdown", onShutdown)
+print("[UIEngine TRACE] registerForEvent('onShutdown') registered")
+dbgWrite("registerForEvent('onShutdown') done")
+
+-- Also keep global assignments as fallback (some CET versions may use them)
 onInit = onInit
 onDraw = onDraw
 onShutdown = onShutdown
+print("[UIEngine TRACE] Global callbacks also set as fallback")
+dbgWrite("global callbacks set as fallback")
 
 -- Return public API for GetMod() resolution
+print("[UIEngine TRACE] >>>>>> TOP-LEVEL CODE END (returning UIEngine) <<<<<<")
+dbgWrite("TOP-LEVEL CODE END")
 return UIEngine

@@ -30,6 +30,11 @@ local _pushCount = 0
 local _cache = {}
 local _overrides = {}
 
+-- Track ACTUAL successful pushes (not just attempts)
+-- This prevents PopTheme from popping more than were actually pushed
+local _actualColorsPushed = 0
+local _actualVarsPushed = 0
+
 -- Style color count (number of PushStyleColor calls per PushTheme)
 local STYLE_COLOR_COUNT = 27
 -- Style var count (number of PushStyleVar calls per PushTheme)
@@ -54,6 +59,15 @@ function M.init(core, colorEngine, tokens, themes, logger)
     _tokens = tokens
     _themes = themes
     _logger = logger
+
+    -- Resolve Log-Engine as fallback
+    if not _logger then
+        local ok, le = pcall(GetMod, "0-Engine-Log")
+        if ok and le then
+            local ok2, lgr = pcall(le.CreateLogger, "UI-Engine-Theme", { minLevel = "warn" })
+            if ok2 and lgr then _logger = lgr end
+        end
+    end
 
     -- Initialize tokens module
     if _tokens and _tokens.init then
@@ -235,36 +249,26 @@ function M.PushTheme()
     -- Get cached style colors
     local colors = getCachedStyleColors()
 
-    -- Push style colors
+    -- Push style colors directly — no pcall (CET FFI breaks with pcall)
     for _, entry in ipairs(colors) do
-        local ok, err = pcall(function()
-            ImGui.PushStyleColor(entry[1], entry[2], entry[3], entry[4], entry[5])
-        end)
-        if not ok and _logger then
-            _logger.Log("Theme", "PushStyleColor error: " .. tostring(err), "error")
-        end
+        ImGui.PushStyleColor(entry[1], entry[2], entry[3], entry[4], entry[5])
     end
 
     -- Get cached style vars
     local vars = getCachedStyleVars()
 
-    -- Push style vars
+    -- Push style vars directly — no pcall (CET FFI breaks with pcall)
     for _, entry in ipairs(vars) do
-        local ok, err = pcall(function()
-            if #entry == 3 then
-                -- Vec2 style var
-                ImGui.PushStyleVar(entry[1], entry[2], entry[3])
-            else
-                -- Single value style var
-                ImGui.PushStyleVar(entry[1], entry[2])
-            end
-        end)
-        if not ok and _logger then
-            _logger.Log("Theme", "PushStyleVar error: " .. tostring(err), "error")
+        if #entry == 3 then
+            ImGui.PushStyleVar(entry[1], entry[2], entry[3])
+        else
+            ImGui.PushStyleVar(entry[1], entry[2])
         end
     end
 
     _pushCount = _pushCount + 1
+    _actualColorsPushed = _actualColorsPushed + #colors
+    _actualVarsPushed = _actualVarsPushed + #vars
 end
 
 --- Pop theme (restore previous theme state)
@@ -280,24 +284,19 @@ function M.PopTheme()
         return
     end
 
-    -- Pop style vars
-    local vars = getCachedStyleVars()
-    local ok, err = pcall(function()
-        ImGui.PopStyleVar(#vars)
-    end)
-    if not ok and _logger then
-        _logger.Log("Theme", "PopStyleVar error: " .. tostring(err), "error")
+    -- Pop style vars directly — no pcall (CET FFI breaks with pcall)
+    if _actualVarsPushed > 0 then
+        ImGui.PopStyleVar(_actualVarsPushed)
     end
 
-    -- Pop style colors
-    local colors = getCachedStyleColors()
-    ok, err = pcall(function()
-        ImGui.PopStyleColor(#colors)
-    end)
-    if not ok and _logger then
-        _logger.Log("Theme", "PopStyleColor error: " .. tostring(err), "error")
+    -- Pop style colors directly — no pcall (CET FFI breaks with pcall)
+    if _actualColorsPushed > 0 then
+        ImGui.PopStyleColor(_actualColorsPushed)
     end
 
+    -- Reset actual push counts for this cycle
+    _actualColorsPushed = 0
+    _actualVarsPushed = 0
     _pushCount = _pushCount - 1
 end
 

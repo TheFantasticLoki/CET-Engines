@@ -10,9 +10,10 @@ Consumer mods (like Config-Engine) register with UI-Engine and receive a `ctx` (
 
 | Module | Role | Owner |
 |--------|------|-------|
+| Log-Engine | Standalone file-based logging for all mods | This workspace |
 | UI-Engine | Framework/library (components, themes, core, events) | This workspace |
 | Config-Engine | Consumer mod (window, sidebar, settings UI) | This workspace |
-| Consumer Mods | Other mods using UI-Engine API | External |
+| Consumer Mods | Other mods using UI-Engine/Log-Engine API | External |
 
 ### UI-Engine Responsibilities (Framework)
 - Component library (50+ ImGui widgets)

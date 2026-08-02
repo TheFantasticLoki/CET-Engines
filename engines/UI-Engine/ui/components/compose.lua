@@ -20,6 +20,15 @@ local _logger = nil
 -- @param logger Logger module reference
 function M.init(logger)
     _logger = logger
+
+    -- Resolve Log-Engine as fallback
+    if not _logger then
+        local ok, le = pcall(GetMod, "0-Engine-Log")
+        if ok and le then
+            local ok2, lgr = pcall(le.CreateLogger, "UI-Engine-Compose", { minLevel = "warn" })
+            if ok2 and lgr then _logger = lgr end
+        end
+    end
 end
 
 -- --- Row ---
@@ -193,11 +202,13 @@ end
 
 --- Update last bounds (called internally after rendering)
 function M.UpdateLastBounds()
+    local cursorX, cursorY = ImGui.GetCursorScreenPos()
+    local availW, availH = ImGui.GetContentRegionAvail()
     _lastBounds = {
-        x = ImGui.GetCursorScreenPos().x,
-        y = ImGui.GetCursorScreenPos().y,
-        w = ImGui.GetContentRegionAvail().x,
-        h = ImGui.GetContentRegionAvail().y,
+        x = cursorX,
+        y = cursorY,
+        w = availW,
+        h = availH,
     }
 end
 

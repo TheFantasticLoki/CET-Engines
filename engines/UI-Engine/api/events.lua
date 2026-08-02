@@ -22,6 +22,7 @@ local M = {}
 local listeners = {}  -- { [event] = { {handler, source}, ... } }
 local initialized = false
 local Logger = nil  -- Lazy-loaded dependency
+local log = nil  -- Log-Engine fallback
 
 -- --- Public API ---
 
@@ -35,6 +36,15 @@ function M.init(logger, core)
     initialized = true
 
     Logger = logger
+
+    -- Resolve Log-Engine as fallback for error logging
+    if not Logger then
+        local ok, le = pcall(GetMod, "0-Engine-Log")
+        if ok and le then
+            local ok2, lgr = pcall(le.CreateLogger, "UI-Engine-Events", { minLevel = "warn" })
+            if ok2 and lgr then log = lgr end
+        end
+    end
 
     -- Late-bind to Core's event emitter
     if core and core.setEventEmitter then
@@ -81,8 +91,11 @@ function M.emit(event, ...)
     for _, entry in ipairs(snapshot) do
         local ok, err = pcall(entry.handler, ...)
         if not ok then
+            local msg = "Handler error for '" .. event .. "': " .. tostring(err)
             if Logger then
-                Logger.Log("Events", "Handler error for '" .. event .. "': " .. tostring(err), "error")
+                Logger.Log("Events", msg, "error")
+            elseif log then
+                log.error(msg)
             end
         end
     end

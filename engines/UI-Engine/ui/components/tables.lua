@@ -27,7 +27,7 @@ function M.BeginTable(id, columns, options)
     local outerSize = options.outerSize or { 0, 0 }
     local innerWidth = options.innerWidth or 0
 
-    return Utils.SafeImGuiCall(ImGui.BeginTable, id, columns, flags, outerSize.x or 0, innerSize or innerWidth)
+    return Utils.SafeImGuiCall(ImGui.BeginTable, id, columns, flags, outerSize.x or 0, innerWidth)
 end
 
 --- End table
