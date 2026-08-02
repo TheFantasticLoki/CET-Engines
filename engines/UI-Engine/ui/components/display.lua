@@ -10,8 +10,8 @@
 
 local M = {}
 
-local Utils = require("ui.utils")
-local Tokens = require("ui.tokens")
+local Utils = require("ui/utils")
+local Tokens = require("ui/tokens")
 
 -- --- Text Widgets ---
 

@@ -9,7 +9,7 @@
 
 local M = {}
 
-local Utils = require("ui.utils")
+local Utils = require("ui/utils")
 
 -- --- Clipboard ---
 

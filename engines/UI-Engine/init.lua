@@ -25,13 +25,11 @@
 local function SafeRequire(path)
     local ok, mod = pcall(require, path)
     if ok then
+        print("[UIEngine] Loaded: " .. path)
         return mod
     end
-    -- Distinguish "module not found" (expected during phased dev) from real errors
     local err = tostring(mod)
-    if not err:find("not found") and not err:find("no field") then
-        print("[UIEngine] FAILED to load '" .. path .. "': " .. err)
-    end
+    print("[UIEngine] FAILED to load '" .. path .. "': " .. err)
     return nil
 end
 
@@ -39,26 +37,26 @@ end
 
 -- Phase 1 modules (always loaded)
 local Core = SafeRequire("core")
-local Logger = SafeRequire("modules.logger")
-local Storage = SafeRequire("modules.storage")
-local Events = SafeRequire("api.events")
-local Utils = SafeRequire("ui.utils")
+local Logger = SafeRequire("modules/logger")
+local Storage = SafeRequire("modules/storage")
+local Events = SafeRequire("api/events")
+local Utils = SafeRequire("ui/utils")
 
 -- Phase 2 modules (loaded if available)
-local ThemeDefs = SafeRequire("config.themes")
-local ColorEngine = SafeRequire("ui.color_engine")
-local Tokens = SafeRequire("ui.tokens")
-local DefaultConfig = SafeRequire("config.default_config")
-local Theme = SafeRequire("ui.theme")
+local ThemeDefs = SafeRequire("config/themes")
+local ColorEngine = SafeRequire("ui/color_engine")
+local Tokens = SafeRequire("ui/tokens")
+local DefaultConfig = SafeRequire("config/default_config")
+local Theme = SafeRequire("ui/theme")
 
 -- Phase 3+ modules (loaded if available)
-local Window = SafeRequire("ui.window")
-local Components = SafeRequire("ui.components")
-local Registry = SafeRequire("api.registry")
-local Context = SafeRequire("api.context")
+local Window = SafeRequire("ui/window")
+local Components = SafeRequire("ui/components")
+local Registry = SafeRequire("api/registry")
+local Context = SafeRequire("api/context")
 
 -- Phase 4 modules (loaded if available)
-local Windows = SafeRequire("api.windows")
+local Windows = SafeRequire("api/windows")
 
 -- --- Initialization State ---
 
