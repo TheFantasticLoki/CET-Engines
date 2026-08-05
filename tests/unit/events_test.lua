@@ -82,6 +82,8 @@ function M.testPcallGuard()
         end,
     }
 
+    -- Reset events module state to allow re-initialization
+    Events._reset()
     Events.init(mockLogger, nil)
 
     -- Subscribe a handler that throws

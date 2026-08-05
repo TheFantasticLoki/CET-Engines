@@ -24,10 +24,16 @@ local ImGui = _G.ImGui
 ImGui._pushCount = 0
 ImGui._popCount = 0
 
+-- Style push/pop tracking
+ImGui._stylePushCount = 0
+ImGui._stylePopCount = 0
+
 --- Reset push/pop counters (call in test setup)
 function ImGui._resetCounters()
     ImGui._pushCount = 0
     ImGui._popCount = 0
+    ImGui._stylePushCount = 0
+    ImGui._stylePopCount = 0
 end
 
 --- Get push/pop balance (should be 0 when balanced)
@@ -131,9 +137,6 @@ function ImGui.NewLine()
 end
 
 function ImGui.AlignTextToFramePadding()
-end
-
-function ImGui.TextColored(col, text)
 end
 
 function ImGui.TextDisabled(text)
@@ -289,24 +292,86 @@ function ImGui.ImageButton(str_id, texture_id, size, uv0, uv1, tint_col, border_
     return false
 end
 
+-- --- Plot functions ---
+
+function ImGui.PlotLines(label, values, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size)
+end
+
+function ImGui.PlotHistogram(label, values, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size)
+end
+
+-- --- Measurement functions ---
+
+function ImGui.GetTextLineHeight()
+    return 14
+end
+
+function ImGui.GetTextLineHeightWithSpacing()
+    return 18
+end
+
+function ImGui.GetFrameHeight()
+    return 20
+end
+
+function ImGui.GetFrameHeightWithSpacing()
+    return 24
+end
+
+function ImGui.GetContentRegionAvailWidth()
+    return 400
+end
+
+function ImGui.GetWindowWidth()
+    return 600
+end
+
+function ImGui.GetWindowHeight()
+    return 400
+end
+
+-- --- Interaction functions ---
+
+function ImGui.IsItemClicked()
+    return false
+end
+
+function ImGui.IsItemHovered()
+    return false
+end
+
+function ImGui.IsItemActive()
+    return false
+end
+
+function ImGui.IsItemDeactivated()
+    return false
+end
+
 -- --- Style functions ---
 
-function ImGui.PushStyleColor(idx, col)
-    ImGui._pushCount = ImGui._pushCount + 1
+-- PushStyleColor can be called as:
+--   PushStyleColor(idx, color) -- single color table
+--   PushStyleColor(idx, r, g, b, a) -- individual components
+function ImGui.PushStyleColor(idx, r, g, b, a)
+    ImGui._stylePushCount = ImGui._stylePushCount + 1
 end
 
 function ImGui.PopStyleColor(count)
     count = count or 1
-    ImGui._popCount = ImGui._popCount + count
+    ImGui._stylePopCount = ImGui._stylePopCount + count
 end
 
-function ImGui.PushStyleVar(idx, val)
-    ImGui._pushCount = ImGui._pushCount + 1
+-- PushStyleVar can be called as:
+--   PushStyleVar(idx, val) -- single value
+--   PushStyleVar(idx, x, y) -- 2D value (for WindowPadding, etc.)
+function ImGui.PushStyleVar(idx, x, y)
+    ImGui._stylePushCount = ImGui._stylePushCount + 1
 end
 
 function ImGui.PopStyleVar(count)
     count = count or 1
-    ImGui._popCount = ImGui._popCount + count
+    ImGui._stylePopCount = ImGui._stylePopCount + count
 end
 
 function ImGui.PushFont(font)
@@ -420,21 +485,18 @@ function ImGui.GetBackgroundDrawList()
     return ImGui._mockDrawList
 end
 
--- Mock draw list
-ImGui._mockDrawList = {
-    AddLine = function() end,
-    AddRect = function() end,
-    AddRectFilled = function() end,
-    AddCircle = function() end,
-    AddCircleFilled = function() end,
-    AddText = function() end,
-    AddTextWrapped = function() end,
-    AddImage = function() end,
-    AddBezierCubic = function() end,
-    PathLineTo = function() end,
-    PathStroke = function() end,
-    PathFillConvex = function() end,
-}
+-- Mock draw list (flat float args — matches CET's sol2 bindings)
+ImGui._mockDrawList = "mock_drawlist userdata"
+
+function ImGui.ImDrawListAddLine(drawList, p1X, p1Y, p2X, p2Y, color, thickness) end
+function ImGui.ImDrawListAddRect(drawList, p_minX, p_minY, p_maxX, p_maxY, color, rounding, flags, thickness) end
+function ImGui.ImDrawListAddRectFilled(drawList, p_minX, p_minY, p_maxX, p_maxY, color, rounding, flags) end
+function ImGui.ImDrawListAddCircle(drawList, centerX, centerY, radius, color, num_segments, thickness) end
+function ImGui.ImDrawListAddCircleFilled(drawList, centerX, centerY, radius, color, num_segments) end
+function ImGui.ImDrawListAddText(drawList, posX, posY, color, text) end
+function ImGui.ImDrawListAddTextWrapped(drawList, pos, color, text, wrap_width) end
+function ImGui.ImDrawListAddImage(drawList, texture_id, p_min, p_max, uv_min, uv_max, tint_col) end
+function ImGui.ImDrawListAddBezierCubic(drawList, p1, p2, p3, p4, color, thickness, num_segments) end
 
 -- --- Clipboard ---
 
@@ -459,6 +521,10 @@ function ImGui.GetMousePos()
 end
 
 function ImGui.IsMouseDown(button)
+    return false
+end
+
+function ImGui.IsKeyDown(key)
     return false
 end
 

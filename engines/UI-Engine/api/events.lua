@@ -160,4 +160,13 @@ function M.getListenerCount(event)
     return #listeners[event]
 end
 
+--- Reset module state (for testing only)
+-- Clears all listeners and resets initialization flag.
+function M._reset()
+    listeners = {}
+    initialized = false
+    Logger = nil
+    log = nil
+end
+
 return M

@@ -60,6 +60,12 @@ local function runModule(modulePath, moduleName)
         return
     end
 
+    -- Check that the module returned a table
+    if type(testModule) ~= "table" then
+        io.write("  " .. YELLOW .. "SKIP" .. NC .. " " .. moduleName .. " (module returned " .. type(testModule) .. " instead of table)\n")
+        return
+    end
+
     -- Run all functions named test* in the module
     local testCount = 0
     for testName, testFn in pairs(testModule) do

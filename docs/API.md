@@ -212,6 +212,20 @@ Float input. Returns new value.
 
 Key binding input. Returns new key value.
 
+#### `ctx.MultiSelect(label, items, selected, options)`
+
+Multi-select dropdown with checkboxes for selecting multiple items.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `label` | string | yes | Label text |
+| `items` | table | yes | Array of strings or `{label, value}` pairs |
+| `selected` | table | yes | Table of selected indices |
+| `options` | table | no | `{ placeholder, tooltip, width, maxVisible, searchable }` |
+
+**Returns:** `table newSelected, boolean changed`
+
 ### Sliders
 
 #### `ctx.SliderFloat(label, value, min, max, format, tooltip)`
@@ -298,11 +312,141 @@ Tree node.
 
 Sidebar category tree node variant.
 
+#### `ctx.Card(spec)`
+
+Card container with header, body, and footer sections.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `spec` | table | yes | Card specification table |
+
+**`spec` fields:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | no | Card title |
+| `subtitle` | string | no | Subtitle text |
+| `icon` | string | no | Icon glyph |
+| `headerRight` | function | no | Content for header right side |
+| `body` | function | no | Body content function |
+| `footer` | function | no | Footer content function |
+| `onClick` | function | no | Click handler |
+| `selected` | boolean | no | Selected state (highlighted border) |
+
+**Returns:** `boolean clicked`
+
 ### Advanced
 
-#### `ctx.AdvancedSlider(spec)`
+#### `ctx.AdvancedSlider(label, value, options)`
 
-DrawList custom slider with +/- buttons, modifier keys (Alt/Shift/Ctrl), tick marks, inline input.
+Advanced DrawList-rendered slider with modifier keys, animations, and default indicator.
+
+**Supports two call styles:**
+- `ctx.AdvancedSlider(label, value, options)` — new style (recommended)
+- `ctx.AdvancedSlider(spec)` — legacy style `{label, value, min, max, ...}`
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `label` | string | yes | Unique label/ID string |
+| `value` | number | yes | Current value |
+| `options` | table | no | Configuration options (see below) |
+
+**Core Options:**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `min` | number | 0 | Range minimum |
+| `max` | number | 100 | Range maximum |
+| `default` | number | (min+max)/2 | Default value for indicator |
+| `step` | number | (max-min)/100 | Base step for buttons |
+| `format` | string | "%.2f" | Value format string |
+| `onChange` | function | nil | Callback: `onChange(newValue)` |
+
+**Display Options:**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | string | nil | Display name for tooltip |
+| `description` | string | nil | Optional description for tooltip |
+| `tooltip` | string | nil | Additional tooltip text |
+| `width` | number | 256 | Total component width |
+| `height` | number | 36 | Component height |
+
+**Toggle Options (set `false` to disable):**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `showButtons` | boolean | true | Show ± buttons |
+| `showTooltip` | boolean | true | Show value tooltip |
+| `showDefaultLine` | boolean | true | Show default indicator |
+| `showTicks` | boolean | true | Show position ticks |
+
+**Style Options:**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `handleStyle` | string | "rect" | Handle style: "rect" or "circle" |
+| `valueDisplay` | string | "auto" | Value position: "auto", "inside", "button", "none" |
+
+**Sizing Options:**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `trackHeight` | number | 18 | Track height in pixels |
+| `trackRounding` | number | trackHeight/2 | Track corner rounding |
+| `handleWidth` | number | 6 | Rect handle width |
+| `handleHoverWidth` | number | 7 | Rect handle width on hover |
+| `handleRadius` | number | 10 | Circle handle radius |
+| `handleHoverRadius` | number | 12 | Circle handle radius on hover |
+| `buttonWidth` | number | 20 | Button width |
+| `buttonHeight` | number | 18 | Button height |
+| `buttonSpacing` | number | 4 | Space between button and track |
+
+**Indicator Options:**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `indicatorShort` | number | 4 | Length at default position |
+| `indicatorLong` | number | 14 | Length away from default |
+| `indicatorThickness` | number | 2 | Line thickness |
+
+**Tick Options:**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `majorTicks` | number | 4 | Major tick count |
+| `minorTicks` | number | 2 | Minor ticks between majors |
+
+**Color Options (accept role strings like `"primary"` or `{r,g,b}` tables):**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `trackColor` | string/table | "panel" | Track background color |
+| `fillColor` | string/table | "primary" | Fill color |
+| `handleColor` | string/table | "primary" | Handle color |
+| `buttonColor` | string/table | "panel" | Button color |
+| `indicatorColor` | string/table | "text" | Default indicator color |
+| `valueTextColor` | string/table | "text" | Value text color |
+| `tooltipBgColor` | string/table | "background" | Tooltip background |
+
+**Behavior Options:**
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `modifierShiftMult` | number | 0.1 | Shift drag multiplier |
+| `modifierCtrlMult` | number | 0.01 | Ctrl drag multiplier |
+| `modifierAltMult` | number | 10 | Alt drag multiplier |
+| `animationDuration` | number | 0.12 | Animation duration (seconds) |
+
+**Returns:** `number newValue, boolean changed`
+
+**Example:**
+```lua
+local value = ctx.AdvancedSlider("##brightness", 50, {
+    min = 0, max = 100, default = 50,
+    label = "Brightness",
+    description = "Display brightness level",
+    handleStyle = "circle",
+    trackHeight = 24,
+    showTicks = true,
+    majorTicks = 10,
+    minorTicks = 5,
+    fillColor = {r = 0.2, g = 0.8, b = 0.4},
+    modifierShiftMult = 0.25,
+})
+```
 
 #### `ctx.ThemeDropdown(label, currentTheme, themes, onChange)`
 
@@ -311,6 +455,20 @@ Theme selector dropdown.
 #### `ctx.ComboBox(label, items, selected, onChange)`
 
 Dropdown combo box.
+
+#### `ctx.SearchableComboBox(label, items, selectedIndex, options)`
+
+Dropdown with text filter input for searching through items.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `label` | string | yes | Label text |
+| `items` | table | yes | Array of strings or `{label, value}` pairs |
+| `selectedIndex` | number | yes | Current selected index (0 = none) |
+| `options` | table | no | `{ placeholder, tooltip, width, maxVisible }` |
+
+**Returns:** `number newIndex, boolean changed`
 
 ### Layout
 

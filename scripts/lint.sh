@@ -132,9 +132,13 @@ for file in "${LUA_FILES[@]}"; do
     # --- Duplicate require paths (for engine files) ---
 
     if [[ "$file" == *engines/* ]]; then
-        # Check for require with path separators (should be module names)
-        if grep -nP 'require\s*\(\s*"[^"]*/' "$file" 2>/dev/null | head -5; then
-            warn "$rel_path: Uses path-style require (use module names instead)"
+        # Check for require with file-path-style patterns (starts with ./ or has multiple /)
+        # Valid module paths like "ui/utils" are OK, but "path/to/module" or "./module" are not
+        if grep -nP 'require\s*\(\s*"\./' "$file" 2>/dev/null | head -5; then
+            warn "$rel_path: Uses relative path require (use module names instead)"
+        fi
+        if grep -nP 'require\s*\(\s*"[a-z]+/[a-z]+/[a-z]+' "$file" 2>/dev/null | head -5; then
+            warn "$rel_path: Uses deep path require (use module names instead)"
         fi
     fi
 

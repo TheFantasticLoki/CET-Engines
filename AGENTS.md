@@ -152,6 +152,7 @@ These practices must be followed throughout all development. They are enforced b
 - **Never use direct `require()`** for cross-mod dependencies. Use `GetMod()` for lazy resolution.
 - Example: `local ui = GetMod("0-Engine-UI")` — returns nil if not loaded yet, mod must handle gracefully.
 - Registration with UI-Engine should happen in `onInit`, which fires after all mods are loaded.
+- **CRITICAL: `GetMod()` timing** — CET requires the event system to be set up first. `GetMod()` can ONLY be called after `registerForEvent('onInit', ...)` has been registered. Never call `GetMod()` at the top level of init.lua — always defer it to the `onInit` handler. Calling it too early causes `attempt to call global 'GetMod' (a nil value)` error.
 
 ### Idempotent Initialization
 - `onInit` may fire multiple times (CET overlay toggle reloads mods).

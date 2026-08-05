@@ -1,0 +1,147 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Deploy",
+            "type": "shell",
+            "command": "./scripts/deploy.sh",
+            "group": "build",
+            "problemMatcher": [
+                {
+                    "owner": "deploy",
+                    "fileLocation": "relative",
+                    "pattern": {
+                        "regexp": "^Error:\\s+(.+)$",
+                        "message": 1
+                    }
+                }
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "Deploy (Vortex)",
+            "type": "shell",
+            "command": "./scripts/deploy.sh --vortex",
+            "group": "build",
+            "problemMatcher": [
+                {
+                    "owner": "deploy",
+                    "fileLocation": "relative",
+                    "pattern": {
+                        "regexp": "^Error:\\s+(.+)$",
+                        "message": 1
+                    }
+                }
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "Lint",
+            "type": "shell",
+            "command": "./scripts/lint.sh",
+            "group": "test",
+            "problemMatcher": [
+                {
+                    "owner": "lua",
+                    "severity": "error",
+                    "fileLocation": "relative",
+                    "pattern": {
+                        "regexp": "^\\s+ERROR:\\s+(\\S+?):\\s+(.+)$",
+                        "file": 1,
+                        "message": 2
+                    }
+                },
+                {
+                    "owner": "lua",
+                    "severity": "warning",
+                    "fileLocation": "relative",
+                    "pattern": {
+                        "regexp": "^\\s+WARN:\\s+(\\S+?):\\s+(.+)$",
+                        "file": 1,
+                        "message": 2
+                    }
+                }
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "Test",
+            "type": "shell",
+            "command": "./scripts/test.sh",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                {
+                    "owner": "lua",
+                    "fileLocation": "absolute",
+                    "pattern": [
+                        {
+                            "regexp": "^\\s+FAIL\\s+(\\S+)$"
+                        },
+                        {
+                            "regexp": "^\\s+(\\S+\\.lua):(\\d+):\\s+(.+)$",
+                            "file": 1,
+                            "line": 2,
+                            "message": 3
+                        }
+                    ]
+                }
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
+            "label": "Version",
+            "type": "shell",
+            "command": "./scripts/version.sh",
+            "args": [
+                "${input:versionString}"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                {
+                    "owner": "version",
+                    "fileLocation": "relative",
+                    "pattern": {
+                        "regexp": "^Error:\\s+(.+)$",
+                        "message": 1
+                    }
+                }
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "prompt": "Version (e.g. v0.1.0):"
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "versionString",
+            "type": "pickString",
+            "description": "Version tag",
+            "options": [
+                "v0.1.0",
+                "v0.1.0-core",
+                "v0.2.0-theme",
+                "v0.3.0-components"
+            ],
+            "default": "v0.1.0"
+        }
+    ]
+}

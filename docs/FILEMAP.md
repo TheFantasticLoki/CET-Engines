@@ -19,6 +19,7 @@ Complete directory structure with file descriptions and module relationships.
 | `AGENTS.md` | Comprehensive guidelines for AI agents working in this workspace. Covers code organization, API design, error handling, theme system, performance, testing, documentation, versioning, and CET compatibility. |
 | `README.md` | Human-readable workspace overview, directory structure, quick start guide, and links to documentation. |
 | `.gitignore` | Ignores `versions/`, `docs/plans/`, `deployment/game/`, `deployment/vortex/`, `dependencies/`, `patched/`, `reference/`. |
+| `CET_DRAWLIST_GUIDE.md` | **CRITICAL** — CET DrawList API guide explaining the userdata bracket indexing limitation and correct static function pattern for custom rendering. |
 
 ---
 
@@ -236,7 +237,10 @@ tests/
     ├── context_test.lua
     ├── tokens_test.lua
     ├── compose_test.lua
-    └── settings_test.lua
+    ├── settings_test.lua
+    ├── searchable_combo_box_test.lua  # SearchableComboBox tests
+    ├── multi_select_test.lua          # MultiSelect tests
+    └── card_test.lua                  # Card tests
 ```
 
 ### Test File Naming Convention

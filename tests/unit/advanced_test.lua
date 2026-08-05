@@ -19,17 +19,25 @@ local mockTheme = {
     end,
 }
 
+-- Mock Logger
+local mockLog = {
+    info = function(self, msg) end,
+    debug = function(self, msg) end,
+    warn = function(self, msg) end,
+    error = function(self, msg) end,
+}
+
 -- --- Test Init ---
 
 function M.testInit()
-    advanced.init(mockTheme)
+    advanced.init(mockTheme, mockLog)
     assert.assert_true(true, "Init should not throw")
 end
 
 -- --- Test AdvancedSlider ---
 
 function M.testAdvancedSlider()
-    advanced.init(mockTheme)
+    advanced.init(mockTheme, mockLog)
     local newValue, changed = advanced.AdvancedSlider({
         label = "Value",
         value = 50,
@@ -42,7 +50,7 @@ function M.testAdvancedSlider()
 end
 
 function M.testAdvancedSliderClamp()
-    advanced.init(mockTheme)
+    advanced.init(mockTheme, mockLog)
     local newValue, changed = advanced.AdvancedSlider({
         label = "Value",
         value = 150,
@@ -53,7 +61,7 @@ function M.testAdvancedSliderClamp()
 end
 
 function M.testAdvancedSliderCallback()
-    advanced.init(mockTheme)
+    advanced.init(mockTheme, mockLog)
     local called = false
     local newValue, changed = advanced.AdvancedSlider({
         label = "Value",
@@ -68,7 +76,7 @@ end
 -- --- Test ThemeDropdown ---
 
 function M.testThemeDropdown()
-    advanced.init(mockTheme)
+    advanced.init(mockTheme, mockLog)
     local newTheme, changed = advanced.ThemeDropdown(
         "Theme", "Dark", { "Dark", "Red", "Cyan", "Blue" })
     assert.assert_equal(newTheme, "Dark", "Theme should remain Dark")
@@ -76,7 +84,7 @@ function M.testThemeDropdown()
 end
 
 function M.testThemeDropdownCallback()
-    advanced.init(mockTheme)
+    advanced.init(mockTheme, mockLog)
     local callbackTheme = nil
     local newTheme, changed = advanced.ThemeDropdown(
         "Theme", "Dark", { "Dark", "Red" }, function(t)
@@ -88,7 +96,7 @@ end
 -- --- Test ComboBox ---
 
 function M.testComboBox()
-    advanced.init(mockTheme)
+    advanced.init(mockTheme, mockLog)
     local newIndex, changed = advanced.ComboBox(
         "Select", { "A", "B", "C" }, 1)
     assert.assert_equal(newIndex, 1, "Index should be 1")
@@ -96,7 +104,7 @@ function M.testComboBox()
 end
 
 function M.testComboBoxCallback()
-    advanced.init(mockTheme)
+    advanced.init(mockTheme, mockLog)
     local callbackIndex, callbackLabel = nil, nil
     local newIndex, changed = advanced.ComboBox(
         "Select", { "One", "Two" }, 1, function(i, l)

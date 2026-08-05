@@ -45,7 +45,18 @@ function _G._clearMockMods()
     registeredMods = {}
 end
 
--- --- Mock registerHotkey() ---
+-- --- Mock registerForEvent() ---
+
+_G.registerForEventCallbacks = {}
+
+--- Mock registerForEvent() — stores callback for later invocation
+-- @param event Event name (onInit, onDraw, onShutdown, etc.)
+-- @param callback Callback function
+function _G.registerForEvent(event, callback)
+    _G.registerForEventCallbacks[event] = callback
+end
+
+--- Mock registerHotkey() ---
 
 _G.hotkeys = {}
 

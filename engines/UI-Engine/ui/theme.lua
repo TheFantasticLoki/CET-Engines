@@ -543,6 +543,82 @@ function M.IsBalanced()
     return _pushCount == 0
 end
 
+-- --- Theme State Save/Restore (for testing) ---
+
+-- Saved theme state for test isolation
+local _savedThemeState = nil
+
+--- Save current theme state for later restoration
+-- @return table Saved state (theme name, accent color, contrast level, overrides)
+function M.SaveThemeState()
+    if not _core then
+        return nil
+    end
+
+    local state = {
+        theme = _core.getCurrentTheme() or "Dark",
+        accent = nil,
+        contrast = _core.getContrastLevel() or 1,
+        overrides = {},
+    }
+
+    -- Save accent color if available
+    if _core.getAccentColor then
+        local accent = _core.getAccentColor()
+        if accent then
+            state.accent = { r = accent.r, g = accent.g, b = accent.b }
+        end
+    end
+
+    -- Save overrides
+    for k, v in pairs(_overrides) do
+        state.overrides[k] = { r = v.r, g = v.g, b = v.b, a = v.a }
+    end
+
+    _savedThemeState = state
+    return state
+end
+
+--- Restore previously saved theme state
+-- @return boolean success
+function M.RestoreThemeState()
+    if not _savedThemeState then
+        return false
+    end
+
+    if _core then
+        if _core.setCurrentTheme then
+            _core.setCurrentTheme(_savedThemeState.theme)
+        end
+        if _core.setContrastLevel then
+            _core.setContrastLevel(_savedThemeState.contrast)
+        end
+    end
+
+    -- Restore accent color if available
+    if _savedThemeState.accent and _core and _core.setAccentColor then
+        _core.setAccentColor(_savedThemeState.accent)
+    end
+
+    -- Restore overrides
+    _overrides = {}
+    for k, v in pairs(_savedThemeState.overrides) do
+        _overrides[k] = { r = v.r, g = v.g, b = v.b, a = v.a }
+    end
+
+    -- Invalidate cache to pick up restored state
+    M.InvalidateCache()
+
+    _savedThemeState = nil
+    return true
+end
+
+--- Get saved theme state (for inspection)
+-- @return table|nil Saved state or nil if not saved
+function M.GetSavedThemeState()
+    return _savedThemeState
+end
+
 -- --- Reset (for testing) ---
 
 --- Reset theme engine state (for testing)

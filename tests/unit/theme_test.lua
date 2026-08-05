@@ -10,6 +10,27 @@ local Themes = require("engines.UI-Engine.config.themes")
 
 local M = {}
 
+-- --- Theme state save/restore for test isolation ---
+
+--- Save theme state before tests, restore after
+local function withThemeIsolation(testFn)
+    return function()
+        -- Save current theme state
+        local savedState = Theme.SaveThemeState()
+
+        -- Run the test
+        local ok, err = pcall(testFn)
+
+        -- Restore theme state
+        Theme.RestoreThemeState()
+
+        -- Re-assert if test failed
+        if not ok then
+            error(err)
+        end
+    end
+end
+
 -- --- Test Initialization ---
 
 function M.testInit()
@@ -83,8 +104,14 @@ function M.testSetTheme()
 
     Theme.init(mockCore, nil, nil, Themes, nil)
 
+    -- Save theme state before test
+    Theme.SaveThemeState()
+
     local ok, err = Theme.SetTheme("Red")
     assert.assert_true(ok, "SetTheme should succeed for valid theme")
+
+    -- Restore theme state after test
+    Theme.RestoreThemeState()
 end
 
 function M.testSetThemeInvalid()
@@ -98,8 +125,14 @@ function M.testSetThemeInvalid()
 
     Theme.init(mockCore, nil, nil, Themes, nil)
 
+    -- Save theme state before test
+    Theme.SaveThemeState()
+
     local ok, err = Theme.SetTheme("NonExistent")
     assert.assert_false(ok, "SetTheme should fail for invalid theme")
+
+    -- Restore theme state after test
+    Theme.RestoreThemeState()
 end
 
 -- --- Test Validation ---
@@ -154,9 +187,15 @@ function M.testSetThemeOverride()
 
     Theme.init(mockCore, nil, nil, Themes, nil)
 
+    -- Save theme state before test
+    Theme.SaveThemeState()
+
     Theme.SetThemeOverride("primary", { r = 1, g = 0, b = 0 })
     -- Should not throw
     assert.assert_true(true, "SetThemeOverride should not throw")
+
+    -- Restore theme state after test
+    Theme.RestoreThemeState()
 end
 
 function M.testClearThemeOverrides()
@@ -169,10 +208,16 @@ function M.testClearThemeOverrides()
 
     Theme.init(mockCore, nil, nil, Themes, nil)
 
+    -- Save theme state before test
+    Theme.SaveThemeState()
+
     Theme.SetThemeOverride("primary", { r = 1, g = 0, b = 0 })
     Theme.ClearThemeOverrides()
     -- Should not throw
     assert.assert_true(true, "ClearThemeOverrides should not throw")
+
+    -- Restore theme state after test
+    Theme.RestoreThemeState()
 end
 
 -- --- Test Theme Import/Export ---
@@ -220,9 +265,15 @@ function M.testSetHighContrast()
 
     Theme.init(mockCore, nil, nil, Themes, nil)
 
+    -- Save theme state before test
+    Theme.SaveThemeState()
+
     Theme.SetHighContrast(2)
     -- Should not throw
     assert.assert_true(true, "SetHighContrast should not throw")
+
+    -- Restore theme state after test
+    Theme.RestoreThemeState()
 end
 
 function M.testSetHighContrastClamp()

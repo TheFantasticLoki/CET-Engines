@@ -16,7 +16,7 @@ Consumer mods (like Config-Engine) register with UI-Engine and receive a `ctx` (
 | Consumer Mods | Other mods using UI-Engine/Log-Engine API | External |
 
 ### UI-Engine Responsibilities (Framework)
-- Component library (50+ ImGui widgets)
+- Component library (60+ ImGui widgets)
 - Theme engine (push/pop, color science, tokens)
 - Core state store (panels, windows, settings)
 - Events system (pub/sub)

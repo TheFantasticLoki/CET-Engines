@@ -180,6 +180,8 @@ function M.testGetAvailableSpace()
     local w, h = compose.GetAvailableSpace()
     assert.assert_not_nil(w, "Width should not be nil")
     assert.assert_not_nil(h, "Height should not be nil")
+    assert.assert_true(w >= 0, "Width should be non-negative (clamped from ImGui)")
+    assert.assert_true(h >= 0, "Height should be non-negative (clamped from ImGui)")
 end
 
 return M

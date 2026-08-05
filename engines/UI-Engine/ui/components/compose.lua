@@ -214,11 +214,14 @@ end
 
 -- --- Available Space ---
 
---- Get available space in current region
--- @return number, number width, height
+--- Get the total available space for the current window.
+-- Uses GetWindowSize() to return the full window dimensions, which is
+-- more useful for layout calculations than GetContentRegionAvail() (which
+-- returns remaining space from cursor and can be 0 after content renders).
+-- @return number, number width, height (both >= 0)
 function M.GetAvailableSpace()
-    local w, h = ImGui.GetContentRegionAvail()
-    return w, h
+    local w, h = ImGui.GetWindowSize()
+    return math.max(0, w), math.max(0, h)
 end
 
 return M

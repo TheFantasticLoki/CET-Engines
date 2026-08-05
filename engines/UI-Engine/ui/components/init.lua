@@ -65,7 +65,7 @@ function M.init(logger, core, theme)
         M.containers.init(core)
     end
     if M.advanced and M.advanced.init then
-        M.advanced.init(theme)
+        M.advanced.init(theme, logger)
     end
     if M.compose and M.compose.init then
         M.compose.init(logger)

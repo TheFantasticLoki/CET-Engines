@@ -114,4 +114,111 @@ function M.CustomTreeNode(label, icon, buildFn)
     return isOpen
 end
 
+-- --- Card ---
+
+--- Card container with header, body, footer
+-- @param spec Table: { title, subtitle, icon, headerRight, body, footer, onClick, selected }
+-- @return boolean clicked
+function M.Card(spec)
+    spec = spec or {}
+    local title = spec.title or ""
+    local subtitle = spec.subtitle
+    local icon = spec.icon
+    local headerRight = spec.headerRight
+    local body = spec.body
+    local footer = spec.footer
+    local onClick = spec.onClick
+    local selected = spec.selected or false
+
+    -- Get theme colors
+    local borderColor = selected and Tokens.color4n("primary") or Tokens.color4n("border")
+    local bgColor = Tokens.color4n("background")
+
+    local clicked = false
+
+    -- Push style for card
+    ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Tokens.SPACING.md, Tokens.SPACING.md)
+    ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Tokens.BORDER_RADIUS.md)
+    ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 1.0)
+    ImGui.PushStyleColor(ImGuiCol.Border, borderColor.r, borderColor.g, borderColor.b, borderColor.a)
+    ImGui.PushStyleColor(ImGuiCol.ChildBg, bgColor.r, bgColor.g, bgColor.b, bgColor.a * 0.5)
+
+    -- Calculate card height
+    local headerHeight = 0
+    local bodyHeight = 0
+    local footerHeight = 0
+    local lineHeight = ImGui.GetTextLineHeight()
+
+    if title ~= "" then
+        headerHeight = lineHeight + Tokens.SPACING.sm
+        if subtitle then
+            headerHeight = headerHeight + lineHeight * 0.8
+        end
+    end
+
+    if body and type(body) == "function" then
+        bodyHeight = lineHeight * 3  -- Estimate for body
+    end
+
+    if footer and type(footer) == "function" then
+        footerHeight = lineHeight + Tokens.SPACING.sm * 2
+    end
+
+    local totalHeight = headerHeight + bodyHeight + footerHeight + Tokens.SPACING.md * 2
+
+    -- Begin child window for card
+    ImGui.BeginChild("##card_" .. title, 0, totalHeight, true)
+
+    -- Header section
+    if title ~= "" then
+        -- Icon + Title
+        local displayTitle = title
+        if icon and icon ~= "" then
+            displayTitle = icon .. " " .. title
+        end
+
+        ImGui.TextColored(Tokens.color4n("textPrimary").r, Tokens.color4n("textPrimary").g, Tokens.color4n("textPrimary").b, Tokens.color4n("textPrimary").a, displayTitle)
+
+        -- Subtitle
+        if subtitle then
+            ImGui.TextColored(Tokens.color4n("textSecondary").r, Tokens.color4n("textSecondary").g, Tokens.color4n("textSecondary").b, Tokens.color4n("textSecondary").a, subtitle)
+        end
+
+        -- Header right content
+        if headerRight and type(headerRight) == "function" then
+            ImGui.SameLine(ImGui.GetContentRegionAvailWidth() - 50)
+            headerRight()
+        end
+
+        ImGui.Separator()
+    end
+
+    -- Body section
+    if body and type(body) == "function" then
+        body()
+    end
+
+    -- Footer section
+    if footer and type(footer) == "function" then
+        ImGui.Separator()
+        footer()
+    end
+
+    ImGui.EndChild()
+
+    -- Check for click on the card
+    if onClick and type(onClick) == "function" then
+        if ImGui.IsItemClicked() then
+            clicked = true
+            onClick()
+        end
+    end
+
+    -- Pop style
+    ImGui.PopStyleColor(2)
+    ImGui.PopStyleVar(3)
+
+    return clicked
+end
+
 return M

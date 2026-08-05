@@ -48,25 +48,11 @@ dbgWrite("trace file cleared")
 print("[UIEngine TRACE] Resolving Log-Engine...")
 dbgWrite("resolving Log-Engine")
 
-local LogEngine = GetMod("0-Engine-Log")
+local LogEngine = nil
 local log = nil
 
-if LogEngine then
-    print("[UIEngine TRACE] Log-Engine found, creating logger...")
-    dbgWrite("Log-Engine found")
-    local ok, logger = pcall(LogEngine.CreateLogger, "UI-Engine", { minLevel = "debug", maxDebugPerFrame = 5 })
-    if ok and logger then
-        log = logger
-        print("[UIEngine] Log-Engine connected")
-        dbgWrite("Log-Engine logger created")
-    else
-        print("[UIEngine] WARNING: Log-Engine CreateLogger failed: " .. tostring(logger))
-        dbgWrite("Log-Engine CreateLogger FAILED: " .. tostring(logger))
-    end
-else
-    print("[UIEngine] WARNING: 0-Engine-Log not found — errors will only go to CET console")
-    dbgWrite("Log-Engine NOT FOUND")
-end
+-- NOTE: GetMod() deferred to onInit — CET requires event system to be set up first
+-- LogEngine will be resolved in onInit(), not at top level
 
 -- --- SafeRequire Pattern ---
 
@@ -387,6 +373,28 @@ local function onInit()
 
     print("[UIEngine TRACE] onInit: starting module initialization")
     dbgWrite("onInit: starting module initialization")
+
+    -- Resolve Log-Engine NOW (after event system is ready)
+    print("[UIEngine TRACE] onInit: resolving Log-Engine...")
+    dbgWrite("onInit: resolving Log-Engine")
+    LogEngine = GetMod("0-Engine-Log")
+    if LogEngine then
+        print("[UIEngine TRACE] Log-Engine found, creating logger...")
+        dbgWrite("Log-Engine found")
+        local ok, logger = pcall(LogEngine.CreateLogger, "UI-Engine", { minLevel = "debug", maxDebugPerFrame = 5 })
+        if ok and logger then
+            log = logger
+            print("[UIEngine] Log-Engine connected")
+            dbgWrite("Log-Engine logger created")
+        else
+            print("[UIEngine] WARNING: Log-Engine CreateLogger failed: " .. tostring(logger))
+            dbgWrite("Log-Engine CreateLogger FAILED: " .. tostring(logger))
+        end
+    else
+        print("[UIEngine] WARNING: 0-Engine-Log not found — errors will only go to CET console")
+        dbgWrite("Log-Engine NOT FOUND")
+    end
+
     if log then log.info("=== onInit START ===") end
 
     -- Initialize modules in order
@@ -493,13 +501,6 @@ end
 
 --- onDraw handler — called each frame
 local function onDraw()
-    -- Only log first call and every 300 frames to avoid spam
-    if frameCount == 0 then
-        print("[UIEngine TRACE] >>>>>> onDraw() FIRST CALL <<<<<<")
-        dbgWrite("onDraw() FIRST CALL")
-    elseif frameCount % 300 == 0 then
-        print("[UIEngine TRACE] onDraw() frame " .. frameCount)
-    end
     frameCount = frameCount + 1
 
     -- Update frame counter for Logger
