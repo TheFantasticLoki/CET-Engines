@@ -6,6 +6,11 @@
 
     Rotation: mod.log -> mod.log.1 -> mod.log.2 -> ... -> mod.log.N (oldest deleted)
     Uses read-modify-write for rotation (NOT os.rename) for Windows CET compatibility.
+
+    Features:
+    - Session headers with session ID, start time, mod name, level, ring buffer size
+    - Simplified timestamps (time-only, since date is in header)
+    - Dedup summary writing
 ]]
 
 local M = {}
@@ -31,6 +36,10 @@ local fileHandles = {}   -- modName -> file handle (cached)
 local filePaths = {}     -- modName -> resolved file path
 local customPaths = {}   -- modName -> user-overridden path
 local fileSizes = {}     -- modName -> current file size (approximate)
+local headerWritten = {} -- modName -> true (whether header has been written)
+
+-- Session ID (set by init.lua via setSessionId)
+local sessionId = ""
 
 -- --- Helper Functions ---
 
@@ -141,9 +150,53 @@ local function rotateFile(modName)
 
     -- Reset tracked size
     fileSizes[modName] = 0
+
+    -- Mark header as not written for the new file
+    headerWritten[modName] = false
 end
 
---- Format a log entry for file output
+--- Write session header to a log file
+-- @param modName Mod identifier
+-- @param config table Logger config (minLevel, ringSize, etc.)
+local function writeHeader(modName, config)
+    if headerWritten[modName] then return end
+
+    local path = resolvePath(modName)
+    local startTime = os.date("%Y-%m-%dT%H:%M:%S")
+    local levelName = "debug"
+    if config and config.minLevel then
+        levelName = config.minLevel
+    end
+    local ringSize = (config and config.ringSize) or Config.RING_SIZE or 1024
+
+    local header = string.format(
+        "=== Log Session ===\n" ..
+        "Session: %s\n" ..
+        "Started: %s\n" ..
+        "Mod: %s\n" ..
+        "Level: %s\n" ..
+        "Ring Buffer: %d\n" ..
+        "===================\n",
+        sessionId or "unknown",
+        startTime,
+        modName,
+        levelName,
+        ringSize
+    )
+
+    pcall(function()
+        local f = io.open(path, "a")
+        if f then
+            f:write(header)
+            f:close()
+            fileSizes[modName] = (fileSizes[modName] or 0) + #header
+        end
+    end)
+
+    headerWritten[modName] = true
+end
+
+--- Format a log entry for file output (time-only timestamp)
 -- @param entry Log entry table
 -- @return string Formatted line
 local function formatLine(entry)
@@ -153,6 +206,22 @@ local function formatLine(entry)
         entry.frame or 0,
         entry.modName or "",
         entry.message or "")
+end
+
+--- Format a dedup summary line
+-- @param modName Mod identifier
+-- @param count number Number of duplicates
+-- @param firstSeen string Timestamp of first occurrence
+-- @param message string Original message
+-- @return string Formatted dedup line
+local function formatDedupSummary(modName, count, firstSeen, message)
+    return string.format("[%s] [DEDUP] [%s] %s: [x%d duplicates since %s] %s\n",
+        os.date("%H:%M:%S"),
+        0,
+        modName,
+        count,
+        firstSeen,
+        message)
 end
 
 -- --- Public API ---
@@ -178,6 +247,18 @@ function M.init(config)
     end
 end
 
+--- Set the session ID for this CET session
+-- @param id string Session ID (hex string)
+function M.setSessionId(id)
+    sessionId = id or ""
+end
+
+--- Get the current session ID
+-- @return string Session ID
+function M.getSessionId()
+    return sessionId
+end
+
 --- Set custom log file path for a mod
 -- @param modName Mod identifier
 -- @param filePath Relative or absolute file path
@@ -188,16 +269,23 @@ function M.setFilePath(modName, filePath)
     customPaths[modName] = filePath
     filePaths[modName] = filePath
     fileSizes[modName] = 0  -- Reset size tracking for new path
+    headerWritten[modName] = false  -- Reset header for new path
 end
 
 --- Write a log entry to file
 -- @param modName Mod identifier
 -- @param entry Log entry table { timestamp, levelName, frame, modName, message }
-function M.write(modName, entry)
+-- @param config table Optional logger config for header writing
+function M.write(modName, entry, config)
     if type(modName) ~= "string" or modName == "" then return end
     if type(entry) ~= "table" then return end
 
     local path = resolvePath(modName)
+
+    -- Write header if not yet written
+    if not headerWritten[modName] then
+        writeHeader(modName, config)
+    end
 
     -- Format the line
     local line = formatLine(entry)
@@ -228,6 +316,38 @@ function M.write(modName, entry)
     end
 end
 
+--- Write a dedup summary line to file
+-- @param modName Mod identifier
+-- @param count number Number of duplicates
+-- @param firstSeen string Timestamp of first occurrence
+-- @param message string Original message
+function M.writeDedupSummary(modName, count, firstSeen, message)
+    if type(modName) ~= "string" or modName == "" then return end
+
+    local path = resolvePath(modName)
+
+    -- Write header if not yet written
+    if not headerWritten[modName] then
+        writeHeader(modName, {})
+    end
+
+    local line = formatDedupSummary(modName, count, firstSeen, message)
+
+    pcall(function()
+        local f = io.open(path, "a")
+        if f then
+            f:write(line)
+            f:close()
+            fileSizes[modName] = (fileSizes[modName] or 0) + #line
+
+            -- Check if rotation needed
+            if fileSizes[modName] >= maxFileSize then
+                rotateFile(modName)
+            end
+        end
+    end)
+end
+
 --- Flush a specific mod's file (close and reopen to force disk write)
 -- @param modName Mod identifier
 function M.flush(modName)
@@ -245,6 +365,7 @@ end
 function M.closeAll()
     fileHandles = {}
     fileSizes = {}
+    headerWritten = {}
 end
 
 --- Get the resolved file path for a mod

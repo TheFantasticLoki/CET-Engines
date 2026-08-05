@@ -57,59 +57,20 @@ local TOOLTIP_OFFSET_Y = -18     -- Y offset for value tooltip above handle
 local ANIMATION_DURATION = 0.12  -- Handle transition animation duration (seconds)
 
 -- ============================================================================
--- Modifier Key Tracking (CET uses registerInputEvent, not ImGui.IsKeyDown)
--- MUST register at module load time, not lazily
+-- Modifier Key Detection (CET uses ImGui.IsKeyDown with ImGuiKey enums)
 -- ============================================================================
-
-local _keysDown = {}    -- Tracks currently held keys: { [vk_code] = true }
-
--- Windows Virtual Key codes for modifier keys
-local VK_LSHIFT = 0xA0
-local VK_RSHIFT = 0xA1
-local VK_LCONTROL = 0xA2
-local VK_RCONTROL = 0xA3
-local VK_LALT = 0xA4
-local VK_RALT = 0xA5
-
---- Register input events for all modifier keys at module load time
---- This must happen at root level, not inside function calls
-local function registerModifierKeyTracking()
-    local modifierKeys = {
-        { slug = "advslider_shift_l",  vk = VK_LSHIFT },
-        { slug = "advslider_shift_r",  vk = VK_RSHIFT },
-        { slug = "advslider_ctrl_l",   vk = VK_LCONTROL },
-        { slug = "advslider_ctrl_r",   vk = VK_RCONTROL },
-        { slug = "advslider_alt_l",    vk = VK_LALT },
-        { slug = "advslider_alt_r",    vk = VK_RALT },
-    }
-    for _, info in ipairs(modifierKeys) do
-        registerInputEvent(info.slug, function(action)
-            if action == "press" then
-                _keysDown[info.vk] = true
-            elseif action == "release" then
-                _keysDown[info.vk] = nil
-            end
-        end)
-    end
-end
-
--- Register immediately at module load time
-local ok, err = pcall(registerModifierKeyTracking)
-if not ok then
-    print("[AdvSlider] Key tracking registration failed: " .. tostring(err))
-end
 
 --- Check if a modifier key is currently held
 local function isShiftDown()
-    return _keysDown[VK_LSHIFT] or _keysDown[VK_RSHIFT] or false
+    return ImGui.IsKeyDown(ImGuiKey.LeftShift) or ImGui.IsKeyDown(ImGuiKey.RightShift)
 end
 
 local function isCtrlDown()
-    return _keysDown[VK_LCONTROL] or _keysDown[VK_RCONTROL] or false
+    return ImGui.IsKeyDown(ImGuiKey.LeftCtrl) or ImGui.IsKeyDown(ImGuiKey.RightCtrl)
 end
 
 local function isAltDown()
-    return _keysDown[VK_LALT] or _keysDown[VK_RALT] or false
+    return ImGui.IsKeyDown(ImGuiKey.LeftAlt) or ImGui.IsKeyDown(ImGuiKey.RightAlt)
 end
 
 -- ============================================================================
@@ -696,41 +657,46 @@ function M.AdvancedSlider(label_or_spec, value, options)
     state.hovered = ImGui.IsItemHovered()
     state.active = ImGui.IsItemActive()
 
-    -- Live drag: update every frame while mouse is down over track
+    -- Live drag: update every frame while mouse is down
     if state.active then
-        state.dragging = true
-        state.dragStartMouseX = state.dragStartMouseX or select(1, ImGui.GetMousePos())
-        state.dragTrackWidth = state.dragTrackWidth or trackWidth
-        state.dragStartValue = state.dragStartValue or value
+        if not state.dragging then
+            -- Just started holding — capture initial state
+            state.dragging = true
+            state.dragStartMouseX = select(1, ImGui.GetMousePos())
+            state.dragTrackWidth = trackWidth
+            state.dragStartValue = value
+            state._lastShift = isShiftDown()
+            state._lastCtrl = isCtrlDown()
+            state._lastAlt = isAltDown()
+        end
     elseif state.dragging then
         state.dragging = false
     end
 
-    -- Click-to-position
+    -- Click-to-position (Ctrl+click snaps, normal click starts drag)
     if trackClicked then
         local mouseX = select(1, ImGui.GetMousePos())
         local clickPos = Animation.Clamp((mouseX - trackX1) / trackWidth, 0, 1)
         local clickValue = posToValue(clickPos, min, max)
 
-        -- Diagnostic tracing for first-click snap issue
-        if not state._clicksLogged then
-            state._clicksLogged = 0
+        if isCtrlDown() then
+            -- Ctrl+click: snap to clicked position
+            if math.abs(clickValue - default) < snapDistance then clickValue = default end
+            newValue = clickValue
+            changed = true
+            state.dragging = false
+            state.handleAnim:start()
+        else
+            -- Normal click: start delta-based drag from current handle position
+            state.dragging = true
+            state.dragStartMouseX = mouseX
+            state.dragTrackWidth = trackWidth
+            state.dragStartValue = value
+            state._lastShift = isShiftDown()
+            state._lastCtrl = isCtrlDown()
+            state._lastAlt = isAltDown()
+            state.handleAnim:start()
         end
-        state._clicksLogged = (state._clicksLogged or 0) + 1
-        if state._clicksLogged <= 3 then
-            print(string.format("[AdvSlider] CLICK #%d id=%s mouseX=%.1f trackX1=%.1f trackX2=%.1f trackWidth=%.1f clickPos=%.3f clickValue=%.2f value=%.2f default=%.2f snapDist=%.2f",
-                state._clicksLogged, id, mouseX, trackX1, trackX2, trackWidth, clickPos, clickValue, value, default, snapDistance))
-        end
-
-        if math.abs(clickValue - default) < snapDistance then clickValue = default end
-        newValue = clickValue
-        changed = true
-        -- Start drag — base is the CLICKED value, not the original
-        state.dragging = true
-        state.dragStartMouseX = mouseX
-        state.dragTrackWidth = trackWidth
-        state.dragStartValue = clickValue
-        state.handleAnim:start()
     end
 
     -- Live drag update (every frame while dragging)
@@ -738,23 +704,32 @@ function M.AdvancedSlider(label_or_spec, value, options)
         local mouseX = select(1, ImGui.GetMousePos())
         local deltaPixels = mouseX - state.dragStartMouseX
         local deltaValue = (deltaPixels / state.dragTrackWidth) * (max - min)
-        if isShiftDown() then
+
+        local shift = isShiftDown()
+        local ctrl = isCtrlDown()
+        local alt = isAltDown()
+        if shift ~= state._lastShift or ctrl ~= state._lastCtrl or alt ~= state._lastAlt then
+            state.dragStartValue = value
+            state.dragStartMouseX = mouseX
+            state._lastShift = shift
+            state._lastCtrl = ctrl
+            state._lastAlt = alt
+            deltaPixels = 0
+            deltaValue = 0
+        end
+
+        if shift then
             deltaValue = deltaValue * modifierShiftMult
-        elseif isCtrlDown() then
+        elseif ctrl then
             deltaValue = deltaValue * modifierCtrlMult
-        elseif isAltDown() then
+        elseif alt then
             deltaValue = deltaValue * modifierAltMult
         end
+
         local dragValue = Animation.Clamp(state.dragStartValue + deltaValue, min, max)
         if dragValue ~= value then
             newValue = dragValue
             changed = true
-            -- Log first few drag updates
-            if (state._dragLogs or 0) < 3 then
-                state._dragLogs = (state._dragLogs or 0) + 1
-                print(string.format("[AdvSlider] DRAG #%d id=%s deltaPixels=%.1f deltaValue=%.4f dragStartValue=%.2f dragValue=%.2f",
-                    state._dragLogs, id, deltaPixels, deltaValue, state.dragStartValue, dragValue))
-            end
         end
     end
 

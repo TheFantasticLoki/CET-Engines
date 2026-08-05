@@ -147,3 +147,20 @@ function M.testGetModSummaryEmpty()
     local summary = Stats.getModSummary()
     assert.assert_equal(#summary, 0, "Should have 0 entries for empty loggers")
 end
+
+-- --- Test Print Level in Stats ---
+
+function M.testGetAggregateStatsWithPrint()
+    local loggers = {}
+    loggers["mod-a"] = makeLogger("mod-a", {
+        { "info", "msg1" },
+        { "print", "console output" },
+    })
+    Stats.init(loggers)
+
+    local stats = Stats.getAggregateStats()
+    assert.assert_equal(stats.totalMods, 1, "Should have 1 mod")
+    assert.assert_equal(stats.totalLogged, 2, "Total logged should be 2")
+    assert.assert_equal(stats.byLevel.info, 1, "Should have 1 info total")
+    assert.assert_equal(stats.byLevel.print, 1, "Should have 1 print total")
+end

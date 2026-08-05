@@ -783,6 +783,17 @@ ImGui.Key = {
     RightArrow = 3,
 }
 
+-- --- ImGuiKey enum (for IsKeyDown) ---
+
+ImGuiKey = {
+    LeftShift = 340,
+    RightShift = 344,
+    LeftCtrl = 341,
+    RightCtrl = 345,
+    LeftAlt = 342,
+    RightAlt = 346,
+}
+
 -- --- ImGuiTreeNodeFlags namespace ---
 
 ImGui.TreeNodeFlags = {

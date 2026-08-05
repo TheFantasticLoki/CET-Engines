@@ -1,74 +1,86 @@
 --[[
     Stats — Log-Engine
 
-    Aggregate statistics and summaries across all logger instances.
-    Provides a global view of logging activity across all mods.
+    Aggregate statistics across all logger instances.
+    Provides per-mod and cross-mod statistics.
 ]]
 
 local M = {}
 
+-- --- SafeRequire (inline, no external deps) ---
+local function SafeRequire(path)
+    local ok, mod = pcall(require, path)
+    if ok then return mod end
+    return nil
+end
+
+-- Config values inlined with fallbacks
+local Config = SafeRequire("config") or {}
+
 -- --- Internal State ---
 
-local loggers = {}  -- Reference to all logger instances (keyed by modName)
 local initialized = false
+local loggers = {}  -- Reference to the loggers table from init.lua
 
 -- --- Public API ---
 
---- Initialize the stats module
--- @param loggerTable table Reference to the loggers table { [modName] = loggerInstance }
-function M.init(loggerTable)
-    loggers = loggerTable or {}
+--- Initialize stats module (idempotent)
+-- @param loggersTable table Reference to the loggers table from init.lua
+function M.init(loggersTable)
     if initialized then
         return
     end
     initialized = true
+    loggers = loggersTable or {}
 end
 
---- Get statistics for a specific mod
+--- Get stats for a specific mod
 -- @param modName string Mod identifier
--- @return table|nil { totalLogged, byLevel }
+-- @return table|nil { totalLogged, byLevel = {debug=N, info=N, warn=N, error=N, print=N} }
 function M.getModStats(modName)
     local logger = loggers[modName]
-    if not logger or not logger.getStats then
+    if not logger then
         return nil
     end
-    return logger.getStats()
+
+    if logger.getStats then
+        return logger.getStats()
+    end
+
+    return nil
 end
 
---- Get aggregate statistics across all mods
--- @return table { totalMods, totalLogged, byLevel, modList }
+--- Get aggregate stats across all loggers
+-- @return table { totalMods, totalLogged, byLevel = {debug=N, info=N, warn=N, error=N, print=N} }
 function M.getAggregateStats()
     local stats = {
         totalMods = 0,
         totalLogged = 0,
-        byLevel = { debug = 0, info = 0, warn = 0, error = 0 },
-        modList = {},
+        byLevel = { debug = 0, info = 0, warn = 0, error = 0, print = 0 },
     }
 
-    for modName, logger in pairs(loggers) do
+    for _, logger in pairs(loggers) do
         if logger.getStats then
-            stats.totalMods = stats.totalMods + 1
             local modStats = logger.getStats()
+            stats.totalMods = stats.totalMods + 1
             stats.totalLogged = stats.totalLogged + modStats.totalLogged
             for level, count in pairs(modStats.byLevel) do
                 stats.byLevel[level] = (stats.byLevel[level] or 0) + count
             end
-            table.insert(stats.modList, modName)
         end
     end
 
-    table.sort(stats.modList)
     return stats
 end
 
---- Get recent errors across all mods (newest first)
--- @param count number Max errors to return (default: 20)
--- @return table Array of error entries sorted by timestamp descending
+--- Get recent errors across all loggers
+-- @param count number Max errors (default: 20)
+-- @return table Array of error entries (newest first)
 function M.getRecentErrors(count)
     count = count or 20
     local allErrors = {}
 
-    for modName, logger in pairs(loggers) do
+    for _, logger in pairs(loggers) do
         if logger.getRecentErrors then
             local errors = logger.getRecentErrors(count)
             for _, entry in ipairs(errors) do
@@ -77,7 +89,7 @@ function M.getRecentErrors(count)
         end
     end
 
-    -- Sort by timestamp descending (newest first)
+    -- Sort by timestamp (newest first) — simple bubble sort for small arrays
     table.sort(allErrors, function(a, b)
         return (a.timestamp or "") > (b.timestamp or "")
     end)
@@ -90,38 +102,36 @@ function M.getRecentErrors(count)
     return allErrors
 end
 
---- Get a summary of all registered mod loggers
+--- Get mod summary for display
 -- @return table Array of { modName, totalLogged, errorCount, lastLog }
 function M.getModSummary()
     local summary = {}
 
     for modName, logger in pairs(loggers) do
-        local entry = {
-            modName = modName,
-            totalLogged = 0,
-            errorCount = 0,
-            lastLog = nil,
-        }
-
-        if logger.getTotalLogged then
-            entry.totalLogged = logger.getTotalLogged()
-        end
-
         if logger.getStats then
             local stats = logger.getStats()
-            entry.errorCount = stats.byLevel.error or 0
-        end
+            local errorCount = stats.byLevel.error or 0
+            local totalLogged = stats.totalLogged or 0
 
-        if logger.getEntries then
-            local recent = logger.getEntries(1)
-            if #recent > 0 then
-                entry.lastLog = recent[#recent]
+            -- Get last log entry
+            local lastLog = nil
+            if logger.getEntries then
+                local entries = logger.getEntries(1)
+                if #entries > 0 then
+                    lastLog = entries[1]
+                end
             end
-        end
 
-        table.insert(summary, entry)
+            table.insert(summary, {
+                modName = modName,
+                totalLogged = totalLogged,
+                errorCount = errorCount,
+                lastLog = lastLog,
+            })
+        end
     end
 
+    -- Sort alphabetically by mod name
     table.sort(summary, function(a, b)
         return a.modName < b.modName
     end)

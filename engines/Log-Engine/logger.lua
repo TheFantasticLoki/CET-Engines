@@ -9,11 +9,13 @@
         log.info("Mod loaded")
         log.error("Something went wrong")
         log.logf("warn", "Value is %d", 42)
+        log.print("Console output")  -- prints to CET console AND logs to file
 
-    Log levels: debug, info, warn, error
+    Log levels: debug, info, warn, error, print
     Ring buffer: configurable per instance (default 1024)
     File output: delegated to file_output.lua
     Rate limiting: max N debug messages per frame per logger
+    Deduplication: suppresses duplicate messages, writes summary
 ]]
 
 local M = {}
@@ -35,6 +37,7 @@ local LEVEL_NAMES = Config.LEVEL_NAMES or {
     [2] = "INFO",
     [3] = "WARN",
     [4] = "ERROR",
+    [5] = "PRINT",
 }
 
 -- --- Level Helpers ---
@@ -43,22 +46,24 @@ local LEVEL_DEBUG = Config.LEVEL_DEBUG or 1
 local LEVEL_INFO = Config.LEVEL_INFO or 2
 local LEVEL_WARN = Config.LEVEL_WARN or 3
 local LEVEL_ERROR = Config.LEVEL_ERROR or 4
+local LEVEL_PRINT = Config.LEVEL_PRINT or 5
 
 --- Get numeric level from string
--- @param levelStr Level name ("debug", "info", "warn", "error")
+-- @param levelStr Level name ("debug", "info", "warn", "error", "print")
 -- @return number Numeric level
 local function getLevelNum(levelStr)
     if levelStr == "debug" then return LEVEL_DEBUG end
     if levelStr == "info" then return LEVEL_INFO end
     if levelStr == "warn" then return LEVEL_WARN end
     if levelStr == "error" then return LEVEL_ERROR end
+    if levelStr == "print" then return LEVEL_PRINT end
     return LEVEL_DEBUG
 end
 
---- Get timestamp string with millisecond approximation
--- @return string Timestamp in ISO format with .ms suffix
+--- Get timestamp string (time-only, since date is in session header)
+-- @return string Timestamp in HH:MM:SS.mmm format
 local function getTimestamp()
-    local sec = os.date("%Y-%m-%dT%H:%M:%S")
+    local sec = os.date("%H:%M:%S")
     -- os.clock() gives CPU time as a sub-second approximation
     local ms = math.floor((os.clock() % 1) * 1000)
     return sec .. string.format(".%03d", ms)
@@ -68,7 +73,7 @@ end
 
 --- Create a logger instance for a mod
 -- @param modName string Unique mod identifier
--- @param config table Optional overrides { minLevel, ringSize, filePath, maxDebugPerFrame }
+-- @param config table Optional overrides { minLevel, ringSize, filePath, maxDebugPerFrame, dedupEnabled }
 -- @param currentFrameRef table Reference to shared frame counter { value = N }
 -- @return table Logger instance with public methods
 function M.create(modName, config, currentFrameRef)
@@ -80,11 +85,20 @@ function M.create(modName, config, currentFrameRef)
     local ringSize = config.ringSize or Config.RING_SIZE or 1024
     local minLevel = getLevelNum(config.minLevel or Config.DEFAULT_MIN_LEVEL or "debug")
     local maxDebugPerFrame = config.maxDebugPerFrame or Config.MAX_DEBUG_PER_FRAME or 5
+    local dedupEnabled = config.dedupEnabled
+    if dedupEnabled == nil then
+        dedupEnabled = Config.DEDUP_ENABLED ~= false
+    end
+    local dedupMaxEntries = config.dedupMaxEntries or Config.DEDUP_MAX_ENTRIES or 256
 
     -- Ring buffer state
     local entries = {}
     local entryCount = 0
     local debugCountThisFrame = 0
+
+    -- Deduplication state
+    local dedupTable = {}  -- [level..":"..message] = { count, firstSeen, lastSeen, firstEntry }
+    local dedupOrder = {}  -- ordered list of dedup keys for eviction
 
     -- Set custom file path if provided
     if config.filePath and FileOutput then
@@ -114,16 +128,49 @@ function M.create(modName, config, currentFrameRef)
 
         -- Write to file
         if FileOutput then
-            FileOutput.write(modName, entry)
+            FileOutput.write(modName, entry, config)
         end
 
         return entry
     end
 
+    --- Flush pending dedup summaries for a specific key
+    -- @param key string Dedup key
+    local function flushDedup(key)
+        local info = dedupTable[key]
+        if info and info.count > 1 then
+            if FileOutput then
+                FileOutput.writeDedupSummary(modName, info.count, info.firstSeen, info.message)
+            end
+        end
+        dedupTable[key] = nil
+    end
+
+    --- Flush all pending dedup summaries
+    local function flushAllDedup()
+        for key, info in pairs(dedupTable) do
+            if info.count > 1 then
+                if FileOutput then
+                    FileOutput.writeDedupSummary(modName, info.count, info.firstSeen, info.message)
+                end
+            end
+        end
+        dedupTable = {}
+        dedupOrder = {}
+    end
+
+    --- Evict oldest dedup entry if at max capacity
+    local function evictOldestDedup()
+        if #dedupOrder > dedupMaxEntries then
+            local oldestKey = table.remove(dedupOrder, 1)
+            dedupTable[oldestKey] = nil
+        end
+    end
+
     -- --- Public API ---
 
     --- Log a message at a specific level
-    -- @param level string Log level ("debug", "info", "warn", "error")
+    -- @param level string Log level ("debug", "info", "warn", "error", "print")
     -- @param message string Log message
     function logger.log(level, message)
         local levelNum = getLevelNum(level or "info")
@@ -138,6 +185,36 @@ function M.create(modName, config, currentFrameRef)
             debugCountThisFrame = debugCountThisFrame + 1
             if debugCountThisFrame > maxDebugPerFrame then
                 return
+            end
+        end
+
+        -- Deduplication
+        if dedupEnabled then
+            local dedupKey = levelNum .. ":" .. (message or "")
+            local existing = dedupTable[dedupKey]
+
+            if existing then
+                -- Duplicate found: increment count, don't write
+                existing.count = existing.count + 1
+                existing.lastSeen = getTimestamp()
+                return
+            else
+                -- New message: flush any pending dedup for previous message
+                -- (We flush when a different message arrives)
+                -- Actually, we flush when the same message stops repeating
+                -- For simplicity, we flush all pending dedup summaries now
+                -- This ensures summaries appear in the log file
+                flushAllDedup()
+
+                -- Track this new message
+                dedupTable[dedupKey] = {
+                    count = 1,
+                    firstSeen = getTimestamp(),
+                    lastSeen = getTimestamp(),
+                    message = message or "",
+                }
+                table.insert(dedupOrder, dedupKey)
+                evictOldestDedup()
             end
         end
 
@@ -166,6 +243,12 @@ function M.create(modName, config, currentFrameRef)
     -- @param message string Log message
     function logger.error(message)
         logger.log("error", message)
+    end
+
+    --- Log at print level (console + file)
+    -- @param message string Log message
+    function logger.print(message)
+        logger.log("print", message)
     end
 
     --- Log a formatted message (string.format)
@@ -227,11 +310,11 @@ function M.create(modName, config, currentFrameRef)
     end
 
     --- Get logging statistics for this mod
-    -- @return table { totalLogged, byLevel = {debug=N, info=N, warn=N, error=N} }
+    -- @return table { totalLogged, byLevel = {debug=N, info=N, warn=N, error=N, print=N} }
     function logger.getStats()
         local stats = {
             totalLogged = entryCount,
-            byLevel = { debug = 0, info = 0, warn = 0, error = 0 },
+            byLevel = { debug = 0, info = 0, warn = 0, error = 0, print = 0 },
         }
 
         local maxStored = math.min(entryCount, ringSize)
@@ -290,6 +373,8 @@ function M.create(modName, config, currentFrameRef)
         entries = {}
         entryCount = 0
         debugCountThisFrame = 0
+        dedupTable = {}
+        dedupOrder = {}
     end
 
     --- Reset the debug rate limiter (called each frame)
@@ -307,6 +392,26 @@ function M.create(modName, config, currentFrameRef)
     -- @return number Ring buffer size
     function logger.getCapacity()
         return ringSize
+    end
+
+    --- Get dedup statistics
+    -- @return table { totalDeduped, pendingSummaries }
+    function logger.getDedupStats()
+        local pending = 0
+        for _, info in pairs(dedupTable) do
+            if info.count > 1 then
+                pending = pending + 1
+            end
+        end
+        return {
+            totalDeduped = entryCount,
+            pendingSummaries = pending,
+        }
+    end
+
+    --- Flush all pending dedup summaries to file
+    function logger.flushDedup()
+        flushAllDedup()
     end
 
     return logger

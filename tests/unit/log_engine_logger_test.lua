@@ -48,9 +48,10 @@ function M.testLogAtAllLevels()
     log.info("info msg")
     log.warn("warn msg")
     log.error("error msg")
+    log.print("print msg")
 
     local entries = log.getEntries(100)
-    assert.assert_true(#entries >= 4, "Should have at least 4 entries")
+    assert.assert_true(#entries >= 5, "Should have at least 5 entries")
 
     local levels = {}
     for _, e in ipairs(entries) do
@@ -60,6 +61,7 @@ function M.testLogAtAllLevels()
     assert.assert_true(levels["INFO"], "Should have INFO entries")
     assert.assert_true(levels["WARN"], "Should have WARN entries")
     assert.assert_true(levels["ERROR"], "Should have ERROR entries")
+    assert.assert_true(levels["PRINT"], "Should have PRINT entries")
 end
 
 function M.testMinLevelFiltering()
@@ -241,4 +243,109 @@ end
 function M.testGetCapacity()
     local log = newLogger("capacity-test", { ringSize = 256 })
     assert.assert_equal(log.getCapacity(), 256, "Capacity should match config")
+end
+
+-- --- Test Deduplication ---
+
+function M.testDedupSuppressesDuplicates()
+    local log = newLogger("dedup-test", { dedupEnabled = true })
+    log.error("same error")
+    log.error("same error")
+    log.error("same error")
+
+    local entries = log.getEntries(100)
+    -- Only 1 entry should be written (first occurrence)
+    assert.assert_equal(#entries, 1, "Should have 1 entry (dedup suppressed duplicates)")
+    assert.assert_equal(entries[1].message, "same error", "Entry should be the original message")
+end
+
+function M.testDedupDifferentMessages()
+    local log = newLogger("dedup-diff-test", { dedupEnabled = true })
+    log.error("error 1")
+    log.error("error 2")
+    log.error("error 3")
+
+    local entries = log.getEntries(100)
+    assert.assert_equal(#entries, 3, "Should have 3 entries (all different messages)")
+end
+
+function M.testDedupDifferentLevels()
+    local log = newLogger("dedup-level-test", { dedupEnabled = true })
+    log.error("same message")
+    log.warn("same message")
+
+    local entries = log.getEntries(100)
+    assert.assert_equal(#entries, 2, "Should have 2 entries (different levels)")
+end
+
+function M.testDedupDisabled()
+    local log = newLogger("dedup-disabled-test", { dedupEnabled = false })
+    log.error("same error")
+    log.error("same error")
+    log.error("same error")
+
+    local entries = log.getEntries(100)
+    assert.assert_equal(#entries, 3, "Should have 3 entries (dedup disabled)")
+end
+
+function M.testDedupStats()
+    local log = newLogger("dedup-stats-test", { dedupEnabled = true })
+    log.error("error 1")
+    log.error("error 1")
+    log.error("error 1")
+    log.error("error 2")
+
+    local stats = log.getDedupStats()
+    assert.assert_true(stats.totalDeduped > 0, "Should have dedup stats")
+end
+
+function M.testDedupFlush()
+    local log = newLogger("dedup-flush-test", { dedupEnabled = true })
+    log.error("error 1")
+    log.error("error 1")
+    log.error("error 1")
+
+    -- Flush dedup summaries
+    log.flushDedup()
+
+    -- After flush, the dedup table should be cleared
+    local stats = log.getDedupStats()
+    assert.assert_equal(stats.pendingSummaries, 0, "Should have 0 pending summaries after flush")
+end
+
+-- --- Test Print Level ---
+
+function M.testPrintLevel()
+    local log = newLogger("print-test")
+    log.print("console output")
+
+    local entries = log.getEntries(100)
+    assert.assert_equal(#entries, 1, "Should have 1 entry")
+    assert.assert_equal(entries[1].levelName, "PRINT", "Should be PRINT level")
+    assert.assert_equal(entries[1].message, "console output", "Should have the message")
+end
+
+function M.testPrintLevelFiltering()
+    local log = newLogger("print-filter-test", { minLevel = "error" })
+    log.print("should be filtered")
+    log.error("should pass")
+
+    local entries = log.getEntries(100)
+    assert.assert_equal(#entries, 1, "Should only have error entry")
+    assert.assert_equal(entries[1].levelName, "ERROR", "Should be ERROR level")
+end
+
+-- --- Test Timestamp Format ---
+
+function M.testTimestampFormat()
+    local log = newLogger("timestamp-test")
+    log.info("test message")
+
+    local entries = log.getEntries(100)
+    assert.assert_equal(#entries, 1, "Should have 1 entry")
+
+    -- Timestamp should be in HH:MM:SS.mmm format (time-only)
+    local ts = entries[1].timestamp
+    assert.assert_true(ts ~= nil, "Timestamp should not be nil")
+    assert.assert_true(ts:match("^%d%d:%d%d:%d%d%.%d%d%d$") ~= nil, "Timestamp should be in HH:MM:SS.mmm format, got: " .. ts)
 end

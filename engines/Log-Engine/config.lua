@@ -15,6 +15,7 @@ M.LEVEL_DEBUG = 1
 M.LEVEL_INFO = 2
 M.LEVEL_WARN = 3
 M.LEVEL_ERROR = 4
+M.LEVEL_PRINT = 5
 
 -- Level name lookup
 M.LEVEL_NAMES = {
@@ -22,6 +23,7 @@ M.LEVEL_NAMES = {
     [2] = "INFO",
     [3] = "WARN",
     [4] = "ERROR",
+    [5] = "PRINT",
 }
 
 -- Default minimum level
@@ -35,5 +37,12 @@ M.LOG_FILE_SUFFIX = ".log"           -- file extension
 
 -- Rate limiting
 M.MAX_DEBUG_PER_FRAME = 1  -- max debug messages per frame per logger
+
+-- Deduplication
+M.DEDUP_ENABLED = true       -- enable deduplication by default
+M.DEDUP_MAX_ENTRIES = 256    -- max unique messages tracked before oldest is evicted
+
+-- Session headers
+M.SESSION_ID_LENGTH = 8      -- length of session ID hex string
 
 return M

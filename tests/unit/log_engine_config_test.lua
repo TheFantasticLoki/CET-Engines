@@ -32,6 +32,7 @@ function M.testLogLevelConstants()
     assert.assert_equal(Config.LEVEL_INFO, 2, "LEVEL_INFO should be 2")
     assert.assert_equal(Config.LEVEL_WARN, 3, "LEVEL_WARN should be 3")
     assert.assert_equal(Config.LEVEL_ERROR, 4, "LEVEL_ERROR should be 4")
+    assert.assert_equal(Config.LEVEL_PRINT, 5, "LEVEL_PRINT should be 5")
 end
 
 function M.testLevelNames()
@@ -39,6 +40,7 @@ function M.testLevelNames()
     assert.assert_equal(Config.LEVEL_NAMES[2], "INFO", "Level 2 should be INFO")
     assert.assert_equal(Config.LEVEL_NAMES[3], "WARN", "Level 3 should be WARN")
     assert.assert_equal(Config.LEVEL_NAMES[4], "ERROR", "Level 4 should be ERROR")
+    assert.assert_equal(Config.LEVEL_NAMES[5], "PRINT", "Level 5 should be PRINT")
 end
 
 function M.testLogDir()
@@ -51,4 +53,18 @@ end
 
 function M.testMaxDebugPerFrame()
     assert.assert_equal(Config.MAX_DEBUG_PER_FRAME, 1, "Default max debug per frame should be 1")
+end
+
+-- --- Test New Config Values ---
+
+function M.testDedupEnabled()
+    assert.assert_true(Config.DEDUP_ENABLED, "Default dedup should be enabled")
+end
+
+function M.testDedupMaxEntries()
+    assert.assert_equal(Config.DEDUP_MAX_ENTRIES, 256, "Default dedup max entries should be 256")
+end
+
+function M.testSessionIdLength()
+    assert.assert_equal(Config.SESSION_ID_LENGTH, 8, "Default session ID length should be 8")
 end

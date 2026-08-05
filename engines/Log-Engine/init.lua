@@ -8,6 +8,7 @@
         local LogEngine = GetMod("0-Engine-Log")
         local log = LogEngine.CreateLogger("MyMod")
         log.info("Mod loaded")
+        log.print("Console output")  -- prints to CET console AND logs to file
 
     Module loading order:
     1. config.lua        (defaults — no dependencies)
@@ -51,11 +52,26 @@ local currentFrameRef = { value = 0 }  -- Shared reference for logger instances
 -- Logger instances (modName -> logger)
 local loggers = {}
 
+-- Session ID (generated at init, persists across file rotations)
+local sessionId = ""
+
+--- Generate a short hex session ID
+-- @param length number Length of hex string (default: 8)
+-- @return string Hex session ID
+local function generateSessionId(length)
+    length = length or (Config and Config.SESSION_ID_LENGTH) or 8
+    local id = ""
+    for i = 1, length do
+        id = id .. string.format("%x", math.random(0, 15))
+    end
+    return id
+end
+
 -- --- Public API ---
 
 --- Create a logger instance for a consumer mod
 -- @param modName string Unique mod identifier
--- @param config table Optional { minLevel, ringSize, filePath, maxDebugPerFrame }
+-- @param config table Optional { minLevel, ringSize, filePath, maxDebugPerFrame, dedupEnabled }
 -- @return table Logger instance
 local function CreateLogger(modName, config)
     if not LoggerModule then
@@ -131,7 +147,7 @@ end
 --- Get Log-Engine version
 -- @return string Version string
 local function GetVersion()
-    return "v1.0.0"
+    return "v1.1.0"
 end
 
 --- Set global minimum level for all loggers
@@ -151,6 +167,21 @@ local function FlushAll()
     end
 end
 
+--- Flush all pending dedup summaries
+local function FlushAllDedup()
+    for _, logger in pairs(loggers) do
+        if logger.flushDedup then
+            logger.flushDedup()
+        end
+    end
+end
+
+--- Get the current session ID
+-- @return string Session ID
+local function GetSessionId()
+    return sessionId
+end
+
 -- --- CET Callbacks ---
 
 --- onInit handler — called when CET loads the mod
@@ -160,9 +191,13 @@ local function onInit()
     end
     initialized = true
 
+    -- Generate session ID
+    sessionId = generateSessionId()
+
     -- Initialize modules in order
     if FileOutput then
         FileOutput.init()
+        FileOutput.setSessionId(sessionId)
     end
 
     if Stats then
@@ -173,7 +208,7 @@ local function onInit()
     CreateLogger("LogEngine", { minLevel = "info" })
 
     -- Startup summary
-    print("[LogEngine] " .. GetVersion() .. " loaded")
+    print("[LogEngine] " .. GetVersion() .. " loaded (session: " .. sessionId .. ")")
     local modules = {
         Config = Config,
         FileOutput = FileOutput,
@@ -200,6 +235,9 @@ end
 
 --- onShutdown handler — called when CET unloads the mod
 local function onShutdown()
+    -- Flush all pending dedup summaries
+    FlushAllDedup()
+
     -- Flush all files
     FlushAll()
 
@@ -236,6 +274,8 @@ M.GetModSummary = GetModSummary
 M.GetVersion = GetVersion
 M.SetGlobalLevel = SetGlobalLevel
 M.FlushAll = FlushAll
+M.FlushAllDedup = FlushAllDedup
+M.GetSessionId = GetSessionId
 
 -- CET callbacks (exposed for CET to call)
 M.onInit = onInit

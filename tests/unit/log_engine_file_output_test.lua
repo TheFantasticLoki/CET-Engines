@@ -105,9 +105,10 @@ function M.testWriteCreatesFile()
     package.loaded["engines.Log-Engine.file_output"] = nil
     FileOutput = require("engines.Log-Engine.file_output")
     FileOutput.init()
+    FileOutput.setSessionId("test1234")
 
     FileOutput.write("test-mod", {
-        timestamp = "2026-01-01T12:00:00.000",
+        timestamp = "12:00:00.000",
         levelName = "INFO",
         frame = 1,
         modName = "test-mod",
@@ -132,11 +133,12 @@ function M.testSetFilePath()
     package.loaded["engines.Log-Engine.file_output"] = nil
     FileOutput = require("engines.Log-Engine.file_output")
     FileOutput.init()
+    FileOutput.setSessionId("test1234")
 
     FileOutput.setFilePath("custom-mod", "custom/path.log")
 
     FileOutput.write("custom-mod", {
-        timestamp = "2026-01-01T00:00:00.000",
+        timestamp = "00:00:00.000",
         levelName = "INFO",
         frame = 1,
         modName = "custom-mod",
@@ -159,9 +161,10 @@ function M.testFormatLine()
     package.loaded["engines.Log-Engine.file_output"] = nil
     FileOutput = require("engines.Log-Engine.file_output")
     FileOutput.init()
+    FileOutput.setSessionId("test1234")
 
     FileOutput.write("fmt-test", {
-        timestamp = "2026-01-01T12:30:45.123",
+        timestamp = "12:30:45.123",
         levelName = "ERROR",
         frame = 42,
         modName = "fmt-test",
@@ -171,7 +174,7 @@ function M.testFormatLine()
     for path, data in pairs(mockFiles) do
         if data.size > 0 then
             -- Verify format: [timestamp] [LEVEL] [frame] modName: message
-            assert.assert_true(data.content:find("%[2026-01-01T12:30:45.123%]"), "Should have timestamp")
+            assert.assert_true(data.content:find("%[12:30:45%.123%]"), "Should have time-only timestamp")
             assert.assert_true(data.content:find("%[ERROR%]"), "Should have level")
             assert.assert_true(data.content:find("%[42%]"), "Should have frame number")
             assert.assert_true(data.content:find("fmt-test:"), "Should have modName")
@@ -212,9 +215,10 @@ function M.testCloseAll()
     package.loaded["engines.Log-Engine.file_output"] = nil
     FileOutput = require("engines.Log-Engine.file_output")
     FileOutput.init()
+    FileOutput.setSessionId("test1234")
 
     FileOutput.write("close-test", {
-        timestamp = "2026-01-01T00:00:00.000",
+        timestamp = "00:00:00.000",
         levelName = "INFO",
         frame = 1,
         modName = "close-test",
@@ -234,5 +238,72 @@ function M.testIsEnabled()
     FileOutput.init()
 
     assert.assert_true(FileOutput.isEnabled(), "File output should be enabled by default")
+    uninstallMock()
+end
+
+-- --- Test Session Header ---
+
+function M.testSessionHeader()
+    installMock()
+    package.loaded["engines.Log-Engine.file_output"] = nil
+    FileOutput = require("engines.Log-Engine.file_output")
+    FileOutput.init()
+    FileOutput.setSessionId("abc12345")
+
+    FileOutput.write("header-test", {
+        timestamp = "12:00:00.000",
+        levelName = "INFO",
+        frame = 1,
+        modName = "header-test",
+        message = "First message",
+    })
+
+    for path, data in pairs(mockFiles) do
+        if data.size > 0 then
+            -- Verify header is present
+            assert.assert_true(data.content:find("=== Log Session ==="), "Should have header start")
+            assert.assert_true(data.content:find("Session: abc12345"), "Should have session ID")
+            assert.assert_true(data.content:find("Mod: header-test"), "Should have mod name")
+            assert.assert_true(data.content:find("Started:"), "Should have start time")
+            assert.assert_true(data.content:find("Level:"), "Should have level")
+            assert.assert_true(data.content:find("Ring Buffer:"), "Should have ring buffer size")
+            assert.assert_true(data.content:find("==================="), "Should have header end")
+        end
+    end
+    uninstallMock()
+end
+
+function M.testSessionId()
+    installMock()
+    package.loaded["engines.Log-Engine.file_output"] = nil
+    FileOutput = require("engines.Log-Engine.file_output")
+    FileOutput.init()
+
+    FileOutput.setSessionId("test1234")
+    assert.assert_equal(FileOutput.getSessionId(), "test1234", "Should return session ID")
+
+    FileOutput.setSessionId("new5678")
+    assert.assert_equal(FileOutput.getSessionId(), "new5678", "Should update session ID")
+    uninstallMock()
+end
+
+-- --- Test Dedup Summary ---
+
+function M.testWriteDedupSummary()
+    installMock()
+    package.loaded["engines.Log-Engine.file_output"] = nil
+    FileOutput = require("engines.Log-Engine.file_output")
+    FileOutput.init()
+    FileOutput.setSessionId("test1234")
+
+    FileOutput.writeDedupSummary("dedup-test", 5, "12:00:00.000", "Something broke")
+
+    for path, data in pairs(mockFiles) do
+        if data.size > 0 then
+            assert.assert_true(data.content:find("DEDUP"), "Should have DEDUP tag")
+            assert.assert_true(data.content:find("x5 duplicates"), "Should have duplicate count")
+            assert.assert_true(data.content:find("Something broke"), "Should have original message")
+        end
+    end
     uninstallMock()
 end
