@@ -67,6 +67,12 @@ function drawModPanel()
         return
     end
 
+    -- Redirect engine internal mods to the dedicated settings panel
+    if selectedMod:sub(1, 9) == "0-Engine-" then
+        Core.setContentMode("settings")
+        return
+    end
+
     local mod = Core.getMod(selectedMod)
     if not mod then
         ImGui.Text("Mod not found: " .. selectedMod)
@@ -75,18 +81,6 @@ function drawModPanel()
 
     local spec = mod.spec or {}
     spec._modId = selectedMod
-
-    -- DIAGNOSTIC: Log drawModPanel state
-    if not _contentDiagCount then _contentDiagCount = 0 end
-    _contentDiagCount = _contentDiagCount + 1
-    if _contentDiagCount <= 3 then
-        local hasSettings = (spec.settings ~= nil)
-        local settingCount = 0
-        if hasSettings then for _ in pairs(spec.settings) do settingCount = settingCount + 1 end end
-        print(string.format("[ContentArea] drawModPanel #%d: mod=%s, renderMode=%s, hasSettings=%s, count=%d",
-            _contentDiagCount, tostring(selectedMod), tostring(mod.renderMode),
-            tostring(hasSettings), settingCount))
-    end
 
     -- Mod header
     ImGui.Text(spec.name or selectedMod)

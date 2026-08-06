@@ -105,7 +105,7 @@ function M.draw()
     local btnSize = 28
 
     -- Settings button (gear icon)
-    if DrawIconGlyphButton("sidebar_settings", "Settings", "\xc2\x9e99", btnSize, btnSize, "Engine Settings") then
+    if DrawIconGlyphButton("sidebar_settings", "ApplicationSettings", "Settings", btnSize, btnSize, "Engine Settings") then
         Core.setContentMode("settings")
     end
     ImGui.SameLine()
@@ -117,7 +117,7 @@ function M.draw()
         ImGui.PushStyleColor(ImGuiCol.Button, 0.3, 0.6, 1.0, 1.0)
     end
     local filterTooltip = hasFilters and ("Filter mods (" .. #activeFilters .. " active)") or "Filter mods"
-    if DrawIconGlyphButton("sidebar_filter", "Star", "\xe2\x98\x85", btnSize, btnSize, filterTooltip) then
+    if DrawIconGlyphButton("sidebar_filter", "Star", "Filter", btnSize, btnSize, filterTooltip) then
         filterOpen = not filterOpen
         themeOpen = false
     end
@@ -125,7 +125,7 @@ function M.draw()
     ImGui.SameLine()
 
     -- Theme quick-switch (palette icon)
-    if DrawIconGlyphButton("sidebar_theme", "Palette", "\xf0\x9f\x8e\xa8", btnSize, btnSize, "Quick Theme Switch") then
+    if DrawIconGlyphButton("sidebar_theme", "Palette", "Theme", btnSize, btnSize, "Quick Theme Switch") then
         themeOpen = not themeOpen
         filterOpen = false
     end
@@ -142,21 +142,6 @@ function M.draw()
             if m == sortMode then nextIdx = (i % #modes) + 1; break end
         end
         Core.setSortMode(modes[nextIdx], true)
-    end
-    if ImGui.SmallButton(sortLabel) then
-        -- Cycle: name -> author -> version -> name
-        local modes = { "name", "author", "version" }
-        local nextIdx = 1
-        for i, m in ipairs(modes) do
-            if m == sortMode then nextIdx = (i % #modes) + 1; break end
-        end
-        Core.setSortMode(modes[nextIdx], true)
-    end
-    if ImGui.IsItemHovered() then
-        ImGui.BeginTooltip()
-        ImGui.Text("Sort: " .. sortMode .. (sortAsc and " (asc)" or " (desc)"))
-        ImGui.TextDisabled("Click to cycle")
-        ImGui.EndTooltip()
     end
 
     -- ====================================================================
@@ -212,14 +197,20 @@ function M.draw()
         ImGui.Text("Theme")
         ImGui.Separator()
         -- Theme list populated from Core or a theme provider
-        local themes = { "Dark", "Red", "Cyan", "Blue", "Green", "Amber", "Purple", "Pink" }
-        local current = Core.getContentMode and "Dark" or "Dark"
+        local themes = (ModEngine and ModEngine.GetThemeList and ModEngine.GetThemeList()) or { "Dark" }
+        local current = (ModEngine and ModEngine.GetTheme and ModEngine.GetTheme()) or "Dark"
         for _, name in ipairs(themes) do
             local isSelected = (name == current)
-            if ImGui.Selectable(name, isSelected) then
-                -- Apply theme
+            ImGui.Selectable(name, isSelected)
+            if ImGui.IsItemClicked() then
+                -- Apply theme via ModEngine
                 if ModEngine and ModEngine.SetTheme then
                     ModEngine.SetTheme(name)
+                end
+                -- Sync theme to Config-Engine settings store so engine settings dropdown stays in sync
+                local engineMod = Core.getMod("0-Engine-UI")
+                if engineMod and engineMod.settings and engineMod.settings.currentTheme ~= nil then
+                    engineMod.settings.currentTheme = name
                 end
             end
         end
@@ -264,25 +255,33 @@ function M.draw()
     local selectedMod = Core.getSelectedMod()
     local visibleCount = 0
 
-    -- Group by category
+    -- Group by category (skip engine internal mods — they have a dedicated settings panel)
+    local enginePrefixes = { ["0-Engine-"] = true }
     local grouped = {}
     local ungrouped = {}
     for _, modId in ipairs(modIds) do
-        local mod = Core.getMod(modId)
-        if mod then
-            local assignment = Core.getModCategory(modId)
-            local cat = (assignment and assignment.category) or "Uncategorized"
+        -- Skip engine mods from sidebar list (managed via dedicated settings panel)
+        local isEngine = false
+        for prefix, _ in pairs(enginePrefixes) do
+            if modId:sub(1, #prefix) == prefix then isEngine = true; break end
+        end
+        if not isEngine then
+            local mod = Core.getMod(modId)
+            if mod then
+                local assignment = Core.getModCategory(modId)
+                local cat = (assignment and assignment.category) or "Uncategorized"
 
-            -- Apply search/filter
-            local matches = true
-            if parsed then
-                matches = SearchParser.matches(mod, modId, assignment, parsed)
-            end
+                -- Apply search/filter
+                local matches = true
+                if parsed then
+                    matches = SearchParser.matches(mod, modId, assignment, parsed)
+                end
 
-            if matches then
-                visibleCount = visibleCount + 1
-                if not grouped[cat] then grouped[cat] = {} end
-                table.insert(grouped[cat], modId)
+                if matches then
+                    visibleCount = visibleCount + 1
+                    if not grouped[cat] then grouped[cat] = {} end
+                    table.insert(grouped[cat], modId)
+                end
             end
         end
     end

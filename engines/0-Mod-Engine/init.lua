@@ -546,9 +546,6 @@ local function initModules()
     -- Initialize components
     if Components and Components.init then
         Components.init(Logger, Core, Theme)
-        -- DIAGNOSTIC: Verify AdvancedSlider survived the full init chain
-        print(string.format("[ModEngine] After Components.init: AdvancedSlider=%s",
-            tostring(type(Components.AdvancedSlider) == "function")))
         if log then log.info("Components initialized") end
     end
 
@@ -795,14 +792,6 @@ registerForEvent("onDraw", function()
     if not overlayOpen then return end
 
     frameCount = frameCount + 1
-
-    -- DIAGNOSTIC: One-time draw-loop confirmation
-    if frameCount == 1 then
-        print(string.format("[ModEngine] onDraw FIRST CALL: Components=%s, Components.AdvancedSlider=%s, CfgContentArea=%s",
-            tostring(Components ~= nil),
-            tostring(type(Components) == "table" and type(Components.AdvancedSlider) == "function"),
-            tostring(CfgContentArea ~= nil)))
-    end
 
     -- Update frame counters
     if Logger then Logger.SetFrame(frameCount) end

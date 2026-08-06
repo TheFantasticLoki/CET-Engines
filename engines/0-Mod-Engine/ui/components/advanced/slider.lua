@@ -32,9 +32,6 @@ local ColorEngine = require("ui/color_engine")
 local _theme = nil
 local _log = nil
 
--- Diagnostic flag (one-time DrawList method dump)
-local _drawListDiagDone = false
-
 -- ============================================================================
 -- Constants
 -- ============================================================================
@@ -419,20 +416,6 @@ end
 ---@return number newValue, boolean changed
 function M.AdvancedSlider(label_or_spec, value, options)
     -- ====================================================================
-    -- DIAGNOSTIC: Log every call to this function
-    -- ====================================================================
-    if not _advSliderCallCount then _advSliderCallCount = 0 end
-    _advSliderCallCount = _advSliderCallCount + 1
-    local _callNum = _advSliderCallCount
-    if _callNum <= 5 or _callNum % 100 == 0 then
-        print(string.format("[AdvSlider] CALL #%d: label_or_spec=%s, value=%s, options=%s",
-            _callNum,
-            tostring(type(label_or_spec) == "string" and label_or_spec or type(label_or_spec)),
-            tostring(value),
-            tostring(options ~= nil)))
-    end
-
-    -- ====================================================================
     -- API style detection: spec table vs (label, value, options)
     -- ====================================================================
     local label, opts
@@ -568,19 +551,6 @@ function M.AdvancedSlider(label_or_spec, value, options)
     if dl then
         drawList = dl
         drawListAvailable = true
-        if not _drawListDiagDone then
-            _drawListDiagDone = true
-            print("[AdvSlider] DrawList available (type=" .. type(dl) .. ")")
-        end
-    else
-        print("[AdvSlider] WARN: GetWindowDrawList() nil — fallback")
-    end
-
-    -- DIAGNOSTIC: Log geometry on first few calls
-    if _callNum <= 5 then
-        print(string.format("[AdvSlider] CALL #%d geometry: min=%s max=%s default=%s value=%s btns=%s",
-            _callNum, tostring(min), tostring(max), tostring(default),
-            tostring(value), tostring(showButtons)))
     end
 
     -- Fallback mode

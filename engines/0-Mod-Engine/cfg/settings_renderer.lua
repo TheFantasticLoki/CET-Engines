@@ -33,18 +33,6 @@ function M.renderSettings(modId, spec, settings)
     if not settings then return false end
     if not Components then return false end
 
-    -- DIAGNOSTIC: Log renderSettings call
-    if not _renderDiagCount then _renderDiagCount = 0 end
-    _renderDiagCount = _renderDiagCount + 1
-    local _rNum = _renderDiagCount
-    local _settingCount = 0
-    if spec.settings then for _ in pairs(spec.settings) do _settingCount = _settingCount + 1 end end
-    if _rNum <= 3 then
-        print(string.format("[SettingsRenderer] CALL #%d: modId=%s, settings=%d, Components.AdvancedSlider=%s",
-            _rNum, tostring(modId), _settingCount,
-            tostring(type(Components.AdvancedSlider) == "function")))
-    end
-
     local changed = false
 
     for key, setting in pairs(spec.settings) do
@@ -59,12 +47,6 @@ function M.renderSettings(modId, spec, settings)
         end
 
         if visible then
-            -- DIAGNOSTIC: Log each setting type
-            if _rNum <= 3 then
-                print(string.format("[SettingsRenderer] CALL #%d setting '%s' type='%s' visible=%s",
-                    _rNum, tostring(key), tostring(setting.type), tostring(visible)))
-            end
-
             -- Render based on type (direct ImGui — no Components dependency)
             if setting.type == "toggle" then
                 local label = setting.label or key
@@ -79,20 +61,27 @@ function M.renderSettings(modId, spec, settings)
                 local step = setting.step or 0.1
                 local format = setting.format or "%.3f"
                 local v = value or setting.default or min
-                -- Use AdvancedSlider with minimal config (no ticks, no buttons)
-                newValue, settingChanged = Components.AdvancedSlider(label, v, {
+                -- Visible label before slider
+                ImGui.Text(label)
+                ImGui.SetNextItemWidth(280)
+                -- Use AdvancedSlider with full config (buttons, tooltips, labels)
+                newValue, settingChanged = Components.AdvancedSlider("##" .. key, v, {
                     min = min,
                     max = max,
                     default = setting.default,
                     step = step,
                     format = format,
+                    label = label,
+                    tooltip = setting.tooltip or nil,
+                    description = setting.description or nil,
                     showTicks = false,
-                    showButtons = false,
+                    showButtons = true,
                     showDefaultLine = true,
                     showTooltip = true,
-                    width = 256,
-                    trackHeight = 12,
+                    width = 280,
+                    trackHeight = 16,
                 })
+                ImGui.Spacing()
 
             elseif setting.type == "int_slider" then
                 local label = setting.label or key
@@ -100,22 +89,29 @@ function M.renderSettings(modId, spec, settings)
                 local max = setting.max or 100
                 local step = setting.step or 1
                 local v = math.floor(value or setting.default or min)
-                -- Use AdvancedSlider with integer step
+                -- Visible label before slider
+                ImGui.Text(label)
+                ImGui.SetNextItemWidth(280)
+                -- Use AdvancedSlider with integer step, full config
                 local rawVal
-                rawVal, settingChanged = Components.AdvancedSlider(label, v, {
+                rawVal, settingChanged = Components.AdvancedSlider("##" .. key, v, {
                     min = min,
                     max = max,
                     default = setting.default,
                     step = step,
                     format = "%d",
+                    label = label,
+                    tooltip = setting.tooltip or nil,
+                    description = setting.description or nil,
                     showTicks = false,
-                    showButtons = false,
+                    showButtons = true,
                     showDefaultLine = true,
                     showTooltip = true,
-                    width = 256,
-                    trackHeight = 12,
+                    width = 280,
+                    trackHeight = 16,
                 })
                 newValue = math.floor(rawVal + 0.5)
+                ImGui.Spacing()
 
             elseif setting.type == "combo" then
                 local label = setting.label or key
