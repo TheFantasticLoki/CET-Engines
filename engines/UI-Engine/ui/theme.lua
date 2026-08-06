@@ -15,24 +15,58 @@
     - Theme validation
 ]]
 
+---@class ThemeEngine
+---Theme push/pop engine with caching, validation, and high contrast support.
+---@field PushTheme fun()
+---@field PopTheme fun()
+---@field SetTheme fun(themeName: string): boolean, string|nil
+---@field GetTheme fun(): string
+---@field GetThemeList fun(): string[]
+---@field GetThemeCategories fun(): table[]
+---@field SetHighContrast fun(level: number)
+---@field GetContrastReport fun(): table
+---@field SetThemeOverride fun(role: string, color: ColorTable)
+---@field ClearThemeOverrides fun()
+---@field ExportTheme fun(themeName: string): table|nil
+---@field ImportTheme fun(themeName: string, themeData: table): boolean, string|nil
+---@field ValidateTheme fun(themeName: string): boolean
+---@field ValidateAccentColor fun(accent: any): boolean
+---@field GetPushCount fun(): number
+---@field IsBalanced fun(): boolean
+---@field InvalidateCache fun()
+---@field SaveThemeState fun(): table|nil
+---@field RestoreThemeState fun(): boolean
+---@field init fun(core: table, colorEngine: table, tokens: table, themes: table, logger?: table)
+---@field reset fun()
+
 local M = {}
 
 -- --- Internal State ---
 
+---@type table|nil
 local _core = nil
+---@type table|nil
 local _colorEngine = nil
+---@type table|nil
 local _tokens = nil
+---@type table|nil
 local _themes = nil
+---@type Logger?
 local _logger = nil
 
 local _initialized = false
+---@type number
 local _pushCount = 0
+---@type table<string, any>
 local _cache = {}
+---@type table<string, ColorTable>
 local _overrides = {}
 
 -- Track ACTUAL successful pushes (not just attempts)
 -- This prevents PopTheme from popping more than were actually pushed
+---@type number
 local _actualColorsPushed = 0
+---@type number
 local _actualVarsPushed = 0
 
 -- Style color count (number of PushStyleColor calls per PushTheme)
@@ -43,11 +77,11 @@ local STYLE_VAR_COUNT = 9
 -- --- Initialization ---
 
 --- Initialize theme engine (idempotent)
--- @param core Core module reference
--- @param colorEngine ColorEngine module reference
--- @param tokens Tokens module reference
--- @param themes Theme definitions module reference
--- @param logger Logger module reference (optional)
+---@param core table Core module reference
+---@param colorEngine table ColorEngine module reference
+---@param tokens table Tokens module reference
+---@param themes table Theme definitions module reference
+---@param logger? table Logger module reference (optional)
 function M.init(core, colorEngine, tokens, themes, logger)
     if _initialized then
         return
@@ -83,7 +117,7 @@ end
 -- --- Cache Management ---
 
 --- Generate composite cache key
--- @return string Cache key
+---@return string key Cache key
 local function getCacheKey()
     if not _core then
         return "default"
@@ -105,7 +139,7 @@ function M.InvalidateCache()
 end
 
 --- Get cached style colors for current theme
--- @return table Array of {ImGuiCol, r, g, b, a} entries
+---@return table Array of {ImGuiCol, r, g, b, a} entries
 local function getCachedStyleColors()
     local key = getCacheKey()
     if _cache[key] then
@@ -119,7 +153,7 @@ local function getCachedStyleColors()
 end
 
 --- Resolve theme colors to ImGui style color entries
--- @return table Array of {ImGuiCol, r, g, b, a} entries
+---@return table Array of {ImGuiCol, r, g, b, a} entries
 function resolveThemeColors()
     local colors = {}
 
@@ -211,7 +245,7 @@ function resolveThemeColors()
 end
 
 --- Get cached style vars for current theme
--- @return table Array of {ImGuiStyleVar, value} or {ImGuiStyleVar, x, y} entries
+---@return table Array of {ImGuiStyleVar, value} or {ImGuiStyleVar, x, y} entries
 local function getCachedStyleVars()
     local key = getCacheKey() .. ":vars"
     if _cache[key] then
@@ -269,6 +303,7 @@ function M.PushTheme()
     _pushCount = _pushCount + 1
     _actualColorsPushed = _actualColorsPushed + #colors
     _actualVarsPushed = _actualVarsPushed + #vars
+    if _logger then _logger.Log("Theme", "PushTheme (count=" .. _pushCount .. ")", "debug") end
 end
 
 --- Pop theme (restore previous theme state)
@@ -298,13 +333,14 @@ function M.PopTheme()
     _actualColorsPushed = 0
     _actualVarsPushed = 0
     _pushCount = _pushCount - 1
+    if _logger then _logger.Log("Theme", "PopTheme (count=" .. _pushCount .. ")", "debug") end
 end
 
 -- --- Theme Management ---
 
 --- Set current theme
--- @param themeName Theme name
--- @return boolean, string|nil success, error message
+---@param themeName Theme name
+---@return boolean, string|nil success, error message
 function M.SetTheme(themeName)
     if not _initialized then
         return false, "Theme engine not initialized"
@@ -316,6 +352,7 @@ function M.SetTheme(themeName)
 
     -- Validate theme name
     if not M.ValidateTheme(themeName) then
+        if _logger then _logger.Log("Theme", "SetTheme failed: unknown theme '" .. tostring(themeName) .. "'", "error") end
         return false, "Unknown theme: " .. tostring(themeName)
     end
 
@@ -326,12 +363,13 @@ function M.SetTheme(themeName)
 
     -- Invalidate cache
     M.InvalidateCache()
+    if _logger then _logger.Log("Theme", "SetTheme(" .. tostring(themeName) .. ")", "debug") end
 
     return true, nil
 end
 
 --- Get current theme name
--- @return string Theme name
+---@return string Theme name
 function M.GetTheme()
     if not _core then
         return "Dark"
@@ -340,7 +378,7 @@ function M.GetTheme()
 end
 
 --- Get list of available theme names
--- @return table Array of theme name strings
+---@return table Array of theme name strings
 function M.GetThemeList()
     if _themes then
         return _themes.getThemeNames()
@@ -349,7 +387,7 @@ function M.GetThemeList()
 end
 
 --- Get theme categories for UI grouping
--- @return table Array of category tables
+---@return table Array of category tables
 function M.GetThemeCategories()
     if _themes then
         return _themes.getThemeCategories()
@@ -360,7 +398,7 @@ end
 -- --- High Contrast Support ---
 
 --- Set contrast level (1-3)
--- @param level Contrast level (1=normal, 2=high, 3=very high)
+---@param level number Contrast level (1=normal, 2=high, 3=very high)
 function M.SetHighContrast(level)
     if not _initialized then
         return
@@ -377,7 +415,7 @@ function M.SetHighContrast(level)
 end
 
 --- Get contrast report for current theme
--- @return table Contrast report
+---@return table report Contrast report
 function M.GetContrastReport()
     if not _core or not _colorEngine or not _themes then
         return {}
@@ -410,8 +448,8 @@ end
 -- --- Theme Overrides ---
 
 --- Set theme override for a role
--- @param role Role key (e.g., "primary", "background")
--- @param color Color table {r, g, b}
+---@param role string Role key (e.g., "primary", "background")
+---@param color ColorTable Color table {r, g, b}
 function M.SetThemeOverride(role, color)
     if not role or type(role) ~= "string" then
         return
@@ -436,8 +474,8 @@ end
 -- --- Theme Import/Export ---
 
 --- Export theme as table
--- @param themeName Theme name
--- @return table|nil Theme data or nil
+---@param themeName string Theme name
+---@return table|nil themeData Theme data or nil
 function M.ExportTheme(themeName)
     if not _themes then
         return nil
@@ -456,9 +494,10 @@ function M.ExportTheme(themeName)
 end
 
 --- Import theme from table
--- @param themeName Theme name
--- @param themeData Theme data table
--- @return boolean, string|nil success, error message
+---@param themeName string Theme name
+---@param themeData table Theme data table
+---@return boolean success
+---@return string|nil error Error message or nil
 function M.ImportTheme(themeName, themeData)
     if not themeName or type(themeName) ~= "string" then
         return false, "Invalid theme name"
@@ -504,8 +543,8 @@ end
 -- --- Theme Validation ---
 
 --- Validate theme name exists
--- @param themeName Theme name
--- @return boolean True if valid
+---@param themeName string Theme name
+---@return boolean valid True if valid
 function M.ValidateTheme(themeName)
     if not _themes then
         return false
@@ -514,8 +553,8 @@ function M.ValidateTheme(themeName)
 end
 
 --- Validate accent color
--- @param accent Accent color {r, g, b}
--- @return boolean True if valid
+---@param accent any Accent color {r, g, b}
+---@return boolean valid True if valid
 function M.ValidateAccentColor(accent)
     if not accent or type(accent) ~= "table" then
         return false
@@ -532,13 +571,13 @@ end
 -- --- Push/Pop Balance Check ---
 
 --- Get current push count (for testing)
--- @return number Push count
+---@return number count Push count
 function M.GetPushCount()
     return _pushCount
 end
 
 --- Check if push/pop is balanced
--- @return boolean True if balanced
+---@return boolean balanced True if balanced
 function M.IsBalanced()
     return _pushCount == 0
 end
@@ -549,7 +588,7 @@ end
 local _savedThemeState = nil
 
 --- Save current theme state for later restoration
--- @return table Saved state (theme name, accent color, contrast level, overrides)
+---@return table|nil state Saved state (theme name, accent color, contrast level, overrides)
 function M.SaveThemeState()
     if not _core then
         return nil
@@ -580,7 +619,7 @@ function M.SaveThemeState()
 end
 
 --- Restore previously saved theme state
--- @return boolean success
+---@return boolean success
 function M.RestoreThemeState()
     if not _savedThemeState then
         return false
@@ -614,7 +653,7 @@ function M.RestoreThemeState()
 end
 
 --- Get saved theme state (for inspection)
--- @return table|nil Saved state or nil if not saved
+---@return table|nil state Saved state or nil if not saved
 function M.GetSavedThemeState()
     return _savedThemeState
 end
@@ -622,6 +661,7 @@ end
 -- --- Reset (for testing) ---
 
 --- Reset theme engine state (for testing)
+---@return nil
 function M.reset()
     _core = nil
     _colorEngine = nil

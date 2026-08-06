@@ -15,20 +15,35 @@
     Late-binding: Core's _emitEvent is set by Events during init.
 ]]
 
+---@alias EventHandler fun(...: any): nil
+
+---@class EventSystem
+---Pub/sub event system for UI-Engine.
+---@field on fun(event: string, handler: EventHandler, source?: string): fun()
+---@field emit fun(event: string, ...: any)
+---@field off fun(event: string, handler: EventHandler)
+---@field once fun(event: string, handler: EventHandler, source?: string): fun()
+---@field cleanup fun(modId: string)
+---@field getListenerCount fun(event: string): number
+---@field init fun(logger?: table, core?: table)
+---@field _reset fun()
+
 local M = {}
 
 -- --- Internal State ---
 
+---@type table<string, {handler: EventHandler, source: string}[]>
 local listeners = {}  -- { [event] = { {handler, source}, ... } }
 local initialized = false
 local Logger = nil  -- Lazy-loaded dependency
+---@type Logger?
 local log = nil  -- Log-Engine fallback
 
 -- --- Public API ---
 
 --- Initialize the events module (idempotent)
--- @param logger Optional Logger module reference
--- @param core Optional Core module reference
+---@param logger Optional Logger module reference
+---@param core Optional Core module reference
 function M.init(logger, core)
     if initialized then
         return
@@ -53,10 +68,10 @@ function M.init(logger, core)
 end
 
 --- Subscribe to an event
--- @param event Event name
--- @param handler Handler function
--- @param source Source label (e.g., "core", "theme", "registry")
--- @return function Unsubscribe function
+---@param event string Event name
+---@param handler EventHandler Handler function
+---@param source? string Source label (e.g., "core", "theme", "registry")
+---@return fun() Unsubscribe function
 function M.on(event, handler, source)
     if not listeners[event] then
         listeners[event] = {}
@@ -67,6 +82,7 @@ function M.on(event, handler, source)
         source = source or "unknown",
     }
     table.insert(listeners[event], entry)
+    if log then log.debug("on(" .. event .. ") from " .. (source or "unknown")) end
 
     -- Return unsubscribe function
     return function()
@@ -75,11 +91,15 @@ function M.on(event, handler, source)
 end
 
 --- Emit an event to all subscribers
--- @param event Event name
--- @param ... Event arguments
+---@param event string Event name
+---@param ... any Event arguments
 function M.emit(event, ...)
     if not listeners[event] then
         return
+    end
+
+    if log and #listeners[event] > 0 then
+        log.trace("emit(" .. event .. ") to " .. #listeners[event] .. " handler(s)")
     end
 
     -- Copy list to avoid issues if handlers modify listeners
@@ -102,8 +122,8 @@ function M.emit(event, ...)
 end
 
 --- Unsubscribe from an event
--- @param event Event name
--- @param handler Handler function to remove
+---@param event string Event name
+---@param handler EventHandler Handler function to remove
 function M.off(event, handler)
     if not listeners[event] then
         return
@@ -119,13 +139,14 @@ function M.off(event, handler)
     if #listeners[event] == 0 then
         listeners[event] = nil
     end
+    if log then log.debug("off(" .. event .. ")") end
 end
 
 --- One-shot subscription (fires once, then auto-unsubscribes)
--- @param event Event name
--- @param handler Handler function
--- @param source Source label
--- @return function Unsubscribe function
+---@param event string Event name
+---@param handler EventHandler Handler function
+---@param source? string Source label
+---@return fun() Unsubscribe function
 function M.once(event, handler, source)
     local wrapper
     wrapper = function(...)
@@ -136,7 +157,7 @@ function M.once(event, handler, source)
 end
 
 --- Remove all subscriptions for a mod
--- @param modId Module identifier
+---@param modId string Module identifier
 function M.cleanup(modId)
     for event, entries in pairs(listeners) do
         for i = #entries, 1, -1 do
@@ -151,8 +172,8 @@ function M.cleanup(modId)
 end
 
 --- Get the number of listeners for an event
--- @param event Event name
--- @return number Listener count
+---@param event string Event name
+---@return number count Listener count
 function M.getListenerCount(event)
     if not listeners[event] then
         return 0

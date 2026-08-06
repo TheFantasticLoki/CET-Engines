@@ -58,9 +58,7 @@ PATCHED_DIR="$WORKSPACE_ROOT/patched"
 GAME_DIR="$WORKSPACE_ROOT/deployment/game"
 VORTEX_DIR="$WORKSPACE_ROOT/deployment/vortex"
 
-UI_ENGINE_SRC="$ENGINES_DIR/UI-Engine"
-CONFIG_ENGINE_SRC="$ENGINES_DIR/Config-Engine"
-LOG_ENGINE_SRC="$ENGINES_DIR/Log-Engine"
+MOD_ENGINE_SRC="$ENGINES_DIR/0-Mod-Engine"
 ENGINE_0_SRC="$DEPS_DIR/0-Engine"
 
 # --- Validate deployment target ---
@@ -89,31 +87,15 @@ deploy_to_target() {
 
     echo -e "${GREEN}=== Deploying to ${target_name} ===${NC}"
 
-    # Deploy UI-Engine
-    if [ -d "$UI_ENGINE_SRC" ] && [ "$(ls -A "$UI_ENGINE_SRC" 2>/dev/null)" ]; then
-        mkdir -p "$target_dir/0-Engine-UI"
-        cp -r "$UI_ENGINE_SRC"/* "$target_dir/0-Engine-UI/"
-        echo -e "${GREEN}  ✓ UI-Engine -> ${target_name}/0-Engine-UI/${NC}"
+    # Deploy Unified 0-Mod-Engine
+    if [ -d "$MOD_ENGINE_SRC" ] && [ "$(ls -A "$MOD_ENGINE_SRC" 2>/dev/null)" ]; then
+        mkdir -p "$target_dir/0-Mod-Engine"
+        cp -r "$MOD_ENGINE_SRC"/* "$target_dir/0-Mod-Engine/"
+        echo -e "${GREEN}  ✓ 0-Mod-Engine -> ${target_name}/0-Mod-Engine/${NC}"
     else
-        echo -e "${YELLOW}  ⊘ UI-Engine skipped (empty)${NC}"
+        echo -e "${YELLOW}  ⊘ 0-Mod-Engine skipped (empty)${NC}"
     fi
 
-    # Deploy Config-Engine
-    if [ -d "$CONFIG_ENGINE_SRC" ] && [ "$(ls -A "$CONFIG_ENGINE_SRC" 2>/dev/null)" ]; then
-        mkdir -p "$target_dir/0-Engine-Config"
-        cp -r "$CONFIG_ENGINE_SRC"/* "$target_dir/0-Engine-Config/"
-        echo -e "${GREEN}  ✓ Config-Engine -> ${target_name}/0-Engine-Config/${NC}"
-    else
-        echo -e "${YELLOW}  ⊘ Config-Engine skipped (empty)${NC}"
-    fi
-    # Deploy Log-Engine
-    if [ -d "$LOG_ENGINE_SRC" ] && [ "$(ls -A "$LOG_ENGINE_SRC" 2>/dev/null)" ]; then
-        mkdir -p "$target_dir/0-Engine-Log"
-        cp -r "$LOG_ENGINE_SRC"/* "$target_dir/0-Engine-Log/"
-        echo -e "${GREEN}  \u2713 Log-Engine -> ${target_name}/0-Engine-Log/${NC}"
-    else
-        echo -e "${YELLOW}  \u2298 Log-Engine skipped (empty)${NC}"
-    fi
     # Deploy 0-Engine dependency
     if [ -d "$ENGINE_0_SRC" ] && [ "$(ls -A "$ENGINE_0_SRC" 2>/dev/null)" ]; then
         mkdir -p "$target_dir/0-Engine"

@@ -28,14 +28,16 @@ Consumer mods (like Config-Engine) register with UI-Engine and receive a `ctx` (
 - Auto-save utilities
 
 ### Config-Engine Responsibilities (Consumer App)
-- Main window orchestrator
-- Sidebar with mod list, search, favorites
-- Content area for mod settings
-- Settings panel (5 tabs)
-- Card header component
-- In-game wiki viewer
-- Preset management
-- Category management
+- Main window orchestrator (Phase 7: basic implementation)
+- Sidebar with mod list, search, categories (Phase 7: basic implementation)
+- Content area for mod settings (Phase 7: basic implementation)
+- Settings schema system (14 setting types, validation, migration)
+- Settings renderer (schema → ImGui auto-generation)
+- Settings resolver (merge defaults + saved, validate)
+- Undo/redo system (command pattern, ring buffer, batch mode)
+- State sync (auto-save with debounce, load on init)
+- Mod manager (registration, lifecycle, categories)
+- Render mode detection (schema/custom/hybrid/external)
 
 ---
 
@@ -123,10 +125,16 @@ UI-Engine is a framework. Consumer mods (like Config-Engine) build the actual UI
 ┌─────────────────────────────────────────────┐
 │  Config-Engine (Consumer Mod)               │
 │  ┌─────────┐ ┌──────────┐ ┌──────────────┐ │
-│  │ Window  │ │ Sidebar  │ │Settings Panel│ │
+│  │ Window  │ │ Sidebar  │ │Content Area  │ │
 │  └────┬────┘ └────┬─────┘ └──────┬───────┘ │
 │       └───────────┼──────────────┘          │
 │                   ▼                         │
+│  ┌──────────────────────────────────────┐   │
+│  │ Core Modules:                        │   │
+│  │  ModManager | Schema | Renderer     │   │
+│  │  Resolver | UndoRedo | StateSync    │   │
+│  └──────────────────────────────────────┘   │
+│                   │                         │
 │           ┌──────────────┐                  │
 │           │ UIEngine API │                  │
 │           └──────────────┘                  │
@@ -139,7 +147,8 @@ UI-Engine is a framework. Consumer mods (like Config-Engine) build the actual UI
 └─────────────────────────────────────────────┘
 ```
 
-**See:** `docs/plans/ConfigEngine-ModManager.md` for the full Config-Engine plan.
+**Status:** Phase 6 (Core) complete. Phase 7 (UI) basic implementation done.
+**See:** `docs/plans/Config-Engine/CONFIG-ENGINE-REVISED-PLAN.md` for the full plan.
 
     CONTENT --> CTX
     SIDEBAR --> CORE

@@ -1,13 +1,9 @@
---[[
-    Compose — UI-Engine Component Library
-
-    Composition primitives for layout and error handling.
-    Includes Row, Column, Stack, Flex, Box, Padded, Centered,
-    Spacer, Divider, ErrorBoundary, GetLastBounds, GetAvailableSpace.
-
-    Dependencies: ui/utils.lua, ui/tokens.lua, modules/logger.lua
-]]
-
+--- Compose — Composition primitives for layout and error handling.
+--- Includes Row, Column, Stack, Flex, Box, Padded, Centered,
+--- Spacer, Divider, ErrorBoundary, GetLastBounds, GetAvailableSpace.
+---
+--- Dependencies: ui/utils.lua, ui/tokens.lua, modules/logger.lua
+---@class Compose
 local M = {}
 
 local Utils = require("ui/utils")
@@ -17,7 +13,7 @@ local Tokens = require("ui/tokens")
 local _logger = nil
 
 --- Initialize compose module
--- @param logger Logger module reference
+---@param logger Logger module reference
 function M.init(logger)
     _logger = logger
 
@@ -34,8 +30,8 @@ end
 -- --- Row ---
 
 --- Row layout (horizontal)
--- @param buildFn Function that builds row content
--- @return nil
+---@param buildFn Function that builds row content
+---@return nil
 function M.Row(buildFn)
     if buildFn and type(buildFn) == "function" then
         buildFn()
@@ -45,8 +41,8 @@ end
 -- --- Column ---
 
 --- Column layout (vertical)
--- @param buildFn Function that builds column content
--- @return nil
+---@param buildFn Function that builds column content
+---@return nil
 function M.Column(buildFn)
     if buildFn and type(buildFn) == "function" then
         buildFn()
@@ -56,8 +52,8 @@ end
 -- --- Stack ---
 
 --- Stack layout (overlapping)
--- @param buildFn Function that builds stack content
--- @return nil
+---@param buildFn Function that builds stack content
+---@return nil
 function M.Stack(buildFn)
     if buildFn and type(buildFn) == "function" then
         buildFn()
@@ -67,9 +63,9 @@ end
 -- --- Flex ---
 
 --- Flex layout
--- @param direction Direction string: "horizontal" or "vertical"
--- @param buildFn Function that builds flex content
--- @return nil
+---@param direction Direction string: "horizontal" or "vertical"
+---@param buildFn Function that builds flex content
+---@return nil
 function M.Flex(direction, buildFn)
     direction = direction or "horizontal"
 
@@ -82,8 +78,8 @@ end
 -- --- Box ---
 
 --- Box layout
--- @param buildFn Function that builds box content
--- @return nil
+---@param buildFn Function that builds box content
+---@return nil
 function M.Box(buildFn)
     if buildFn and type(buildFn) == "function" then
         buildFn()
@@ -93,9 +89,9 @@ end
 -- --- Padded ---
 
 --- Padded layout
--- @param padding Padding size in pixels or {x, y}
--- @param buildFn Function that builds padded content
--- @return nil
+---@param padding Padding size in pixels or {x, y}
+---@param buildFn Function that builds padded content
+---@return nil
 function M.Padded(padding, buildFn)
     padding = padding or Tokens.SPACING.md
 
@@ -124,8 +120,8 @@ end
 -- --- Centered ---
 
 --- Centered layout
--- @param buildFn Function that builds centered content
--- @return nil
+---@param buildFn Function that builds centered content
+---@return nil
 function M.Centered(buildFn)
     -- Calculate centering offset
     local windowWidth = ImGui.GetWindowSize()
@@ -142,8 +138,8 @@ end
 -- --- Spacer ---
 
 --- Spacer element
--- @param width Spacer width (0 for horizontal, -1 for auto)
--- @param height Spacer height (0 for vertical, -1 for auto)
+---@param width Spacer width (0 for horizontal, -1 for auto)
+---@param height Spacer height (0 for vertical, -1 for auto)
 function M.Spacer(width, height)
     width = width or 0
     height = height or 0
@@ -154,6 +150,7 @@ end
 -- --- Divider ---
 
 --- Divider line
+---@return nil
 function M.Divider()
     Utils.SafeImGuiCall(ImGui.Separator)
 end
@@ -161,9 +158,9 @@ end
 -- --- Error Boundary ---
 
 --- Catches errors per-mod without crashing frame
--- @param buildFn Function to wrap
--- @param fallback Optional fallback UI function (called on error)
--- @return nil
+---@param buildFn Function to wrap
+---@param fallback Optional fallback UI function (called on error)
+---@return nil
 function M.ErrorBoundary(buildFn, fallback)
     if not buildFn or type(buildFn) ~= "function" then
         return
@@ -195,12 +192,13 @@ end
 local _lastBounds = { x = 0, y = 0, w = 0, h = 0 }
 
 --- Get the last rendered bounds
--- @return table {x, y, w, h}
+---@return table {x, y, w, h}
 function M.GetLastBounds()
     return _lastBounds
 end
 
 --- Update last bounds (called internally after rendering)
+---@return nil
 function M.UpdateLastBounds()
     local cursorX, cursorY = ImGui.GetCursorScreenPos()
     local availW, availH = ImGui.GetContentRegionAvail()
@@ -218,7 +216,7 @@ end
 -- Uses GetWindowSize() to return the full window dimensions, which is
 -- more useful for layout calculations than GetContentRegionAvail() (which
 -- returns remaining space from cursor and can be 0 after content renders).
--- @return number, number width, height (both >= 0)
+---@return number, number width, height (both >= 0)
 function M.GetAvailableSpace()
     local w, h = ImGui.GetWindowSize()
     return math.max(0, w), math.max(0, h)

@@ -1,0 +1,294 @@
+-- Config-Engine Undo/Redo System
+-- Command pattern with ring buffer for settings changes.
+
+---@class UndoRedo
+---Command pattern undo/redo with ring buffer, batch support, and preset commands.
+local M = {}
+
+-- State
+---@type table[]
+local undoStack = {}
+---@type table[]
+local redoStack = {}
+---@type table[]
+local batchStack = {}
+local inBatch = false
+---@type table[]
+local batchCommands = {}
+local batchDescription = ""
+local maxSteps = 50
+
+--- Initialize the undo/redo system.
+---@param options? table { maxSteps?: number }
+---@return nil
+function M.init(options)
+    options = options or {}
+    maxSteps = options.maxSteps or 50
+    undoStack = {}
+    redoStack = {}
+    batchStack = {}
+    inBatch = false
+    batchCommands = {}
+    batchDescription = ""
+end
+
+--- Create a setting change command.
+---@param modId string The mod ID
+---@param key string The setting key
+---@param oldValue any The previous value
+---@param newValue any The new value
+---@param description? string Optional description
+---@return table command The command object
+function M.makeSettingCommand(modId, key, oldValue, newValue, description)
+    return {
+        type = "setting",
+        modId = modId,
+        key = key,
+        oldValue = oldValue,
+        newValue = newValue,
+        description = description or (modId .. "." .. key),
+    }
+end
+
+--- Create a batch command from multiple commands.
+---@param commands table[] Array of commands
+---@param description? string Description of the batch
+---@return table command The batch command
+function M.makeBatchCommand(commands, description)
+    return {
+        type = "batch",
+        commands = commands,
+        description = description or "Batch operation",
+    }
+end
+
+--- Create a preset apply command.
+---@param modId string The mod ID
+---@param oldSettings table<string, any> The previous settings
+---@param newSettings table<string, any> The new settings
+---@param presetName string The preset name
+---@return table command The command
+function M.makePresetCommand(modId, oldSettings, newSettings, presetName)
+    return {
+        type = "preset",
+        modId = modId,
+        oldSettings = oldSettings,
+        newSettings = newSettings,
+        description = "Apply preset: " .. presetName,
+    }
+end
+
+--- Execute a command and push to undo stack.
+---@param command table The command to execute
+---@param applyFn function Function to apply the command: applyFn(command) -> boolean
+---@return boolean success
+function M.execute(command, applyFn)
+    if inBatch then
+        table.insert(batchCommands, { command = command, applyFn = applyFn })
+        return true
+    end
+
+    local ok = applyFn(command)
+    if not ok then
+        return false
+    end
+
+    -- Push to undo stack
+    table.insert(undoStack, command)
+
+    -- Trim if over max
+    while #undoStack > maxSteps do
+        table.remove(undoStack, 1)
+    end
+
+    -- Clear redo stack on new action
+    redoStack = {}
+
+    return true
+end
+
+--- Undo the most recent command.
+---@param applyFn function Function to reverse the command: applyFn(command) -> boolean
+---@return table? command The undone command, or nil if nothing to undo
+function M.undo(applyFn)
+    if inBatch then return nil end
+    if #undoStack == 0 then return nil end
+
+    local command = table.remove(undoStack)
+
+    -- Reverse the command
+    local reverseCmd = M._reverseCommand(command)
+    local ok = applyFn(reverseCmd)
+    if not ok then
+        -- Re-push on failure
+        table.insert(undoStack, command)
+        return nil
+    end
+
+    table.insert(redoStack, command)
+    return command
+end
+
+--- Redo the most recently undone command.
+---@param applyFn function Function to re-apply the command: applyFn(command) -> boolean
+---@return table? command The redone command, or nil if nothing to redo
+function M.redo(applyFn)
+    if inBatch then return nil end
+    if #redoStack == 0 then return nil end
+
+    local command = table.remove(redoStack)
+    local ok = applyFn(command)
+    if not ok then
+        table.insert(redoStack, command)
+        return nil
+    end
+
+    table.insert(undoStack, command)
+    return command
+end
+
+--- Begin a batch operation. Commands executed between begin/end are grouped.
+---@param description? string Description of the batch operation
+---@return nil
+function M.beginBatch(description)
+    if inBatch then
+        -- Nest batches
+        table.insert(batchStack, {
+            commands = batchCommands,
+            description = batchDescription,
+        })
+    end
+    inBatch = true
+    batchCommands = {}
+    batchDescription = description or "Batch operation"
+end
+
+--- End a batch operation and execute as a single undo unit.
+---@param applyFn? function Function to apply each command (used if no per-command applyFn)
+---@return boolean success
+function M.endBatch(applyFn)
+    if not inBatch then return false end
+
+    -- Check if we were nested
+    if #batchStack > 0 then
+        local outer = table.remove(batchStack)
+        -- Merge inner commands into outer
+        for _, entry in ipairs(batchCommands) do
+            table.insert(outer.commands, entry)
+        end
+        batchCommands = outer.commands
+        batchDescription = outer.description
+        return true
+    end
+
+    inBatch = false
+
+    if #batchCommands == 0 then
+        return true
+    end
+
+    -- Execute all commands
+    local commandOnly = {}
+    for _, entry in ipairs(batchCommands) do
+        local fn = entry.applyFn or applyFn
+        local ok = fn(entry.command)
+        if not ok then
+            batchCommands = {}
+            return false
+        end
+        table.insert(commandOnly, entry.command)
+    end
+
+    -- Create batch command and push to undo
+    local batchCmd = M.makeBatchCommand(commandOnly, batchDescription)
+    table.insert(undoStack, batchCmd)
+
+    while #undoStack > maxSteps do
+        table.remove(undoStack, 1)
+    end
+
+    redoStack = {}
+    batchCommands = {}
+    batchDescription = ""
+
+    return true
+end
+
+--- Check if there are commands to undo.
+---@return boolean canUndo
+function M.canUndo()
+    return not inBatch and #undoStack > 0
+end
+
+--- Check if there are commands to redo.
+---@return boolean canRedo
+function M.canRedo()
+    return not inBatch and #redoStack > 0
+end
+
+--- Get the description of the next undo command.
+---@return string? description
+function M.getUndoDescription()
+    if #undoStack == 0 then return nil end
+    return undoStack[#undoStack].description
+end
+
+--- Get the description of the next redo command.
+---@return string? description
+function M.getRedoDescription()
+    if #redoStack == 0 then return nil end
+    return redoStack[#redoStack].description
+end
+
+--- Get undo stack size.
+---@return number count
+function M.getUndoCount()
+    return #undoStack
+end
+
+--- Get redo stack size.
+---@return number count
+function M.getRedoCount()
+    return #redoStack
+end
+
+--- Clear all undo/redo history.
+---@return nil
+function M.clear()
+    undoStack = {}
+    redoStack = {}
+    batchCommands = {}
+    inBatch = false
+end
+
+--- Reverse a command for undo.
+---@param command table The command to reverse
+---@return table reversed The reversed command
+function M._reverseCommand(command)
+    if command.type == "setting" then
+        return M.makeSettingCommand(
+            command.modId,
+            command.key,
+            command.newValue,
+            command.oldValue,
+            "Undo: " .. command.description
+        )
+    elseif command.type == "batch" then
+        local reversed = {}
+        -- Reverse order for batch undo
+        for i = #command.commands, 1, -1 do
+            table.insert(reversed, M._reverseCommand(command.commands[i]))
+        end
+        return M.makeBatchCommand(reversed, "Undo: " .. command.description)
+    elseif command.type == "preset" then
+        return M.makePresetCommand(
+            command.modId,
+            command.newSettings,
+            command.oldSettings,
+            "Undo: " .. command.description
+        )
+    end
+    return command
+end
+
+return M

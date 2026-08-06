@@ -60,8 +60,8 @@ print("[UIEngine TRACE] Defining SafeRequire...")
 dbgWrite("defining SafeRequire")
 
 --- Safely require a module with pcall, logging success/failure to Log-Engine
--- @param path Module path
--- @return table|nil Module table or nil if not found
+---@param path Module path
+---@return table|nil Module table or nil if not found
 local function SafeRequire(path)
     local ok, mod = pcall(require, path)
     if ok then
@@ -117,9 +117,9 @@ local overlayOpen = false  -- Phase 4: overlay detection
 -- --- Public API ---
 
 --- Register a mod with UI-Engine
--- @param id Mod identifier
--- @param spec Mod specification table
--- @return boolean, string|nil success, error message
+---@param id Mod identifier
+---@param spec Mod specification table
+---@return boolean, string|nil success, error message
 local function Register(id, spec)
     if not Core then
         return false, "Core module not loaded"
@@ -145,8 +145,8 @@ local function Register(id, spec)
 end
 
 --- Unregister a mod from UI-Engine
--- @param id Mod identifier
--- @return boolean, string|nil success, error message
+---@param id Mod identifier
+---@return boolean, string|nil success, error message
 local function Unregister(id)
     if not Core then
         return false, "Core module not loaded"
@@ -173,8 +173,8 @@ local function Unregister(id)
 end
 
 --- Get a context object for a mod
--- @param id Mod identifier
--- @return table|nil Context object or nil
+---@param id Mod identifier
+---@return table|nil Context object or nil
 local function GetContext(id)
     if not Core then
         return nil
@@ -198,7 +198,7 @@ local function GetContext(id)
 end
 
 --- Get the current theme
--- @return string Current theme name
+---@return string Current theme name
 local function GetTheme()
     if not Core then
         return "Dark"
@@ -207,8 +207,8 @@ local function GetTheme()
 end
 
 --- Set the current theme
--- @param themeName Theme name
--- @return boolean success
+---@param themeName Theme name
+---@return boolean success
 local function SetTheme(themeName)
     -- Delegate to Theme module for validation when available
     if Theme and Theme.SetTheme then
@@ -223,7 +223,7 @@ local function SetTheme(themeName)
 end
 
 --- Get the list of available themes
--- @return table Array of theme names
+---@return table Array of theme names
 local function GetThemeList()
     if Theme then
         return Theme.GetThemeList()
@@ -232,10 +232,10 @@ local function GetThemeList()
 end
 
 --- Subscribe to an event
--- @param event Event name
--- @param handler Handler function
--- @param source Source label
--- @return function Unsubscribe function
+---@param event Event name
+---@param handler Handler function
+---@param source Source label
+---@return function Unsubscribe function
 local function On(event, handler, source)
     if not Events then
         return function() end
@@ -244,8 +244,8 @@ local function On(event, handler, source)
 end
 
 --- Emit an event
--- @param event Event name
--- @param ... Event arguments
+---@param event Event name
+---@param ... Event arguments
 local function Emit(event, ...)
     if not Events then
         return
@@ -254,8 +254,8 @@ local function Emit(event, ...)
 end
 
 --- Unsubscribe from an event
--- @param event Event name
--- @param handler Handler function
+---@param event Event name
+---@param handler Handler function
 local function Off(event, handler)
     if not Events then
         return
@@ -264,8 +264,8 @@ local function Off(event, handler)
 end
 
 --- Show deprecation warning
--- @param oldName Old API name
--- @param newName New API name
+---@param oldName Old API name
+---@param newName New API name
 local function Deprecated(oldName, newName)
     local msg = "DEPRECATED: " .. oldName .. " — use " .. (newName or "the new API")
     if log then log.warn(msg) end
@@ -275,8 +275,8 @@ local function Deprecated(oldName, newName)
 end
 
 --- Check if a mod is registered
--- @param id Mod identifier
--- @return boolean True if registered
+---@param id Mod identifier
+---@return boolean True if registered
 local function IsRegistered(id)
     if not Core then
         return false
@@ -285,7 +285,7 @@ local function IsRegistered(id)
 end
 
 --- Get list of registered mod IDs
--- @return table Array of mod IDs
+---@return table Array of mod IDs
 local function GetRegisteredMods()
     if not Core then
         return {}
@@ -294,14 +294,14 @@ local function GetRegisteredMods()
 end
 
 --- Get the UI-Engine version
--- @return string Version string
+---@return string Version string
 local function GetVersion()
     return "v0.1.0-core"
 end
 
 --- Enable a mod (set its panel as active)
--- @param id Mod identifier
--- @return boolean, string|nil success, error message
+---@param id Mod identifier
+---@return boolean, string|nil success, error message
 local function Enable(id)
     if not Core then
         return false, "Core module not loaded"
@@ -321,8 +321,8 @@ local function Enable(id)
 end
 
 --- Disable a mod (set its panel as inactive)
--- @param id Mod identifier
--- @return boolean, string|nil success, error message
+---@param id Mod identifier
+---@return boolean, string|nil success, error message
 local function Disable(id)
     if not Core then
         return false, "Core module not loaded"
@@ -342,9 +342,9 @@ local function Disable(id)
 end
 
 --- Log a message via both Logger and Log-Engine
--- @param modName Module name
--- @param message Log message
--- @param level Level name string
+---@param modName Module name
+---@param message Log message
+---@param level Level name string
 local function Log(modName, message, level)
     -- Log to UI-Engine's internal Logger (overlay, ring buffer)
     if Logger then
@@ -357,6 +357,23 @@ local function Log(modName, message, level)
 end
 
 -- --- CET Callbacks ---
+
+--- Register UI-Engine with Config-Engine for configuration
+local function registerWithConfigEngine()
+    local ConfigEngine = GetMod("0-Engine-Config")
+    if not ConfigEngine then
+        if log then log.debug("Config-Engine not found, skipping registration") end
+        return
+    end
+
+    -- Config-Engine auto-registers UI-Engine via engine_schemas.lua
+    -- Just verify it's managed
+    if ConfigEngine.IsManaged and ConfigEngine.IsManaged("0-Engine-UI") then
+        if log then log.info("Registered with Config-Engine") end
+    else
+        if log then log.debug("Config-Engine does not yet manage UI-Engine") end
+    end
+end
 
 --- onInit handler — called when CET loads the mod
 local function onInit()
@@ -497,6 +514,9 @@ local function onInit()
     if log then log.info("=== onInit END ===") end
     print("[UIEngine TRACE] >>>>>> onInit() COMPLETE <<<<<<")
     dbgWrite("onInit() COMPLETE")
+
+    -- Register with Config-Engine (if available)
+    registerWithConfigEngine()
 end
 
 --- onDraw handler — called each frame
@@ -599,7 +619,7 @@ else
 end
 
 --- Check if the CET overlay is open
--- @return boolean True if overlay is visible
+---@return boolean True if overlay is visible
 local function IsOverlayOpen()
     return overlayOpen
 end

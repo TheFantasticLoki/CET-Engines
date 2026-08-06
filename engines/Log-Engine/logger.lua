@@ -18,6 +18,16 @@
     Deduplication: suppresses duplicate messages, writes summary
 ]]
 
+---@class LogEntry
+---@field timestamp string HH:MM:SS.mmm timestamp
+---@field frame number Frame counter when logged
+---@field modName string Source mod identifier
+---@field message string Log message content
+---@field level number Numeric log level
+---@field levelName string Level name (DEBUG, INFO, WARN, ERROR, PRINT)
+
+---@class LoggerInstance
+--- Core logging engine instance with ring buffer, file output, and deduplication.
 local M = {}
 
 -- --- SafeRequire (inline, no external deps) ---
@@ -31,6 +41,11 @@ end
 local Config = SafeRequire("config") or {}
 local FileOutput = SafeRequire("file_output")
 
+-- --- Logger (set by init.lua after bootstrap) ---
+
+---@type Logger? Log-Engine logger instance (set via M.setLogger)
+local log = nil
+
 -- --- Level Names (with fallback) ---
 local LEVEL_NAMES = Config.LEVEL_NAMES or {
     [1] = "DEBUG",
@@ -42,15 +57,20 @@ local LEVEL_NAMES = Config.LEVEL_NAMES or {
 
 -- --- Level Helpers ---
 
+---@type number
 local LEVEL_DEBUG = Config.LEVEL_DEBUG or 1
+---@type number
 local LEVEL_INFO = Config.LEVEL_INFO or 2
+---@type number
 local LEVEL_WARN = Config.LEVEL_WARN or 3
+---@type number
 local LEVEL_ERROR = Config.LEVEL_ERROR or 4
+---@type number
 local LEVEL_PRINT = Config.LEVEL_PRINT or 5
 
 --- Get numeric level from string
--- @param levelStr Level name ("debug", "info", "warn", "error", "print")
--- @return number Numeric level
+---@param levelStr Level name ("debug", "info", "warn", "error", "print")
+---@return number Numeric level
 local function getLevelNum(levelStr)
     if levelStr == "debug" then return LEVEL_DEBUG end
     if levelStr == "info" then return LEVEL_INFO end
@@ -61,7 +81,7 @@ local function getLevelNum(levelStr)
 end
 
 --- Get timestamp string (time-only, since date is in session header)
--- @return string Timestamp in HH:MM:SS.mmm format
+---@return string Timestamp in HH:MM:SS.mmm format
 local function getTimestamp()
     local sec = os.date("%H:%M:%S")
     -- os.clock() gives CPU time as a sub-second approximation
@@ -72,10 +92,10 @@ end
 -- --- Logger Instance Factory ---
 
 --- Create a logger instance for a mod
--- @param modName string Unique mod identifier
--- @param config table Optional overrides { minLevel, ringSize, filePath, maxDebugPerFrame, dedupEnabled }
--- @param currentFrameRef table Reference to shared frame counter { value = N }
--- @return table Logger instance with public methods
+---@param modName string Unique mod identifier
+---@param config table Optional overrides { minLevel, ringSize, filePath, maxDebugPerFrame, dedupEnabled }
+---@param currentFrameRef table Reference to shared frame counter { value = N }
+---@return table Logger instance with public methods
 function M.create(modName, config, currentFrameRef)
     if type(modName) ~= "string" or modName == "" then
         error("LogEngine.CreateLogger: modName must be a non-empty string")
@@ -109,6 +129,10 @@ function M.create(modName, config, currentFrameRef)
     local logger = {}
     logger.modName = modName
 
+    if log then
+        log.debug("Logger created for: " .. modName .. " (level=" .. (config.minLevel or "debug") .. ", ring=" .. tostring(ringSize) .. ")")
+    end
+
     -- --- Internal: add entry to ring buffer ---
 
     local function addEntry(message, level)
@@ -135,7 +159,7 @@ function M.create(modName, config, currentFrameRef)
     end
 
     --- Flush pending dedup summaries for a specific key
-    -- @param key string Dedup key
+    ---@param key string Dedup key
     local function flushDedup(key)
         local info = dedupTable[key]
         if info and info.count > 1 then
@@ -170,8 +194,8 @@ function M.create(modName, config, currentFrameRef)
     -- --- Public API ---
 
     --- Log a message at a specific level
-    -- @param level string Log level ("debug", "info", "warn", "error", "print")
-    -- @param message string Log message
+    ---@param level string Log level ("debug", "info", "warn", "error", "print")
+    ---@param message string Log message
     function logger.log(level, message)
         local levelNum = getLevelNum(level or "info")
 
@@ -222,39 +246,39 @@ function M.create(modName, config, currentFrameRef)
     end
 
     --- Log at debug level
-    -- @param message string Log message
+    ---@param message string Log message
     function logger.debug(message)
         logger.log("debug", message)
     end
 
     --- Log at info level
-    -- @param message string Log message
+    ---@param message string Log message
     function logger.info(message)
         logger.log("info", message)
     end
 
     --- Log at warn level
-    -- @param message string Log message
+    ---@param message string Log message
     function logger.warn(message)
         logger.log("warn", message)
     end
 
     --- Log at error level
-    -- @param message string Log message
+    ---@param message string Log message
     function logger.error(message)
         logger.log("error", message)
     end
 
     --- Log at print level (console + file)
-    -- @param message string Log message
+    ---@param message string Log message
     function logger.print(message)
         logger.log("print", message)
     end
 
     --- Log a formatted message (string.format)
-    -- @param level string Log level
-    -- @param fmt string Format string
-    -- @param ... Format arguments
+    ---@param level string Log level
+    ---@param fmt string Format string
+    ---@param ... Format arguments
     function logger.logf(level, fmt, ...)
         local ok, msg = pcall(string.format, fmt, ...)
         if ok then
@@ -265,13 +289,13 @@ function M.create(modName, config, currentFrameRef)
     end
 
     --- Change the minimum log level at runtime
-    -- @param level string New minimum level
+    ---@param level string New minimum level
     function logger.setLevel(level)
         minLevel = getLevelNum(level or "debug")
     end
 
     --- Get the current minimum log level as a string
-    -- @return string Current minimum level name
+    ---@return string Current minimum level name
     function logger.getLevel()
         for levelNum, levelName in pairs(LEVEL_NAMES) do
             if levelNum == minLevel then return levelName:lower() end
@@ -280,15 +304,15 @@ function M.create(modName, config, currentFrameRef)
     end
 
     --- Get the current minimum log level as a number
-    -- @return number Current minimum level
+    ---@return number Current minimum level
     function logger.getLevelNum()
         return minLevel
     end
 
     --- Get entries from this logger's ring buffer
-    -- @param count number Max entries to return (default: 100)
-    -- @param filterLevel string Optional minimum level filter
-    -- @return table Array of log entries
+    ---@param count number Max entries to return (default: 100)
+    ---@param filterLevel string Optional minimum level filter
+    ---@return table Array of log entries
     function logger.getEntries(count, filterLevel)
         count = count or 100
         local filterNum = filterLevel and getLevelNum(filterLevel) or LEVEL_DEBUG
@@ -310,7 +334,7 @@ function M.create(modName, config, currentFrameRef)
     end
 
     --- Get logging statistics for this mod
-    -- @return table { totalLogged, byLevel = {debug=N, info=N, warn=N, error=N, print=N} }
+    ---@return table { totalLogged, byLevel = {debug=N, info=N, warn=N, error=N, print=N} }
     function logger.getStats()
         local stats = {
             totalLogged = entryCount,
@@ -333,8 +357,8 @@ function M.create(modName, config, currentFrameRef)
     end
 
     --- Get recent error entries
-    -- @param count number Max errors to return (default: 20)
-    -- @return table Array of error entries
+    ---@param count number Max errors to return (default: 20)
+    ---@return table Array of error entries
     function logger.getRecentErrors(count)
         count = count or 20
         local errors = {}
@@ -358,7 +382,7 @@ function M.create(modName, config, currentFrameRef)
     end
 
     --- Set a custom file path for this mod's logs
-    -- @param path string Relative or absolute file path
+    ---@param path string Relative or absolute file path
     function logger.setFilePath(path)
         FileOutput.setFilePath(modName, path)
     end
@@ -368,7 +392,7 @@ function M.create(modName, config, currentFrameRef)
         FileOutput.flush(modName)
     end
 
-    --- Clear this logger's ring buffer
+    --- Clear this logger's ring buffer.
     function logger.clear()
         entries = {}
         entryCount = 0
@@ -377,25 +401,25 @@ function M.create(modName, config, currentFrameRef)
         dedupOrder = {}
     end
 
-    --- Reset the debug rate limiter (called each frame)
+    --- Reset the debug rate limiter (called each frame).
     function logger.resetFrameCounter()
         debugCountThisFrame = 0
     end
 
     --- Get the total number of entries logged (including overwritten)
-    -- @return number Total entries ever logged
+    ---@return number Total entries ever logged
     function logger.getTotalLogged()
         return entryCount
     end
 
     --- Get the ring buffer capacity
-    -- @return number Ring buffer size
+    ---@return number Ring buffer size
     function logger.getCapacity()
         return ringSize
     end
 
     --- Get dedup statistics
-    -- @return table { totalDeduped, pendingSummaries }
+    ---@return table { totalDeduped, pendingSummaries }
     function logger.getDedupStats()
         local pending = 0
         for _, info in pairs(dedupTable) do
@@ -409,12 +433,18 @@ function M.create(modName, config, currentFrameRef)
         }
     end
 
-    --- Flush all pending dedup summaries to file
+    --- Flush all pending dedup summaries to file.
     function logger.flushDedup()
         flushAllDedup()
     end
 
     return logger
+end
+
+--- Set the logger instance for LoggerModule internal logging.
+---@param logger Logger Logger instance from Log-Engine
+function M.setLogger(logger)
+    log = logger
 end
 
 return M

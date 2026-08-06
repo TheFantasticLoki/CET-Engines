@@ -1,12 +1,8 @@
---[[
-    Console — UI-Engine Component Library
-
-    Console components for log viewing and input.
-    Includes ConsoleOutput, RichInput, ConsoleToolbar.
-
-    Dependencies: ui/utils.lua, ui/tokens.lua, modules/logger.lua
-]]
-
+--- ConsoleComponents — Console components for log viewing and input.
+--- Includes ConsoleOutput, RichInput, ConsoleToolbar.
+---
+--- Dependencies: ui/utils.lua, ui/tokens.lua, modules/logger.lua
+---@class ConsoleComponents
 local M = {}
 
 local Utils = require("ui/utils")
@@ -15,9 +11,9 @@ local Tokens = require("ui/tokens")
 -- --- Console Output ---
 
 --- Searchable log viewer
--- @param entries Array of log entry tables {timestamp, level, modName, message}
--- @param height Height in pixels
--- @param options Optional: {filter, autoScroll}
+---@param entries Array of log entry tables {timestamp, level, modName, message}
+---@param height Height in pixels
+---@param options Optional: {filter, autoScroll}
 function M.ConsoleOutput(entries, height, options)
     entries = entries or {}
     height = height or 200
@@ -73,10 +69,10 @@ end
 -- --- Rich Input ---
 
 --- Input with history + shortcuts
--- @param prompt Prompt label
--- @param onSubmit Callback function(text)
--- @param options Optional: {history, placeholder}
--- @return string text, boolean submitted
+---@param prompt Prompt label
+---@param onSubmit Callback function(text)
+---@param options Optional: {history, placeholder}
+---@return string text, boolean submitted
 function M.RichInput(prompt, onSubmit, options)
     prompt = prompt or "> "
     options = options or {}
@@ -119,7 +115,7 @@ end
 -- --- Console Toolbar ---
 
 --- Toolbar buttons
--- @param actions Array of action tables {label, icon, onClick, tooltip}
+---@param actions Array of action tables {label, icon, onClick, tooltip}
 function M.ConsoleToolbar(actions)
     actions = actions or {}
 

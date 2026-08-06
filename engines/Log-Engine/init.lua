@@ -19,11 +19,20 @@
     Public API returned by this module.
 ]]
 
+---@class LogEngine
+--- Log-Engine — Unified Mod Version
+---
+--- Provides robust, file-based logging to all other mods.
+--- Consumer mods access via `_LogEngine.CreateLogger(modName, config)`.
+---
+---@version 1.1.0
+---@license MIT
+
 -- --- SafeRequire Pattern ---
 
 --- Safely require a module with pcall
--- @param path Module path
--- @return table|nil Module table or nil if not found
+---@param path Module path
+---@return table|nil Module table or nil if not found
 local function SafeRequire(path)
     local ok, mod = pcall(require, path)
     if ok then
@@ -56,8 +65,8 @@ local loggers = {}
 local sessionId = ""
 
 --- Generate a short hex session ID
--- @param length number Length of hex string (default: 8)
--- @return string Hex session ID
+---@param length number Length of hex string (default: 8)
+---@return string Hex session ID
 local function generateSessionId(length)
     length = length or (Config and Config.SESSION_ID_LENGTH) or 8
     local id = ""
@@ -69,10 +78,13 @@ end
 
 -- --- Public API ---
 
---- Create a logger instance for a consumer mod
--- @param modName string Unique mod identifier
--- @param config table Optional { minLevel, ringSize, filePath, maxDebugPerFrame, dedupEnabled }
--- @return table Logger instance
+--- Create (or retrieve) a logger instance for a mod.
+--- Idempotent — calling twice with the same `modName` returns the existing logger.
+---
+---@param modName string Unique mod identifier (e.g., `"MyMod"`)
+---@param config? LogConfig Optional configuration overrides
+---@return LoggerInstance? logger Logger instance, or nil if LoggerModule failed to load
+---@return string? error Error message if creation failed
 local function CreateLogger(modName, config)
     if not LoggerModule then
         print("[LogEngine] Logger module not loaded, cannot create logger for: " .. tostring(modName))
@@ -98,15 +110,17 @@ local function CreateLogger(modName, config)
     return logger
 end
 
---- Get an existing logger for a mod
--- @param modName string Mod identifier
--- @return table|nil Logger instance or nil
+--- Get an existing logger for a mod.
+---
+---@param modName string Mod identifier
+---@return LoggerInstance? logger Logger instance or nil if not found
 local function GetLogger(modName)
     return loggers[modName] or nil
 end
 
---- Get all registered logger mod names
--- @return table Array of mod name strings
+--- Get all registered logger mod names.
+---
+---@return string[] Array of mod name strings
 local function GetLoggerNames()
     local names = {}
     for name, _ in pairs(loggers) do
@@ -117,7 +131,7 @@ local function GetLoggerNames()
 end
 
 --- Get aggregate statistics across all loggers
--- @return table Aggregate stats
+---@return table Aggregate stats
 local function GetStats()
     if Stats then
         return Stats.getAggregateStats()
@@ -125,9 +139,10 @@ local function GetStats()
     return { totalMods = 0, totalLogged = 0, byLevel = {} }
 end
 
---- Get recent errors across all mods
--- @param count number Max errors (default: 20)
--- @return table Array of error entries
+--- Get recent errors across all mods.
+---
+---@param count? number Max errors (default: 20)
+---@return LogEntry[] Array of error entries
 local function GetRecentErrors(count)
     if Stats then
         return Stats.getRecentErrors(count)
@@ -135,8 +150,9 @@ local function GetRecentErrors(count)
     return {}
 end
 
---- Get mod summary for display
--- @return table Array of { modName, totalLogged, errorCount, lastLog }
+--- Get mod summary for display.
+---
+---@return table[] Array of { modName, totalLogged, errorCount, lastLog }
 local function GetModSummary()
     if Stats then
         return Stats.getModSummary()
@@ -144,14 +160,16 @@ local function GetModSummary()
     return {}
 end
 
---- Get Log-Engine version
--- @return string Version string
+--- Get Log-Engine version.
+---
+---@return string Version string (semver format)
 local function GetVersion()
     return "v1.1.0"
 end
 
---- Set global minimum level for all loggers
--- @param level string Minimum level ("debug", "info", "warn", "error")
+--- Set global minimum level for all loggers.
+---
+---@param level LogLevel Minimum level
 local function SetGlobalLevel(level)
     for _, logger in pairs(loggers) do
         if logger.setLevel then
@@ -160,14 +178,14 @@ local function SetGlobalLevel(level)
     end
 end
 
---- Flush all log files to disk
+--- Flush all log files to disk.
 local function FlushAll()
     if FileOutput then
         FileOutput.flushAll()
     end
 end
 
---- Flush all pending dedup summaries
+--- Flush all pending dedup summaries.
 local function FlushAllDedup()
     for _, logger in pairs(loggers) do
         if logger.flushDedup then
@@ -177,14 +195,14 @@ local function FlushAllDedup()
 end
 
 --- Get the current session ID
--- @return string Session ID
+---@return string Session ID
 local function GetSessionId()
     return sessionId
 end
 
 -- --- CET Callbacks ---
 
---- onInit handler — called when CET loads the mod
+--- onInit handler — called when CET loads the mod.
 local function onInit()
     if initialized then
         return  -- Idempotent
@@ -205,9 +223,21 @@ local function onInit()
     end
 
     -- Log-Engine's own logger
-    CreateLogger("LogEngine", { minLevel = "info" })
+    local ownLogger = CreateLogger("LogEngine", { minLevel = "info" })
+
+    -- Wire up logger references for sub-modules
+    if FileOutput and FileOutput.setLogger and ownLogger then
+        FileOutput.setLogger(ownLogger)
+    end
+    if LoggerModule and LoggerModule.setLogger and ownLogger then
+        LoggerModule.setLogger(ownLogger)
+    end
+    if Stats and Stats.setLogger and ownLogger then
+        Stats.setLogger(ownLogger)
+    end
 
     -- Startup summary
+    if ownLogger then ownLogger.info("Log-Engine initializing (session: " .. sessionId .. ")") end
     print("[LogEngine] " .. GetVersion() .. " loaded (session: " .. sessionId .. ")")
     local modules = {
         Config = Config,
@@ -218,9 +248,25 @@ local function onInit()
     for name, mod in pairs(modules) do
         print("[LogEngine]   " .. name .. ": " .. (mod and "OK" or "MISSING"))
     end
+
+    -- Register with Config-Engine (if available)
+    registerWithConfigEngine()
 end
 
---- onDraw handler — called each frame
+--- Register Log-Engine with Config-Engine for configuration
+local function registerWithConfigEngine()
+    local ConfigEngine = GetMod("0-Engine-Config")
+    if not ConfigEngine then
+        return  -- Config-Engine not available, skip
+    end
+
+    -- Config-Engine auto-registers Log-Engine via engine_schemas.lua
+    if ConfigEngine.IsManaged and ConfigEngine.IsManaged("0-Engine-Log") then
+        print("[LogEngine] Registered with Config-Engine")
+    end
+end
+
+--- onDraw handler — called each frame.
 local function onDraw()
     frameCount = frameCount + 1
     currentFrameRef.value = frameCount
@@ -233,7 +279,7 @@ local function onDraw()
     end
 end
 
---- onShutdown handler — called when CET unloads the mod
+--- onShutdown handler — called when CET unloads the mod.
 local function onShutdown()
     -- Flush all pending dedup summaries
     FlushAllDedup()

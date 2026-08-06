@@ -1,12 +1,8 @@
---[[
-    Containers — UI-Engine Component Library
-
-    Container widgets for organizing content.
-    Includes CollapsingSection, TreeNode, CustomTreeNode.
-
-    Dependencies: ui/utils.lua, ui/tokens.lua, core.lua (for section state)
-]]
-
+--- ContainerComponents — Container widgets for organizing content.
+--- Includes CollapsingSection, TreeNode, CustomTreeNode, Card.
+---
+--- Dependencies: ui/utils.lua, ui/tokens.lua, core.lua (for section state)
+---@class ContainerComponents
 local M = {}
 
 local Utils = require("ui/utils")
@@ -16,7 +12,7 @@ local Tokens = require("ui/tokens")
 local _core = nil
 
 --- Initialize containers module
--- @param core Core module reference
+---@param core Core module reference
 function M.init(core)
     _core = core
 end
@@ -24,11 +20,11 @@ end
 -- --- Collapsing Section ---
 
 --- Collapsing section with persisted state
--- @param label Section label
--- @param defaultOpen Default open state
--- @param buildFn Function that builds section content
--- @param options Optional: {group, tooltip}
--- @return boolean isOpen
+---@param label Section label
+---@param defaultOpen Default open state
+---@param buildFn Function that builds section content
+---@param options Optional: {group, tooltip}
+---@return boolean isOpen
 function M.CollapsingSection(label, defaultOpen, buildFn, options)
     label = label or ""
     defaultOpen = defaultOpen ~= false
@@ -72,9 +68,9 @@ end
 -- --- Tree Node ---
 
 --- Tree node
--- @param label Node label
--- @param buildFn Function that builds node content
--- @return boolean isOpen
+---@param label Node label
+---@param buildFn Function that builds node content
+---@return boolean isOpen
 function M.TreeNode(label, buildFn)
     label = label or ""
 
@@ -91,10 +87,10 @@ end
 -- --- Custom Tree Node ---
 
 --- Sidebar category variant with icon
--- @param label Node label
--- @param icon Icon text/glyph (optional)
--- @param buildFn Function that builds node content
--- @return boolean isOpen
+---@param label Node label
+---@param icon Icon text/glyph (optional)
+---@param buildFn Function that builds node content
+---@return boolean isOpen
 function M.CustomTreeNode(label, icon, buildFn)
     label = label or ""
 
@@ -117,8 +113,8 @@ end
 -- --- Card ---
 
 --- Card container with header, body, footer
--- @param spec Table: { title, subtitle, icon, headerRight, body, footer, onClick, selected }
--- @return boolean clicked
+---@param spec Table: { title, subtitle, icon, headerRight, body, footer, onClick, selected }
+---@return boolean clicked
 function M.Card(spec)
     spec = spec or {}
     local title = spec.title or ""

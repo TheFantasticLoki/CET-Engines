@@ -1,12 +1,8 @@
---[[
-    Tables — UI-Engine Component Library
-
-    Table wrapper for tabular data.
-    Includes BeginTable wrapper.
-
-    Dependencies: ui/utils.lua
-]]
-
+--- TableComponents — Table wrapper for tabular data.
+--- Includes BeginTable, EndTable, TableRow.
+---
+--- Dependencies: ui/utils.lua
+---@class TableComponents
 local M = {}
 
 local Utils = require("ui/utils")
@@ -14,10 +10,10 @@ local Utils = require("ui/utils")
 -- --- Begin Table ---
 
 --- Thin wrapper for ImGui.BeginTable
--- @param id Table identifier
--- @param columns Number of columns
--- @param options Optional: {flags, outerSize, innerWidth}
--- @return boolean isOpen
+---@param id Table identifier
+---@param columns Number of columns
+---@param options Optional: {flags, outerSize, innerWidth}
+---@return boolean isOpen
 function M.BeginTable(id, columns, options)
     id = id or "##table"
     columns = columns or 2
@@ -36,8 +32,8 @@ function M.EndTable()
 end
 
 --- Render a table row
--- @param cells Array of cell values
--- @param widths Optional array of column widths
+---@param cells Array of cell values
+---@param widths Optional array of column widths
 function M.TableRow(cells, widths)
     cells = cells or {}
     widths = widths or {}

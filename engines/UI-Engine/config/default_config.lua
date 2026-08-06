@@ -62,7 +62,7 @@ M.DEFAULT_THEME_SETTINGS = {
 -- --- Helper Functions ---
 
 --- Get all default values
--- @return table All defaults
+---@return table All defaults
 function M.getDefaults()
     return {
         theme = M.DEFAULT_THEME_SETTINGS,
@@ -74,13 +74,13 @@ function M.getDefaults()
 end
 
 --- Get theme defaults
--- @return table Theme defaults
+---@return table Theme defaults
 function M.getThemeDefaults()
     return M.DEFAULT_THEME_SETTINGS
 end
 
 --- Get settings defaults
--- @return table Settings defaults
+---@return table Settings defaults
 function M.getSettingsDefaults()
     return M.DEFAULT_SETTINGS
 end

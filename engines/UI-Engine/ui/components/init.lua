@@ -1,18 +1,14 @@
---[[
-    Components — UI-Engine Component Library
-
-    Barrel re-export for all component sub-modules.
-    All ~50+ widgets accessible via single require("ui/components").
-
-    Uses SafeRequire for all sub-modules so that a single failure
-    doesn't crash the entire component library.
-
-    Usage:
-        local Components = require("ui/components")
-        Components.Button("Click me")
-        Components.Text("Hello world")
-]]
-
+--- ComponentLibrary — Barrel re-export for all component sub-modules.
+--- All ~50+ widgets accessible via single require("ui/components").
+---
+--- Uses SafeRequire for all sub-modules so that a single failure
+--- doesn't crash the entire component library.
+---
+--- Usage:
+---     local Components = require("ui/components")
+---     Components.Button("Click me")
+---     Components.Text("Hello world")
+---@class ComponentLibrary
 local M = {}
 
 -- --- SafeRequire for component sub-modules ---
@@ -24,18 +20,30 @@ local function SafeRequire(path)
     return nil
 end
 
--- Import all sub-modules (SafeRequire — one failure doesn't kill all)
+--- Import all sub-modules (SafeRequire — one failure doesn't kill all)
+---@type PrimitiveComponents|nil
 M.primitives = SafeRequire("ui/components/primitives")
+---@type ButtonComponents|nil
 M.buttons = SafeRequire("ui/components/buttons")
+---@type DisplayComponents|nil
 M.display = SafeRequire("ui/components/display")
+---@type LayoutComponents|nil
 M.layout = SafeRequire("ui/components/layout")
+---@type InputComponents|nil
 M.inputs = SafeRequire("ui/components/inputs")
+---@type SliderComponents|nil
 M.sliders = SafeRequire("ui/components/sliders")
+---@type ContainerComponents|nil
 M.containers = SafeRequire("ui/components/containers")
+---@type AdvancedComponents|nil
 M.advanced = SafeRequire("ui/components/advanced")
+---@type Compose|nil
 M.compose = SafeRequire("ui/components/compose")
+---@type ConsoleComponents|nil
 M.console = SafeRequire("ui/components/console")
+---@type TableComponents|nil
 M.tables = SafeRequire("ui/components/tables")
+---@type IconComponents|nil
 M.icons = SafeRequire("ui/components/icons")
 
 -- Flatten into single API (only functions, don't overwrite sub-module tables)
@@ -57,9 +65,10 @@ end
 
 -- Initialize modules that need dependencies
 --- Initialize all component modules with dependencies
--- @param logger Logger module reference
--- @param core Core module reference
--- @param theme Theme module reference
+---@param logger Logger module reference
+---@param core Core module reference
+---@param theme Theme module reference
+---@return boolean success
 function M.init(logger, core, theme)
     if M.containers and M.containers.init then
         M.containers.init(core)
@@ -70,6 +79,11 @@ function M.init(logger, core, theme)
     if M.compose and M.compose.init then
         M.compose.init(logger)
     end
+    if logger and logger.debug then
+        logger.debug("[Components] Initialized (primitives=%s, buttons=%s, display=%s)",
+            tostring(M.primitives ~= nil), tostring(M.buttons ~= nil), tostring(M.display ~= nil))
+    end
+    return true
 end
 
 return M

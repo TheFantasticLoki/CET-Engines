@@ -28,8 +28,8 @@ local log = nil  -- Log-Engine fallback
 -- --- Helper Functions ---
 
 --- Deep copy a table
--- @param t Table to copy
--- @return table Deep copy
+---@param t Table to copy
+---@return table Deep copy
 local function deepCopy(t)
     if type(t) ~= "table" then return t end
     local result = {}
@@ -40,8 +40,8 @@ local function deepCopy(t)
 end
 
 --- Read file contents
--- @param path File path
--- @return string|nil File contents or nil
+---@param path File path
+---@return string|nil File contents or nil
 local function readFile(path)
     local f = io.open(path, "r")
     if not f then return nil end
@@ -51,9 +51,9 @@ local function readFile(path)
 end
 
 --- Write content to file
--- @param path File path
--- @param content Content to write
--- @return boolean Success
+---@param path File path
+---@param content Content to write
+---@return boolean Success
 local function writeFile(path, content)
     local f = io.open(path, "w")
     if not f then return false end
@@ -63,7 +63,7 @@ local function writeFile(path, content)
 end
 
 --- Log an error message
--- @param msg Error message
+---@param msg Error message
 local function logError(msg)
     if Logger then
         Logger.Log("Storage", msg, "error")
@@ -73,7 +73,7 @@ local function logError(msg)
 end
 
 --- Log an info message
--- @param msg Info message
+---@param msg Info message
 local function logInfo(msg)
     if Logger then
         Logger.Log("Storage", msg, "info")
@@ -85,7 +85,7 @@ end
 -- --- Public API ---
 
 --- Initialize storage (idempotent)
--- @param logger Optional Logger module reference
+---@param logger Optional Logger module reference
 function M.init(logger)
     if initialized then
         return
@@ -135,7 +135,7 @@ function M.init(logger)
 end
 
 --- Save all data to disk (atomic write)
--- @return boolean Success
+---@return boolean Success
 function M.Save()
     local ok, err = pcall(function()
         -- Step 1: Write to temp file
@@ -168,9 +168,9 @@ function M.Save()
 end
 
 --- Set a value for a mod
--- @param modName Module name
--- @param key Key name
--- @param value Value to store
+---@param modName Module name
+---@param key Key name
+---@param value Value to store
 function M.Set(modName, key, value)
     if not data[modName] then
         data[modName] = {}
@@ -180,10 +180,10 @@ function M.Set(modName, key, value)
 end
 
 --- Get a value for a mod
--- @param modName Module name
--- @param key Key name
--- @param defaultValue Default value if key doesn't exist
--- @return any The stored value or default
+---@param modName Module name
+---@param key Key name
+---@param defaultValue Default value if key doesn't exist
+---@return any The stored value or default
 function M.Get(modName, key, defaultValue)
     if data[modName] and data[modName][key] ~= nil then
         return data[modName][key]
@@ -192,7 +192,7 @@ function M.Get(modName, key, defaultValue)
 end
 
 --- Clear all data for a mod
--- @param modName Module name
+---@param modName Module name
 function M.Clear(modName)
     if data[modName] then
         data[modName] = nil
@@ -201,7 +201,7 @@ function M.Clear(modName)
 end
 
 --- Check if there are unsaved changes
--- @return boolean True if dirty
+---@return boolean True if dirty
 function M.IsDirty()
     return dirty
 end

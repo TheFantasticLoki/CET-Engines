@@ -1,0 +1,8 @@
+=== Log Session ===
+Session: test123
+Started: 2026-08-05T21:12:26
+Mod: TestMod
+Level: debug
+Ring Buffer: 1024
+===================
+[12:00:00] [INFO] [0] TestMod: Hello test

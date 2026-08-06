@@ -12,6 +12,27 @@
     Base style variables are shared across all themes.
 ]]
 
+---@alias ColorRGB {r: number, g: number, b: number}
+
+---@class ThemeDef
+---@field accent ColorRGB Accent color for palette generation
+---@field roles table<string, ColorRGB> Semantic role color overrides
+
+---@class ThemeDefinitions
+---Pure data definitions for all 16 built-in themes.
+---@field THEMES table<string, ThemeDef>
+---@field THEME_ORDER string[]
+---@field THEME_CATEGORIES table[]
+---@field BASE_STYLE_VARS table<string, any>
+---@field ROLES table[]
+---@field getTheme fun(name: string): ThemeDef|nil
+---@field getThemeNames fun(): string[]
+---@field getThemeCategories fun(): table[]
+---@field getRole fun(themeName: string, roleKey: string): ColorRGB|nil
+---@field getAccent fun(themeName: string): ColorRGB|nil
+---@field getBaseStyleVars fun(): table
+---@field getRoles fun(): table[]
+
 local M = {}
 
 -- --- Theme Definitions ---
@@ -307,28 +328,28 @@ M.ROLES = {
 -- --- Helper Functions ---
 
 --- Get a theme definition by name
--- @param name Theme name
--- @return table|nil Theme definition or nil
+---@param name string Theme name
+---@return ThemeDef|nil themeDef Theme definition or nil
 function M.getTheme(name)
     return M.THEMES[name]
 end
 
 --- Get list of available theme names
--- @return table Array of theme name strings
+---@return string[] themeNames Array of theme name strings
 function M.getThemeNames()
     return M.THEME_ORDER
 end
 
 --- Get theme categories for UI grouping
--- @return table Array of category tables
+---@return table[] categories Array of category tables
 function M.getThemeCategories()
     return M.THEME_CATEGORIES
 end
 
 --- Get a semantic role color from a theme
--- @param themeName Theme name
--- @param roleKey Role key (e.g., "primary", "background")
--- @return table|nil Color table {r, g, b} or nil
+---@param themeName string Theme name
+---@param roleKey string Role key (e.g., "primary", "background")
+---@return ColorRGB|nil color Color table {r, g, b} or nil
 function M.getRole(themeName, roleKey)
     local theme = M.THEMES[themeName]
     if not theme then return nil end
@@ -336,8 +357,8 @@ function M.getRole(themeName, roleKey)
 end
 
 --- Get accent color from a theme
--- @param themeName Theme name
--- @return table|nil Accent color {r, g, b} or nil
+---@param themeName string Theme name
+---@return ColorRGB|nil accent Accent color {r, g, b} or nil
 function M.getAccent(themeName)
     local theme = M.THEMES[themeName]
     if not theme then return nil end
@@ -345,13 +366,13 @@ function M.getAccent(themeName)
 end
 
 --- Get base style variables
--- @return table Base style variables
+---@return table baseVars Base style variables
 function M.getBaseStyleVars()
     return M.BASE_STYLE_VARS
 end
 
 --- Get role definitions
--- @return table Array of role definition tables
+---@return table[] roles Array of role definition tables
 function M.getRoles()
     return M.ROLES
 end

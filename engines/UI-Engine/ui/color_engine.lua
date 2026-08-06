@@ -12,15 +12,34 @@
     - Color validation and clamping
 ]]
 
+---@alias ColorTable {r: number, g: number, b: number, a?: number}
+
+---@class ColorEngine
+---Pure math module for color conversion, WCAG contrast, and palette generation.
+---@field RGBToHSL fun(r: number, g: number, b: number): number, number, number
+---@field HSLToRGB fun(h: number, s: number, l: number): number, number, number
+---@field Luminance fun(r: number, g: number, b: number): number
+---@field ContrastRatio fun(color1: ColorTable, color2: ColorTable): number
+---@field IsWCAGCompliant fun(color1: ColorTable, color2: ColorTable, level: string): boolean
+---@field GeneratePalette fun(accentRGB: ColorTable): table
+---@field AdjustBrightness fun(r: number, g: number, b: number, factor: number): number, number, number
+---@field AdjustSaturation fun(r: number, g: number, b: number, factor: number): number, number, number
+---@field Blend fun(color1: ColorTable, color2: ColorTable, factor: number): ColorTable
+---@field WithAlpha fun(r: number, g: number, b: number, a: number): ColorTable
+---@field IsValidColor fun(color: any): boolean
+---@field ClampColor fun(color: ColorTable|nil): ColorTable
+
 local M = {}
 
 -- --- RGB ↔ HSL Conversion ---
 
 --- Convert RGB (0-1) to HSL (0-360, 0-1, 0-1)
--- @param r Red (0-1)
--- @param g Green (0-1)
--- @param b Blue (0-1)
--- @return number, number, number h, s, l
+---@param r number Red (0-1)
+---@param g number Green (0-1)
+---@param b number Blue (0-1)
+---@return number h Hue (0-360)
+---@return number s Saturation (0-1)
+---@return number l Lightness (0-1)
 function M.RGBToHSL(r, g, b)
     r = math.max(0, math.min(1, r))
     g = math.max(0, math.min(1, g))
@@ -58,10 +77,12 @@ function M.RGBToHSL(r, g, b)
 end
 
 --- Convert HSL (0-360, 0-1, 0-1) to RGB (0-1)
--- @param h Hue (0-360)
--- @param s Saturation (0-1)
--- @param l Lightness (0-1)
--- @return number, number, number r, g, b
+---@param h number Hue (0-360)
+---@param s number Saturation (0-1)
+---@param l number Lightness (0-1)
+---@return number r Red (0-1)
+---@return number g Green (0-1)
+---@return number b Blue (0-1)
 function M.HSLToRGB(h, s, l)
     h = ((h % 360) + 360) % 360
     s = math.max(0, math.min(1, s))
@@ -93,10 +114,10 @@ end
 -- --- WCAG 2.0 Contrast Ratio ---
 
 --- Calculate relative luminance (WCAG 2.0)
--- @param r Red (0-1)
--- @param g Green (0-1)
--- @param b Blue (0-1)
--- @return number Luminance (0-1)
+---@param r number Red (0-1)
+---@param g number Green (0-1)
+---@param b number Blue (0-1)
+---@return number luminance Luminance (0-1)
 function M.Luminance(r, g, b)
     local function linearize(c)
         if c <= 0.03928 then
@@ -110,9 +131,9 @@ function M.Luminance(r, g, b)
 end
 
 --- Calculate contrast ratio between two colors
--- @param color1 First color {r, g, b} (0-1)
--- @param color2 Second color {r, g, b} (0-1)
--- @return number Contrast ratio (1-21)
+---@param color1 ColorTable First color {r, g, b} (0-1)
+---@param color2 ColorTable Second color {r, g, b} (0-1)
+---@return number ratio Contrast ratio (1-21)
 function M.ContrastRatio(color1, color2)
     local l1 = M.Luminance(color1.r, color1.g, color1.b)
     local l2 = M.Luminance(color2.r, color2.g, color2.b)
@@ -124,10 +145,10 @@ function M.ContrastRatio(color1, color2)
 end
 
 --- Check if contrast ratio meets WCAG level
--- @param color1 First color {r, g, b} (0-1)
--- @param color2 Second color {r, g, b} (0-1)
--- @param level WCAG level ("AA" or "AAA")
--- @return boolean True if compliant
+---@param color1 ColorTable First color {r, g, b} (0-1)
+---@param color2 ColorTable Second color {r, g, b} (0-1)
+---@param level string WCAG level ("AA" or "AAA")
+---@return boolean compliant True if compliant
 function M.IsWCAGCompliant(color1, color2, level)
     local ratio = M.ContrastRatio(color1, color2)
     if level == "AAA" then
@@ -141,8 +162,8 @@ end
 -- --- Palette Generation ---
 
 --- Generate full palette from single accent color
--- @param accentRGB Accent color {r, g, b} (0-1)
--- @return table Palette with semantic role colors
+---@param accentRGB ColorTable Accent color {r, g, b} (0-1)
+---@return table palette Palette with semantic role colors
 function M.GeneratePalette(accentRGB)
     local r, g, b = accentRGB.r, accentRGB.g, accentRGB.b
     local h, s, l = M.RGBToHSL(r, g, b)
@@ -194,11 +215,13 @@ end
 -- --- Color Manipulation ---
 
 --- Adjust brightness by factor (0-2)
--- @param r Red (0-1)
--- @param g Green (0-1)
--- @param b Blue (0-1)
--- @param factor Brightness factor (0-2, 1 = no change)
--- @return number, number, number r, g, b
+---@param r number Red (0-1)
+---@param g number Green (0-1)
+---@param b number Blue (0-1)
+---@param factor number Brightness factor (0-2, 1 = no change)
+---@return number r Adjusted red
+---@return number g Adjusted green
+---@return number b Adjusted blue
 function M.AdjustBrightness(r, g, b, factor)
     return math.max(0, math.min(1, r * factor)),
            math.max(0, math.min(1, g * factor)),
@@ -206,11 +229,13 @@ function M.AdjustBrightness(r, g, b, factor)
 end
 
 --- Adjust saturation by factor (0-2)
--- @param r Red (0-1)
--- @param g Green (0-1)
--- @param b Blue (0-1)
--- @param factor Saturation factor (0-2, 1 = no change)
--- @return number, number, number r, g, b
+---@param r number Red (0-1)
+---@param g number Green (0-1)
+---@param b number Blue (0-1)
+---@param factor number Saturation factor (0-2, 1 = no change)
+---@return number r Adjusted red
+---@return number g Adjusted green
+---@return number b Adjusted blue
 function M.AdjustSaturation(r, g, b, factor)
     local h, s, l = M.RGBToHSL(r, g, b)
     s = math.max(0, math.min(1, s * factor))
@@ -218,10 +243,10 @@ function M.AdjustSaturation(r, g, b, factor)
 end
 
 --- Blend two colors by factor (0-1)
--- @param color1 First color {r, g, b}
--- @param color2 Second color {r, g, b}
--- @param factor Blend factor (0 = color1, 1 = color2)
--- @return table Blended color {r, g, b}
+---@param color1 ColorTable First color {r, g, b}
+---@param color2 ColorTable Second color {r, g, b}
+---@param factor number Blend factor (0 = color1, 1 = color2)
+---@return ColorTable blended Blended color {r, g, b}
 function M.Blend(color1, color2, factor)
     factor = math.max(0, math.min(1, factor))
     return {
@@ -232,11 +257,11 @@ function M.Blend(color1, color2, factor)
 end
 
 --- Create color with alpha
--- @param r Red (0-1)
--- @param g Green (0-1)
--- @param b Blue (0-1)
--- @param a Alpha (0-1)
--- @return table Color with alpha {r, g, b, a}
+---@param r number Red (0-1)
+---@param g number Green (0-1)
+---@param b number Blue (0-1)
+---@param a number Alpha (0-1)
+---@return ColorTable color Color with alpha {r, g, b, a}
 function M.WithAlpha(r, g, b, a)
     return { r = r, g = g, b = b, a = a }
 end
@@ -244,8 +269,8 @@ end
 -- --- Color Validation ---
 
 --- Check if color table has valid r, g, b, a fields
--- @param color Color table
--- @return boolean True if valid
+---@param color any Color table to validate
+---@return boolean valid True if valid
 function M.IsValidColor(color)
     if type(color) ~= "table" then
         return false
@@ -263,8 +288,8 @@ function M.IsValidColor(color)
 end
 
 --- Clamp color values to 0-1 range
--- @param color Color table {r, g, b, a}
--- @return table Clamped color
+---@param color ColorTable|nil Color table {r, g, b, a}
+---@return ColorTable clamped Clamped color
 function M.ClampColor(color)
     if not color then
         return { r = 1, g = 1, b = 1, a = 1 }

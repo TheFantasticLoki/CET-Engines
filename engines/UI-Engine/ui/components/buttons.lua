@@ -1,12 +1,8 @@
---[[
-    Buttons — UI-Engine Component Library
-
-    Button widgets for user interaction.
-    Includes themed Button, ToggleButton (ON/OFF with color), and IconButton.
-
-    Dependencies: ui/utils.lua, ui/tokens.lua
-]]
-
+--- ButtonComponents — Button widgets for user interaction.
+--- Includes themed Button, ToggleButton (ON/OFF with color), and IconButton.
+---
+--- Dependencies: ui/utils.lua, ui/tokens.lua
+---@class ButtonComponents
 local M = {}
 
 local Utils = require("ui/utils")
@@ -15,9 +11,9 @@ local Tokens = require("ui/tokens")
 -- --- Button ---
 
 --- Themed button
--- @param label Button text
--- @param options Optional: {width, height, tooltip}
--- @return boolean clicked
+---@param label Button text
+---@param options Optional: {width, height, tooltip}
+---@return boolean clicked
 function M.Button(label, options)
     label = label or ""
     options = options or {}
@@ -38,10 +34,10 @@ end
 -- --- ToggleButton ---
 
 --- ON/OFF toggle with color-coded state
--- @param label Button text
--- @param value Current ON/OFF state
--- @param options Optional: {tooltip}
--- @return boolean newValue, boolean changed
+---@param label Button text
+---@param value Current ON/OFF state
+---@param options Optional: {tooltip}
+---@return boolean newValue, boolean changed
 function M.ToggleButton(label, value, options)
     label = label or ""
     value = value or false
@@ -88,9 +84,9 @@ end
 -- --- IconButton ---
 
 --- Icon-only button
--- @param icon Icon text/glyph
--- @param options Optional: {size, tooltip}
--- @return boolean clicked
+---@param icon Icon text/glyph
+---@param options Optional: {size, tooltip}
+---@return boolean clicked
 function M.IconButton(icon, options)
     icon = icon or ""
     options = options or {}

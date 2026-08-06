@@ -1,28 +1,24 @@
---[[
-    Advanced — UI-Engine Component Library
-
-    Advanced widgets for complex interactions.
-    Includes AdvancedSlider, ThemeDropdown, ComboBox.
-
-    AdvancedSlider is a fully DrawList-rendered slider with:
-    - Pill-shaped track with gradient fill
-    - Draggable handle with hover/active states
-    - ± buttons with modifier key support
-    - Dynamic default-position indicator
-    - Smooth animations via os.clock()
-    - Value tooltip on hover/drag
-
-    Dependencies: ui/utils.lua, ui/tokens.lua, ui/animation.lua, ui/color_engine.lua
-
-    Logging: Uses Log-Engine for comprehensive tracing.
-    Errors are caught and logged; component degrades gracefully.
-
-    CET Constraints:
-    - No pcall on ImGui calls (breaks LuaJIT FFI)
-    - DrawList may not be available in all CET versions
-    - Lua 5.1: no goto, no GC metamethods, no packed tables
-]]
-
+--- AdvancedComponents — Advanced widgets for complex interactions.
+--- Includes AdvancedSlider, ThemeDropdown, ComboBox.
+---
+--- AdvancedSlider is a fully DrawList-rendered slider with:
+--- - Pill-shaped track with gradient fill
+--- - Draggable handle with hover/active states
+--- - ± buttons with modifier key support
+--- - Dynamic default-position indicator
+--- - Smooth animations via os.clock()
+--- - Value tooltip on hover/drag
+---
+--- Dependencies: ui/utils.lua, ui/tokens.lua, ui/animation.lua, ui/color_engine.lua
+---
+--- Logging: Uses Log-Engine for comprehensive tracing.
+--- Errors are caught and logged; component degrades gracefully.
+---
+--- CET Constraints:
+--- - No pcall on ImGui calls (breaks LuaJIT FFI)
+--- - DrawList may not be available in all CET versions
+--- - Lua 5.1: no goto, no GC metamethods, no packed tables
+---@class AdvancedComponents
 local M = {}
 
 local Utils = require("ui/utils")
@@ -78,8 +74,8 @@ end
 -- ============================================================================
 
 --- Log a message with component prefix
--- @param level Log level ("debug", "info", "warn", "error")
--- @param msg Message string
+---@param level Log level ("debug", "info", "warn", "error")
+---@param msg Message string
 local function logMsg(level, msg)
     if _log and _log[level] then
         _log[level]("[AdvSlider] " .. msg)
@@ -87,9 +83,9 @@ local function logMsg(level, msg)
 end
 
 --- Log a formatted message
--- @param level Log level
--- @param fmt Format string
--- @param ... Format args
+---@param level Log level
+---@param fmt Format string
+---@param ... Format args
 local function logFmt(level, fmt, ...)
     if _log and _log[level] then
         _log[level]("[AdvSlider] " .. string.format(fmt, ...))
@@ -101,8 +97,9 @@ end
 -- ============================================================================
 
 --- Initialize advanced module with dependencies
--- @param theme Theme module reference (optional)
--- @param log Logger instance (Log-Engine or UI-Engine modules/logger) (optional)
+---@param theme Theme module reference|nil
+---@param log Logger instance (Log-Engine or UI-Engine modules/logger)|nil
+---@return nil
 function M.init(theme, log)
     _theme = theme
     -- Only accept loggers that have the standard Log-Engine API (info/debug/warn/error)
@@ -123,8 +120,8 @@ end
 local _states = {}
 
 --- Get or create state for a slider instance
--- @param id Unique slider ID
--- @return table State table
+---@param id Unique slider ID
+---@return table State table
 local function getState(id)
     if not _states[id] then
         _states[id] = {
@@ -165,8 +162,8 @@ end
 -- ============================================================================
 
 --- Get theme-aware color for a role
--- @param role Token role name
--- @return table Color {r, g, b}
+---@param role Token role name
+---@return table Color {r, g, b}
 local function getRoleColor(role)
     local color = Tokens.color4n(role)
     if color then
@@ -185,11 +182,11 @@ end
 
 --- Pack RGBA color into ImGui 32-bit format
 -- ImGui uses ABGR byte order packed into a uint32
--- @param r Red (0..1)
--- @param g Green (0..1)
--- @param b Blue (0..1)
--- @param a Alpha (0..1)
--- @return number Packed ImGui color
+---@param r Red (0..1)
+---@param g Green (0..1)
+---@param b Blue (0..1)
+---@param a Alpha (0..1)
+---@return number Packed ImGui color
 local function packColor(r, g, b, a)
     r = math.floor(r * 255 + 0.5)
     g = math.floor(g * 255 + 0.5)
@@ -200,9 +197,9 @@ local function packColor(r, g, b, a)
 end
 
 --- Pack a role color with alpha
--- @param role Token role name
--- @param a Alpha (0..1)
--- @return number Packed ImGui color
+---@param role Token role name
+---@param a Alpha (0..1)
+---@return number Packed ImGui color
 local function roleColor(role, a)
     local c = getRoleColor(role)
     return packColor(c.r, c.g, c.b, a or 1)
@@ -213,14 +210,14 @@ end
 -- ============================================================================
 
 --- Draw a rounded rectangle
--- @param drawList DrawList userdata
--- @param x1 Top-left X
--- @param y1 Top-left Y
--- @param x2 Bottom-right X
--- @param y2 Bottom-right Y
--- @param color Packed color
--- @param rounding Corner rounding
--- @param thickness Border thickness (0 = filled)
+---@param drawList DrawList userdata
+---@param x1 Top-left X
+---@param y1 Top-left Y
+---@param x2 Bottom-right X
+---@param y2 Bottom-right Y
+---@param color Packed color
+---@param rounding Corner rounding
+---@param thickness Border thickness (0 = filled)
 local function drawRoundRect(drawList, x1, y1, x2, y2, color, rounding, thickness)
     if not drawList then return end
     if thickness and thickness > 0 then
@@ -231,12 +228,12 @@ local function drawRoundRect(drawList, x1, y1, x2, y2, color, rounding, thicknes
 end
 
 --- Draw a circle
--- @param drawList DrawList userdata
--- @param cx Center X
--- @param cy Center Y
--- @param radius Radius
--- @param color Packed color
--- @param thickness Border thickness (0 = filled)
+---@param drawList DrawList userdata
+---@param cx Center X
+---@param cy Center Y
+---@param radius Radius
+---@param color Packed color
+---@param thickness Border thickness (0 = filled)
 local function drawCircle(drawList, cx, cy, radius, color, thickness)
     if not drawList then return end
     if thickness and thickness > 0 then
@@ -247,33 +244,33 @@ local function drawCircle(drawList, cx, cy, radius, color, thickness)
 end
 
 --- Draw a line
--- @param drawList DrawList userdata
--- @param x1 Start X
--- @param y1 Start Y
--- @param x2 End X
--- @param y2 End Y
--- @param color Packed color
--- @param thickness Line thickness
+---@param drawList DrawList userdata
+---@param x1 Start X
+---@param y1 Start Y
+---@param x2 End X
+---@param y2 End Y
+---@param color Packed color
+---@param thickness Line thickness
 local function drawLine(drawList, x1, y1, x2, y2, color, thickness)
     if not drawList then return end
     ImGui.ImDrawListAddLine(drawList, x1, y1, x2, y2, color, thickness)
 end
 
 --- Draw text
--- @param drawList DrawList userdata
--- @param x Position X
--- @param y Position Y
--- @param color Packed color
--- @param text Text string
+---@param drawList DrawList userdata
+---@param x Position X
+---@param y Position Y
+---@param color Packed color
+---@param text Text string
 local function drawText(drawList, x, y, color, text)
     if not drawList then return end
     ImGui.ImDrawListAddText(drawList, x, y, color, text)
 end
 
 --- Safe draw call wrapper (calls drawList method with args)
--- @param drawList DrawList userdata
--- @param method Method name (string)
--- @param ... Method arguments
+---@param drawList DrawList userdata
+---@param method Method name (string)
+---@param ... Method arguments
 local function safeDraw(drawList, method, ...)
     if not drawList then return end
     local fn = drawList[method]
@@ -287,20 +284,20 @@ end
 -- ============================================================================
 
 --- Convert value to track position (0..1)
--- @param value Current value
--- @param min Range minimum
--- @param max Range maximum
--- @return number Position (0..1)
+---@param value Current value
+---@param min Range minimum
+---@param max Range maximum
+---@return number Position (0..1)
 local function valueToPos(value, min, max)
     if max == min then return 0 end
     return Animation.Clamp((value - min) / (max - min), 0, 1)
 end
 
 --- Convert track position to value
--- @param pos Position (0..1)
--- @param min Range minimum
--- @param max Range maximum
--- @return number Value
+---@param pos Position (0..1)
+---@param min Range minimum
+---@param max Range maximum
+---@return number Value
 local function posToValue(pos, min, max)
     return min + pos * (max - min)
 end
@@ -314,9 +311,9 @@ end
 --   AdvancedSlider(label, value, options)  — new style (matches other components)
 --   AdvancedSlider(spec)                   — legacy style {label, value, min, max, ...}
 --
--- @param label_or_spec Unique label/ID string OR spec table (legacy)
--- @param value Current value (nil if using spec table)
--- @param options Optional table:
+---@param label_or_spec Unique label/ID string OR spec table (legacy)
+---@param value Current value (nil if using spec table)
+---@param options Optional table:
 --   {
 --     -- Core value options
 --     min = number,           -- Range minimum (default: 0)
@@ -418,7 +415,7 @@ end
 --     animationDuration = number, -- Animation duration in seconds (default: 0.12)
 --     indicatorAnimDuration = number, -- Indicator animation duration (default: 0.2)
 --   }
--- @return number newValue, boolean changed
+---@return number newValue, boolean changed
 function M.AdvancedSlider(label_or_spec, value, options)
     -- ====================================================================
     -- API style detection: spec table vs (label, value, options)
@@ -1075,11 +1072,11 @@ end
 -- ============================================================================
 
 --- Theme selector dropdown
--- @param label Label text
--- @param currentTheme Current theme name
--- @param themes Array of theme name strings
--- @param onChange Callback function(newTheme)
--- @return string newTheme, boolean changed
+---@param label Label text
+---@param currentTheme Current theme name
+---@param themes Array of theme name strings
+---@param onChange Callback function(newTheme)
+---@return string newTheme, boolean changed
 function M.ThemeDropdown(label, currentTheme, themes, onChange)
     label = label or ""
     currentTheme = currentTheme or "Dark"
@@ -1115,11 +1112,11 @@ end
 -- ============================================================================
 
 --- Generic dropdown combo box
--- @param label Label text
--- @param items Array of display strings
--- @param selectedIndex Current selected index
--- @param onChange Callback function(newIndex, newLabel)
--- @return number newIndex, boolean changed
+---@param label Label text
+---@param items Array of display strings
+---@param selectedIndex Current selected index
+---@param onChange Callback function(newIndex, newLabel)
+---@return number newIndex, boolean changed
 function M.ComboBox(label, items, selectedIndex, onChange)
     label = label or ""
     items = items or {}

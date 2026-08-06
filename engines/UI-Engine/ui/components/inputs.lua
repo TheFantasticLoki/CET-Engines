@@ -1,12 +1,8 @@
---[[
-    Inputs — UI-Engine Component Library
-
-    Input widgets for user data entry.
-    Includes Checkbox, RadioButton, InputText, InputInt, InputFloat, KeyBind.
-
-    Dependencies: ui/utils.lua, ui/tokens.lua
-]]
-
+--- InputComponents — Input widgets for user data entry.
+--- Includes Checkbox, RadioButton, InputText, InputInt, InputFloat, KeyBind.
+---
+--- Dependencies: ui/utils.lua, ui/tokens.lua
+---@class InputComponents
 local M = {}
 
 local Utils = require("ui/utils")
@@ -15,10 +11,10 @@ local Tokens = require("ui/tokens")
 -- --- Checkbox ---
 
 --- Checkbox
--- @param label Label text
--- @param value Current boolean value
--- @param options Optional: {tooltip}
--- @return boolean newValue, boolean changed
+---@param label Label text
+---@param value Current boolean value
+---@param options Optional: {tooltip}
+---@return boolean newValue, boolean changed
 function M.Checkbox(label, value, options)
     label = label or ""
     value = value or false
@@ -37,10 +33,10 @@ end
 -- --- RadioButton ---
 
 --- Radio button
--- @param label Label text
--- @param active Whether this radio is currently active
--- @param options Optional: {tooltip}
--- @return boolean clicked, boolean active
+---@param label Label text
+---@param active Whether this radio is currently active
+---@param options Optional: {tooltip}
+---@return boolean clicked, boolean active
 function M.RadioButton(label, active, options)
     label = label or ""
     active = active or false
@@ -58,10 +54,10 @@ end
 -- --- InputText ---
 
 --- Text input
--- @param label Label text
--- @param value Current string value
--- @param options Optional: {placeholder, tooltip, flags, width}
--- @return string newValue, boolean changed
+---@param label Label text
+---@param value Current string value
+---@param options Optional: {placeholder, tooltip, flags, width}
+---@return string newValue, boolean changed
 function M.InputText(label, value, options)
     label = label or ""
     value = value or ""
@@ -101,10 +97,10 @@ end
 -- --- InputInt ---
 
 --- Integer input
--- @param label Label text
--- @param value Current integer value
--- @param options Optional: {tooltip, step, stepFast, width}
--- @return number newValue, boolean changed
+---@param label Label text
+---@param value Current integer value
+---@param options Optional: {tooltip, step, stepFast, width}
+---@return number newValue, boolean changed
 function M.InputInt(label, value, options)
     label = label or ""
     value = value or 0
@@ -135,10 +131,10 @@ end
 -- --- InputFloat ---
 
 --- Float input
--- @param label Label text
--- @param value Current float value
--- @param options Optional: {tooltip, step, stepFast, format, width}
--- @return number newValue, boolean changed
+---@param label Label text
+---@param value Current float value
+---@param options Optional: {tooltip, step, stepFast, format, width}
+---@return number newValue, boolean changed
 function M.InputFloat(label, value, options)
     label = label or ""
     value = value or 0
@@ -170,10 +166,10 @@ end
 -- --- KeyBind ---
 
 --- Key binding
--- @param label Label text
--- @param key Current key name
--- @param options Optional: {tooltip}
--- @return string newKey, boolean changed
+---@param label Label text
+---@param key Current key name
+---@param options Optional: {tooltip}
+---@return string newKey, boolean changed
 function M.KeyBind(label, key, options)
     label = label or ""
     key = key or "None"

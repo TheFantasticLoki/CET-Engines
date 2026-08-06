@@ -89,8 +89,24 @@ engines/
 │   └── examples/
 │       └── example_consumer.lua  # Integration example for mod authors
 │
-└── Config-Engine/                # Config management (future plan)
-    └── ...                       # Placeholder
+└── Config-Engine/                # Config management (consumer app)
+    ├── init.lua                  # Entry point, CET hooks, UIEngine registration
+    ├── core.lua                  # Config-Engine state store (extends UI-Engine Core)
+    ├── modules/
+    │   ├── mod_manager.lua       # Mod discovery, registration, lifecycle
+    │   ├── settings_schema.lua   # Schema definitions, validation, types
+    │   ├── settings_renderer.lua # Schema → ImGui auto-generation
+    │   ├── settings_resolver.lua # Schema merging, defaults, validation
+    │   ├── render_mode.lua       # Detect schema/custom/hybrid/external modes
+    │   ├── undo_redo.lua         # Undo/redo system (command pattern, ring buffer)
+    │   └── state_sync.lua        # Sync to UI-Engine Storage, auto-save
+    ├── ui/
+    │   ├── window.lua            # Main window orchestrator (sidebar + content)
+    │   ├── sidebar.lua           # Sidebar: mod list, search, categories
+    │   └── content_area.lua      # Content dispatch to mod's draw/schema
+    └── config/
+        ├── default_config.lua    # Config-Engine defaults
+        └── categories.lua        # Built-in category definitions
 ```
 
 ### UI-Engine Module Relationships

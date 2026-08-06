@@ -46,21 +46,21 @@ local logFileIndex = 0
 -- --- Helper Functions ---
 
 --- Get the current timestamp string
--- @return string Timestamp in ISO format
+---@return string Timestamp in ISO format
 local function getTimestamp()
     return os.date("%Y-%m-%dT%H:%M:%S")
 end
 
 --- Get the level name for a numeric level
--- @param level Numeric log level
--- @return string Level name
+---@param level Numeric log level
+---@return string Level name
 local function getLevelName(level)
     return LEVEL_NAMES[level] or "UNKNOWN"
 end
 
 --- Get the numeric level for a string level
--- @param levelStr Level name string
--- @return number Numeric level
+---@param levelStr Level name string
+---@return number Numeric level
 local function getLevelNum(levelStr)
     if levelStr == "debug" then return LEVEL_DEBUG end
     if levelStr == "info" then return LEVEL_INFO end
@@ -70,9 +70,9 @@ local function getLevelNum(levelStr)
 end
 
 --- Write a log entry to the ring buffer
--- @param modName Module name
--- @param message Log message
--- @param level Numeric log level
+---@param modName Module name
+---@param message Log message
+---@param level Numeric log level
 local function addEntry(modName, message, level)
     local entry = {
         timestamp = getTimestamp(),
@@ -90,7 +90,7 @@ local function addEntry(modName, message, level)
 end
 
 --- Write log entry to file (if file output is enabled)
--- @param entry Log entry table
+---@param entry Log entry table
 local function writeToFile(entry)
     if not logFilePath then return end
 
@@ -135,7 +135,7 @@ end
 -- --- Public API ---
 
 --- Initialize the logger (idempotent)
--- @param config Optional configuration table
+---@param config Optional configuration table
 function M.init(config)
     if initialized then
         return
@@ -158,40 +158,40 @@ function M.init(config)
 end
 
 --- Set the current frame number (called each frame)
--- @param frame Frame number
+---@param frame Frame number
 function M.SetFrame(frame)
     currentFrame = frame or 0
     debugCountThisFrame = 0
 end
 
 --- Set the minimum log level
--- @param level Level name string ("debug", "info", "warn", "error")
+---@param level Level name string ("debug", "info", "warn", "error")
 function M.SetLevel(level)
     minLevel = getLevelNum(level)
 end
 
 --- Get the current minimum log level
--- @return number Current minimum level
+---@return number Current minimum level
 function M.GetLevel()
     return minLevel
 end
 
 --- Enable or disable the ImGui overlay
--- @param enabled boolean
+---@param enabled boolean
 function M.SetOverlay(enabled)
     overlayEnabled = enabled
 end
 
 --- Check if the overlay is enabled
--- @return boolean
+---@return boolean
 function M.IsOverlayEnabled()
     return overlayEnabled
 end
 
 --- Log a message
--- @param modName Module name
--- @param message Log message
--- @param level Level name string ("debug", "info", "warn", "error")
+---@param modName Module name
+---@param message Log message
+---@param level Level name string ("debug", "info", "warn", "error")
 function M.Log(modName, message, level)
     local levelNum = getLevelNum(level or "info")
 
@@ -216,10 +216,10 @@ function M.Log(modName, message, level)
 end
 
 --- Get recent log entries
--- @param count Number of entries to retrieve (default: 50)
--- @param filterMod Optional module name filter
--- @param filterLevel Optional minimum level filter
--- @return table Array of log entries
+---@param count Number of entries to retrieve (default: 50)
+---@param filterMod Optional module name filter
+---@param filterLevel Optional minimum level filter
+---@return table Array of log entries
 function M.GetEntries(count, filterMod, filterLevel)
     count = count or 50
     filterLevel = filterLevel and getLevelNum(filterLevel) or LEVEL_DEBUG

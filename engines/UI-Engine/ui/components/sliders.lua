@@ -1,12 +1,8 @@
---[[
-    Sliders — UI-Engine Component Library
-
-    Slider widgets for numeric value adjustment.
-    Includes SliderFloat, SliderInt, DragInt, DragFloat, StepSlider, ColorPicker.
-
-    Dependencies: ui/utils.lua, ui/tokens.lua
-]]
-
+--- SliderComponents — Slider widgets for numeric value adjustment.
+--- Includes SliderFloat, SliderInt, DragInt, DragFloat, StepSlider, ColorPicker.
+---
+--- Dependencies: ui/utils.lua, ui/tokens.lua
+---@class SliderComponents
 local M = {}
 
 local Utils = require("ui/utils")
@@ -15,10 +11,10 @@ local Tokens = require("ui/tokens")
 -- --- SliderFloat ---
 
 --- Float slider
--- @param label Label text
--- @param value Current float value
--- @param options Optional: {min, max, format, tooltip, width}
--- @return number newValue, boolean changed
+---@param label Label text
+---@param value Current float value
+---@param options Optional: {min, max, format, tooltip, width}
+---@return number newValue, boolean changed
 function M.SliderFloat(label, value, options)
     label = label or ""
     value = value or 0
@@ -52,10 +48,10 @@ end
 -- --- SliderInt ---
 
 --- Integer slider
--- @param label Label text
--- @param value Current integer value
--- @param options Optional: {min, max, format, tooltip, width}
--- @return number newValue, boolean changed
+---@param label Label text
+---@param value Current integer value
+---@param options Optional: {min, max, format, tooltip, width}
+---@return number newValue, boolean changed
 function M.SliderInt(label, value, options)
     label = label or ""
     value = value or 0
@@ -89,10 +85,10 @@ end
 -- --- DragInt ---
 
 --- Integer drag
--- @param label Label text
--- @param value Current integer value
--- @param options Optional: {min, max, speed, tooltip, width}
--- @return number newValue, boolean changed
+---@param label Label text
+---@param value Current integer value
+---@param options Optional: {min, max, speed, tooltip, width}
+---@return number newValue, boolean changed
 function M.DragInt(label, value, options)
     label = label or ""
     value = value or 0
@@ -123,10 +119,10 @@ end
 -- --- DragFloat ---
 
 --- Float drag
--- @param label Label text
--- @param value Current float value
--- @param options Optional: {min, max, speed, format, tooltip, width}
--- @return number newValue, boolean changed
+---@param label Label text
+---@param value Current float value
+---@param options Optional: {min, max, speed, format, tooltip, width}
+---@return number newValue, boolean changed
 function M.DragFloat(label, value, options)
     label = label or ""
     value = value or 0
@@ -158,10 +154,10 @@ end
 -- --- StepSlider ---
 
 --- Fixed-width slider with +/- buttons
--- @param label Label text
--- @param value Current value
--- @param options Optional: {min, max, step, format, tooltip, width}
--- @return number newValue, boolean changed
+---@param label Label text
+---@param value Current value
+---@param options Optional: {min, max, step, format, tooltip, width}
+---@return number newValue, boolean changed
 function M.StepSlider(label, value, options)
     label = label or ""
     value = value or 0
@@ -209,10 +205,10 @@ end
 -- --- ColorPicker ---
 
 --- Color picker
--- @param label Label text
--- @param color Current color {r, g, b, a} (0-1 range)
--- @param options Optional: {tooltip, flags, width}
--- @return table newColor, boolean changed
+---@param label Label text
+---@param color Current color {r, g, b, a} (0-1 range)
+---@param options Optional: {tooltip, flags, width}
+---@return table newColor, boolean changed
 function M.ColorPicker(label, color, options)
     label = label or ""
     color = color or { r = 1, g = 1, b = 1, a = 1 }

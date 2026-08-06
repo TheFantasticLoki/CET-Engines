@@ -1,12 +1,8 @@
---[[
-    Primitives — UI-Engine Component Library
-
-    Foundational helpers used by all other components.
-    Includes clipboard, selectable, context menu, and selectable entry.
-
-    Dependencies: ui/utils.lua
-]]
-
+--- PrimitiveComponents — Foundational helpers used by all other components.
+--- Includes ClipboardCopy, SafeSelectable, ContextMenu, SelectableEntry.
+---
+--- Dependencies: ui/utils.lua
+---@class PrimitiveComponents
 local M = {}
 
 local Utils = require("ui/utils")
@@ -14,7 +10,7 @@ local Utils = require("ui/utils")
 -- --- Clipboard ---
 
 --- Copy text to clipboard
--- @param text Text to copy
+---@param text Text to copy
 function M.ClipboardCopy(text)
     if text and type(text) == "string" then
         Utils.SafeImGuiCall(ImGui.SetClipboardText, text)
@@ -24,9 +20,9 @@ end
 -- --- SafeSelectable ---
 
 --- CET hover-state workaround for Selectable
--- @param label Selectable label
--- @param selected Whether the item is selected
--- @return boolean, boolean clicked, selected
+---@param label Selectable label
+---@param selected Whether the item is selected
+---@return boolean, boolean clicked, selected
 function M.SafeSelectable(label, selected)
     label = label or ""
     selected = selected or false
@@ -41,8 +37,8 @@ end
 -- --- Context Menu ---
 
 --- Right-click context menu
--- @param label Menu identifier
--- @param buildFn Function that builds menu items (called while menu is open)
+---@param label Menu identifier
+---@param buildFn Function that builds menu items (called while menu is open)
 function M.ContextMenu(label, buildFn)
     label = label or "ContextMenu"
     local id = "##ctx_" .. label
@@ -58,10 +54,10 @@ end
 -- --- Selectable Entry ---
 
 --- Selectable with tooltip
--- @param label Display text
--- @param selected Whether selected
--- @param tooltip Tooltip text (optional)
--- @return boolean clicked, boolean selected
+---@param label Display text
+---@param selected Whether selected
+---@param tooltip Tooltip text (optional)
+---@return boolean clicked, boolean selected
 function M.SelectableEntry(label, selected, tooltip)
     label = label or ""
     selected = selected or false

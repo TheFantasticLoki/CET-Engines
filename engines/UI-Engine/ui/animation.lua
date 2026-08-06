@@ -26,29 +26,29 @@ local M = {}
 -- ============================================================================
 
 --- Linear interpolation (no easing)
--- @param t Progress (0..1)
--- @return number Eased value (0..1)
+---@param t Progress (0..1)
+---@return number Eased value (0..1)
 function M.Linear(t)
     return t
 end
 
 --- Ease-out cubic: fast start, slow end
--- @param t Progress (0..1)
--- @return number Eased value (0..1)
+---@param t Progress (0..1)
+---@return number Eased value (0..1)
 function M.EaseOutCubic(t)
     return 1 - (1 - t) ^ 3
 end
 
 --- Ease-in cubic: slow start, fast end
--- @param t Progress (0..1)
--- @return number Eased value (0..1)
+---@param t Progress (0..1)
+---@return number Eased value (0..1)
 function M.EaseInCubic(t)
     return t ^ 3
 end
 
 --- Ease-in-out cubic: smooth start and end
--- @param t Progress (0..1)
--- @return number Eased value (0..1)
+---@param t Progress (0..1)
+---@return number Eased value (0..1)
 function M.EaseInOutCubic(t)
     if t < 0.5 then
         return 4 * t * t * t
@@ -58,22 +58,22 @@ function M.EaseInOutCubic(t)
 end
 
 --- Ease-out quad: gentle deceleration
--- @param t Progress (0..1)
--- @return number Eased value (0..1)
+---@param t Progress (0..1)
+---@return number Eased value (0..1)
 function M.EaseOutQuad(t)
     return 1 - (1 - t) ^ 2
 end
 
 --- Ease-in quad: gentle acceleration
--- @param t Progress (0..1)
--- @return number Eased value (0..1)
+---@param t Progress (0..1)
+---@return number Eased value (0..1)
 function M.EaseInQuad(t)
     return t * t
 end
 
 --- Ease-in-out quad: smooth acceleration and deceleration
--- @param t Progress (0..1)
--- @return number Eased value (0..1)
+---@param t Progress (0..1)
+---@return number Eased value (0..1)
 function M.EaseInOutQuad(t)
     if t < 0.5 then
         return 2 * t * t
@@ -83,23 +83,23 @@ function M.EaseInOutQuad(t)
 end
 
 --- Ease-out exponential: very fast start, very slow end
--- @param t Progress (0..1)
--- @return number Eased value (0..1)
+---@param t Progress (0..1)
+---@return number Eased value (0..1)
 function M.EaseOutExpo(t)
     if t == 1 then return 1 end
     return 1 - 2 ^ (-10 * t)
 end
 
 --- Ease-in-out sine: gentle wave-like transition
--- @param t Progress (0..1)
--- @return number Eased value (0..1)
+---@param t Progress (0..1)
+---@return number Eased value (0..1)
 function M.EaseInOutSine(t)
     return -(math.cos(math.pi * t) - 1) / 2
 end
 
 --- Elastic ease-out: bouncy overshoot
--- @param t Progress (0..1)
--- @return number Eased value (0..1)
+---@param t Progress (0..1)
+---@return number Eased value (0..1)
 function M.EaseOutElastic(t)
     if t == 0 or t == 1 then return t end
     local p = 0.3
@@ -112,20 +112,20 @@ end
 -- ============================================================================
 
 --- Linearly interpolate between two numbers
--- @param a Start value
--- @param b End value
--- @param t Factor (0..1, clamped)
--- @return number Interpolated value
+---@param a Start value
+---@param b End value
+---@param t Factor (0..1, clamped)
+---@return number Interpolated value
 function M.Lerp(a, b, t)
     t = math.max(0, math.min(1, t))
     return a + (b - a) * t
 end
 
 --- Linearly interpolate between two color tables
--- @param c1 Start color {r, g, b} or {r, g, b, a}
--- @param c2 End color {r, g, b} or {r, g, b, a}
--- @param t Factor (0..1, clamped)
--- @return table Interpolated color
+---@param c1 Start color {r, g, b} or {r, g, b, a}
+---@param c2 End color {r, g, b} or {r, g, b, a}
+---@param t Factor (0..1, clamped)
+---@return table Interpolated color
 function M.LerpColor(c1, c2, t)
     t = math.max(0, math.min(1, t))
     local result = {
@@ -140,21 +140,21 @@ function M.LerpColor(c1, c2, t)
 end
 
 --- Clamp a value between min and max
--- @param val Value to clamp
--- @param min Minimum
--- @param max Maximum
--- @return number Clamped value
+---@param val Value to clamp
+---@param min Minimum
+---@param max Maximum
+---@return number Clamped value
 function M.Clamp(val, min, max)
     return math.max(min, math.min(max, val))
 end
 
 --- Map a value from one range to another
--- @param val Input value
--- @param inMin Input range minimum
--- @param inMax Input range maximum
--- @param outMin Output range minimum
--- @param outMax Output range maximum
--- @return number Mapped value
+---@param val Input value
+---@param inMin Input range minimum
+---@param inMax Input range maximum
+---@param outMin Output range minimum
+---@param outMax Output range maximum
+---@return number Mapped value
 function M.Map(val, inMin, inMax, outMin, outMax)
     local t = (val - inMin) / (inMax - inMin)
     t = math.max(0, math.min(1, t))
@@ -166,9 +166,9 @@ end
 -- ============================================================================
 
 --- Create a new timer for time-based animations
--- @param duration Duration in seconds
--- @param easingFn Optional easing function (default: EaseOutCubic)
--- @return table Timer instance
+---@param duration Duration in seconds
+---@param easingFn Optional easing function (default: EaseOutCubic)
+---@return table Timer instance
 function M.Timer(duration, easingFn)
     local timer = {
         _duration = math.max(0.001, duration or 0.2),
@@ -204,38 +204,38 @@ function M.Timer(duration, easingFn)
     end
 
     --- Get raw elapsed time (0..duration)
-    -- @return number Elapsed seconds
+    ---@return number Elapsed seconds
     function timer:elapsed()
         return self._elapsed
     end
 
     --- Get normalized progress with easing (0..1)
-    -- @return number Eased fraction
+    ---@return number Eased fraction
     function timer:fraction()
         local raw = math.max(0, math.min(1, self._elapsed / self._duration))
         return self._easing(raw)
     end
 
     --- Get raw (un-eased) progress (0..1)
-    -- @return number Raw fraction
+    ---@return number Raw fraction
     function timer:fractionRaw()
         return math.max(0, math.min(1, self._elapsed / self._duration))
     end
 
     --- Check if timer has finished
-    -- @return boolean True if duration elapsed
+    ---@return boolean True if duration elapsed
     function timer:finished()
         return self._finished
     end
 
     --- Check if timer is currently running
-    -- @return boolean True if running
+    ---@return boolean True if running
     function timer:running()
         return self._running
     end
 
     --- Get remaining time in seconds
-    -- @return number Seconds remaining
+    ---@return number Seconds remaining
     function timer:remaining()
         return math.max(0, self._duration - self._elapsed)
     end
@@ -248,7 +248,7 @@ function M.Timer(duration, easingFn)
     end
 
     --- Set a new duration
-    -- @param d New duration in seconds
+    ---@param d New duration in seconds
     function timer:setDuration(d)
         self._duration = math.max(0.001, d or 0.2)
     end

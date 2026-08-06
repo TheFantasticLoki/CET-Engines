@@ -1,12 +1,8 @@
---[[
-    Icons — UI-Engine Component Library
-
-    Icon system for icon glyphs and centered text.
-    Includes GetIcon, DrawCenteredText.
-
-    Dependencies: ui/utils.lua, ui/tokens.lua
-]]
-
+--- IconComponents — Icon system for icon glyphs and centered text.
+--- Includes GetIcon, RegisterIcon, GetIconNames, DrawCenteredText.
+---
+--- Dependencies: ui/utils.lua, ui/tokens.lua
+---@class IconComponents
 local M = {}
 
 local Utils = require("ui/utils")
@@ -54,8 +50,8 @@ local ICONS = {
 -- --- Get Icon ---
 
 --- Get icon glyph by name
--- @param name Icon name
--- @return string Icon glyph or empty string
+---@param name Icon name
+---@return string Icon glyph or empty string
 function M.GetIcon(name)
     if not name or type(name) ~= "string" then
         return ""
@@ -65,8 +61,8 @@ function M.GetIcon(name)
 end
 
 --- Register a custom icon
--- @param name Icon name
--- @param glyph Icon glyph
+---@param name Icon name
+---@param glyph Icon glyph
 function M.RegisterIcon(name, glyph)
     if name and glyph then
         ICONS[name] = glyph
@@ -74,7 +70,7 @@ function M.RegisterIcon(name, glyph)
 end
 
 --- Get all registered icon names
--- @return table Array of icon names
+---@return table Array of icon names
 function M.GetIconNames()
     local names = {}
     for name, _ in pairs(ICONS) do
@@ -87,9 +83,9 @@ end
 -- --- Draw Centered Text ---
 
 --- Centered text helper
--- @param text Text to display
--- @param size Optional font size (not directly supported by ImGui, used for calculation)
--- @param color Optional color table {r, g, b}
+---@param text Text to display
+---@param size Optional font size (not directly supported by ImGui, used for calculation)
+---@param color Optional color table {r, g, b}
 function M.DrawCenteredText(text, size, color)
     text = text or ""
     color = color or { r = 1, g = 1, b = 1 }

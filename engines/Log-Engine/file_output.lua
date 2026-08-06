@@ -12,8 +12,9 @@
     - Simplified timestamps (time-only, since date is in header)
     - Dedup summary writing
 ]]
-
-local M = {}
+---@class FileOutput
+--- Handles all file I/O for Log-Engine.
+--- One file handle per mod, size-based rotation, CET-compatible.local M = {}
 
 -- --- SafeRequire (inline, no external deps) ---
 local function SafeRequire(path)
@@ -24,6 +25,11 @@ end
 
 -- Config values inlined with fallbacks (CET require may not resolve siblings)
 local Config = SafeRequire("config") or {}
+
+-- --- Logger (set by init.lua after bootstrap) ---
+
+---@type Logger? Log-Engine logger instance (set via M.setLogger)
+local log = nil
 
 -- --- Internal State ---
 
@@ -47,7 +53,7 @@ local sessionId = ""
 -- In CET, io.open with relative paths resolves from the CET working directory.
 -- We write to a "logs/" subdirectory relative to the working directory.
 -- Note: debug.getinfo is NOT available in CET's sandboxed Lua.
--- @return string Base directory prefix (empty string = current directory)
+---@return string Base directory prefix (empty string = current directory)
 local function getLogEngineDir()
     -- CET sandbox does not expose the `debug` library.
     -- Use a simple relative path instead.
@@ -55,7 +61,7 @@ local function getLogEngineDir()
 end
 
 --- Ensure the log directory exists
--- @param dirPath Directory to create
+---@param dirPath Directory to create
 local function ensureDir(dirPath)
     if dirPath == "" then return end
     pcall(function()
@@ -69,8 +75,8 @@ local function ensureDir(dirPath)
 end
 
 --- Resolve the file path for a mod
--- @param modName Mod identifier
--- @return string Resolved file path
+---@param modName Mod identifier
+---@return string Resolved file path
 local function resolvePath(modName)
     -- Check for custom path first
     if customPaths[modName] then
@@ -90,8 +96,8 @@ local function resolvePath(modName)
 end
 
 --- Get file size (approximate, by reading current position after append)
--- @param modName Mod identifier
--- @return number Size in bytes
+---@param modName Mod identifier
+---@return number Size in bytes
 local function getFileSize(modName)
     local path = resolvePath(modName)
     local ok, size = pcall(function()
@@ -106,7 +112,7 @@ local function getFileSize(modName)
 end
 
 --- Rotate log files for a mod (CET-compatible, read-modify-write)
--- @param modName Mod identifier
+---@param modName Mod identifier
 local function rotateFile(modName)
     local path = resolvePath(modName)
 
@@ -153,11 +159,13 @@ local function rotateFile(modName)
 
     -- Mark header as not written for the new file
     headerWritten[modName] = false
+
+    if log then log.debug("Rotated log files for " .. modName) end
 end
 
 --- Write session header to a log file
--- @param modName Mod identifier
--- @param config table Logger config (minLevel, ringSize, etc.)
+---@param modName Mod identifier
+---@param config table Logger config (minLevel, ringSize, etc.)
 local function writeHeader(modName, config)
     if headerWritten[modName] then return end
 
@@ -197,8 +205,8 @@ local function writeHeader(modName, config)
 end
 
 --- Format a log entry for file output (time-only timestamp)
--- @param entry Log entry table
--- @return string Formatted line
+---@param entry Log entry table
+---@return string Formatted line
 local function formatLine(entry)
     return string.format("[%s] [%s] [%s] %s: %s\n",
         entry.timestamp or "",
@@ -209,11 +217,11 @@ local function formatLine(entry)
 end
 
 --- Format a dedup summary line
--- @param modName Mod identifier
--- @param count number Number of duplicates
--- @param firstSeen string Timestamp of first occurrence
--- @param message string Original message
--- @return string Formatted dedup line
+---@param modName Mod identifier
+---@param count number Number of duplicates
+---@param firstSeen string Timestamp of first occurrence
+---@param message string Original message
+---@return string Formatted dedup line
 local function formatDedupSummary(modName, count, firstSeen, message)
     return string.format("[%s] [DEDUP] [%s] %s: [x%d duplicates since %s] %s\n",
         os.date("%H:%M:%S"),
@@ -227,7 +235,7 @@ end
 -- --- Public API ---
 
 --- Initialize file output module (idempotent)
--- @param config Optional configuration overrides
+---@param config Optional configuration overrides
 function M.init(config)
     if initialized then
         return
@@ -245,23 +253,27 @@ function M.init(config)
     if dirPath ~= "" then
         ensureDir(dirPath)
     end
+
+    if log then
+        log.info("FileOutput initialized: logDir=" .. logDir .. " maxFileSize=" .. tostring(maxFileSize))
+    end
 end
 
 --- Set the session ID for this CET session
--- @param id string Session ID (hex string)
+---@param id string Session ID (hex string)
 function M.setSessionId(id)
     sessionId = id or ""
 end
 
 --- Get the current session ID
--- @return string Session ID
+---@return string Session ID
 function M.getSessionId()
     return sessionId
 end
 
 --- Set custom log file path for a mod
--- @param modName Mod identifier
--- @param filePath Relative or absolute file path
+---@param modName Mod identifier
+---@param filePath Relative or absolute file path
 function M.setFilePath(modName, filePath)
     if type(modName) ~= "string" or modName == "" then return end
     if type(filePath) ~= "string" or filePath == "" then return end
@@ -273,9 +285,9 @@ function M.setFilePath(modName, filePath)
 end
 
 --- Write a log entry to file
--- @param modName Mod identifier
--- @param entry Log entry table { timestamp, levelName, frame, modName, message }
--- @param config table Optional logger config for header writing
+---@param modName Mod identifier
+---@param entry Log entry table { timestamp, levelName, frame, modName, message }
+---@param config table Optional logger config for header writing
 function M.write(modName, entry, config)
     if type(modName) ~= "string" or modName == "" then return end
     if type(entry) ~= "table" then return end
@@ -309,7 +321,7 @@ function M.write(modName, entry, config)
 
     if not ok then
         -- Silently fail on file write errors — don't recurse into logger
-        -- Try to log the error to CET console as a last resort
+        if log then log.error("File write error for " .. modName .. ": " .. tostring(err)) end
         if print then
             print("[LogEngine] File write error for " .. modName .. ": " .. tostring(err))
         end
@@ -317,10 +329,10 @@ function M.write(modName, entry, config)
 end
 
 --- Write a dedup summary line to file
--- @param modName Mod identifier
--- @param count number Number of duplicates
--- @param firstSeen string Timestamp of first occurrence
--- @param message string Original message
+---@param modName Mod identifier
+---@param count number Number of duplicates
+---@param firstSeen string Timestamp of first occurrence
+---@param message string Original message
 function M.writeDedupSummary(modName, count, firstSeen, message)
     if type(modName) ~= "string" or modName == "" then return end
 
@@ -349,19 +361,19 @@ function M.writeDedupSummary(modName, count, firstSeen, message)
 end
 
 --- Flush a specific mod's file (close and reopen to force disk write)
--- @param modName Mod identifier
+---@param modName Mod identifier
 function M.flush(modName)
     -- Our implementation writes and closes immediately,
     -- so flush is effectively a no-op. Kept for API compatibility.
 end
 
---- Flush all file handles
+--- Flush all file handles (no-op in current implementation).
 function M.flushAll()
     -- All handles are closed after each write, so this is a no-op.
     -- Kept for API compatibility and future buffered mode.
 end
 
---- Close all file handles (for shutdown)
+--- Close all file handles (for shutdown).
 function M.closeAll()
     fileHandles = {}
     fileSizes = {}
@@ -369,16 +381,22 @@ function M.closeAll()
 end
 
 --- Get the resolved file path for a mod
--- @param modName Mod identifier
--- @return string File path
+---@param modName Mod identifier
+---@return string File path
 function M.getFilePath(modName)
     return resolvePath(modName)
 end
 
---- Check if file output is enabled (always true — we write by default)
--- @return boolean
+--- Check if file output is enabled (always true — we write by default).
+---@return boolean enabled Always true
 function M.isEnabled()
     return true
+end
+
+--- Set the logger instance for FileOutput internal logging.
+---@param logger Logger Logger instance from Log-Engine
+function M.setLogger(logger)
+    log = logger
 end
 
 return M

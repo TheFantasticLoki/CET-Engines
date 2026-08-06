@@ -22,9 +22,9 @@ local log = nil  -- Log-Engine fallback
 -- --- Schema Validation ---
 
 --- Validate a window specification
--- @param id string Window identifier
--- @param spec table Window specification
--- @return boolean, string|nil success, error message
+---@param id string Window identifier
+---@param spec table Window specification
+---@return boolean, string|nil success, error message
 local function validateWindowSpec(id, spec)
     if type(id) ~= "string" or id == "" then
         return false, "Invalid window ID: must be non-empty string"
@@ -62,7 +62,7 @@ end
 -- --- Public API ---
 
 --- Initialize the windows module (idempotent)
--- @param deps table Dependencies { Core, Events, Logger }
+---@param deps table Dependencies { Core, Events, Logger }
 function M.init(deps)
     if initialized then
         return
@@ -84,9 +84,9 @@ function M.init(deps)
 end
 
 --- Register a standalone window
--- @param id string Window identifier
--- @param spec table { title, width, height, draw_fn, flags }
--- @return boolean, string|nil success, error message
+---@param id string Window identifier
+---@param spec table { title, width, height, draw_fn, flags }
+---@return boolean, string|nil success, error message
 function M.register(id, spec)
     if not Core then
         return false, "Windows module not initialized"
@@ -114,8 +114,8 @@ function M.register(id, spec)
 end
 
 --- Unregister a standalone window
--- @param id string Window identifier
--- @return boolean success
+---@param id string Window identifier
+---@return boolean success
 function M.unregister(id)
     if not Core then
         return false
@@ -143,7 +143,7 @@ function M.unregister(id)
 end
 
 --- Get all registered window IDs
--- @return table Array of window ID strings
+---@return table Array of window ID strings
 function M.getWindowIds()
     if not Core then
         return {}

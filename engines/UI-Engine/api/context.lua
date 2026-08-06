@@ -30,7 +30,7 @@ local modStates = {}
 -- --- Public API ---
 
 --- Initialize the context module (idempotent)
--- @param deps table Dependencies { Core, Events, Components, Tokens, Utils }
+---@param deps table Dependencies { Core, Events, Components, Tokens, Utils }
 function M.init(deps)
     if initialized then
         return
@@ -45,9 +45,9 @@ function M.init(deps)
 end
 
 --- Create a context object for a mod
--- @param id string Mod identifier
--- @param spec table Mod specification
--- @return table Context object with component methods
+---@param id string Mod identifier
+---@param spec table Mod specification
+---@return table Context object with component methods
 function M.create(id, spec)
     local ctx = { modId = id, spec = spec }
 
@@ -122,10 +122,10 @@ function M.create(id, spec)
 end
 
 --- Get state for a mod (external access)
--- @param id string Mod identifier
--- @param key string State key
--- @param default any Default value
--- @return any State value
+---@param id string Mod identifier
+---@param key string State key
+---@param default any Default value
+---@return any State value
 function M.getState(id, key, default)
     if not modStates[id] then
         return default
@@ -136,9 +136,9 @@ function M.getState(id, key, default)
 end
 
 --- Set state for a mod (external access)
--- @param id string Mod identifier
--- @param key string State key
--- @param value any State value
+---@param id string Mod identifier
+---@param key string State key
+---@param value any State value
 function M.setState(id, key, value)
     if not modStates[id] then
         modStates[id] = {}
@@ -147,7 +147,7 @@ function M.setState(id, key, value)
 end
 
 --- Clear state for a mod
--- @param id string Mod identifier
+---@param id string Mod identifier
 function M.clearState(id)
     modStates[id] = nil
 end

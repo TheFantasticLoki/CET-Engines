@@ -25,9 +25,9 @@ local log = nil  -- Log-Engine fallback
 -- --- Schema Validation ---
 
 --- Validate a mod specification against the required schema
--- @param id string Mod identifier
--- @param spec table Mod specification
--- @return boolean, string|nil success, error message
+---@param id string Mod identifier
+---@param spec table Mod specification
+---@return boolean, string|nil success, error message
 local function validateSpec(id, spec)
     if type(id) ~= "string" or id == "" then
         return false, "Invalid mod ID: must be non-empty string"
@@ -68,7 +68,7 @@ end
 -- --- Public API ---
 
 --- Initialize the registry module (idempotent)
--- @param deps table Dependencies { Core, Events, Logger }
+---@param deps table Dependencies { Core, Events, Logger }
 function M.init(deps)
     if initialized then
         return
@@ -90,9 +90,9 @@ function M.init(deps)
 end
 
 --- Register a mod with UI-Engine
--- @param id string Unique mod identifier
--- @param spec table Mod specification
--- @return boolean, string|nil success, error message
+---@param id string Unique mod identifier
+---@param spec table Mod specification
+---@return boolean, string|nil success, error message
 function M.register(id, spec)
     if not Core then
         return false, "Registry not initialized"
@@ -130,8 +130,8 @@ function M.register(id, spec)
 end
 
 --- Unregister a mod from UI-Engine
--- @param id string Mod identifier
--- @return boolean success
+---@param id string Mod identifier
+---@return boolean success
 function M.unregister(id)
     if not Core then
         return false
@@ -177,8 +177,8 @@ function M.unregister(id)
 end
 
 --- Get a registered mod's spec
--- @param id string Mod identifier
--- @return table|nil spec
+---@param id string Mod identifier
+---@return table|nil spec
 function M.getMod(id)
     if not Core then
         return nil
@@ -187,7 +187,7 @@ function M.getMod(id)
 end
 
 --- Get all registered mod IDs
--- @return table Array of mod ID strings
+---@return table Array of mod ID strings
 function M.getModIds()
     if not Core then
         return {}
@@ -196,7 +196,7 @@ function M.getModIds()
 end
 
 --- Get mod count
--- @return number
+---@return number
 function M.getModCount()
     local ids = M.getModIds()
     return #ids

@@ -1,13 +1,9 @@
---[[
-    Display — UI-Engine Component Library
-
-    Display widgets for showing information.
-    Includes Text, TextColored, TextWrapped, TextDisabled, StatusBadge,
-    InfoRow, Banner, ProgressBar, Plot, Histogram, Notification.
-
-    Dependencies: ui/utils.lua, ui/tokens.lua
-]]
-
+--- DisplayComponents — Display widgets for showing information.
+--- Includes Text, TextColored, TextWrapped, TextDisabled, StatusBadge,
+--- InfoRow, Banner, ProgressBar, Plot, Histogram, Notification.
+---
+--- Dependencies: ui/utils.lua, ui/tokens.lua
+---@class DisplayComponents
 local M = {}
 
 local Utils = require("ui/utils")
@@ -16,15 +12,15 @@ local Tokens = require("ui/tokens")
 -- --- Text Widgets ---
 
 --- Basic text
--- @param text Text to display
+---@param text Text to display
 function M.Text(text)
     text = text or ""
     Utils.SafeImGuiCall(ImGui.Text, tostring(text))
 end
 
 --- Colored text
--- @param color Color table {r, g, b} (0-1 range)
--- @param text Text to display
+---@param color Color table {r, g, b} (0-1 range)
+---@param text Text to display
 function M.TextColored(color, text)
     color = color or { r = 1, g = 1, b = 1 }
     text = text or ""
@@ -32,14 +28,14 @@ function M.TextColored(color, text)
 end
 
 --- Wrapped text
--- @param text Text to display
+---@param text Text to display
 function M.TextWrapped(text)
     text = text or ""
     Utils.SafeImGuiCall(ImGui.TextWrapped, tostring(text))
 end
 
 --- Disabled text
--- @param text Text to display
+---@param text Text to display
 function M.TextDisabled(text)
     text = text or ""
     Utils.SafeImGuiCall(ImGui.TextDisabled, tostring(text))
@@ -48,8 +44,8 @@ end
 -- --- Status Widgets ---
 
 --- Colored status indicator badge
--- @param label Badge text
--- @param color Background color {r, g, b} (0-1 range)
+---@param label Badge text
+---@param color Background color {r, g, b} (0-1 range)
 function M.StatusBadge(label, color)
     label = label or ""
     color = color or Tokens.color4n("primary")
@@ -66,8 +62,8 @@ function M.StatusBadge(label, color)
 end
 
 --- Label:value pair row
--- @param label Label text
--- @param value Value text
+---@param label Label text
+---@param value Value text
 function M.InfoRow(label, value)
     label = label or ""
     value = value or ""
@@ -80,8 +76,8 @@ function M.InfoRow(label, value)
 end
 
 --- Full-width notification banner
--- @param text Banner text
--- @param color Optional banner color {r, g, b} (defaults to primary)
+---@param text Banner text
+---@param color Optional banner color {r, g, b} (defaults to primary)
 function M.Banner(text, color)
     text = text or ""
     color = color or Tokens.color4n("primary")
@@ -102,8 +98,8 @@ end
 -- --- Progress Widgets ---
 
 --- Progress bar
--- @param value Progress value (0.0 - 1.0)
--- @param options Optional: {label, width, height}
+---@param value Progress value (0.0 - 1.0)
+---@param options Optional: {label, width, height}
 function M.ProgressBar(value, options)
     value = value or 0
     options = options or {}
@@ -123,9 +119,9 @@ end
 -- --- Chart Widgets ---
 
 --- Simple line plot
--- @param label Plot label
--- @param data Array of numeric values
--- @param options Optional: {min, max, width, height, tooltip}
+---@param label Plot label
+---@param data Array of numeric values
+---@param options Optional: {min, max, width, height, tooltip}
 function M.Plot(label, data, options)
     label = label or ""
     data = data or {}
@@ -164,9 +160,9 @@ function M.Plot(label, data, options)
 end
 
 --- Histogram
--- @param label Histogram label
--- @param data Array of numeric values
--- @param options Optional: {min, max, width, height, tooltip}
+---@param label Histogram label
+---@param data Array of numeric values
+---@param options Optional: {min, max, width, height, tooltip}
 function M.Histogram(label, data, options)
     label = label or ""
     data = data or {}
@@ -210,9 +206,9 @@ end
 local notifications = {}
 
 --- Popup notification system
--- @param text Notification text
--- @param type Notification type: "info", "success", "warn", "error"
--- @param duration Duration in seconds (default: 3)
+---@param text Notification text
+---@param type Notification type: "info", "success", "warn", "error"
+---@param duration Duration in seconds (default: 3)
 function M.Notification(text, type, duration)
     text = text or ""
     type = type or "info"
@@ -241,6 +237,7 @@ function M.Notification(text, type, duration)
 end
 
 --- Render active notifications (call once per frame)
+---@return nil
 function M.RenderNotifications()
     local now = os.time()
 

@@ -8,7 +8,24 @@
     No other dependencies.
 ]]
 
+---@class Tokens
+---Design tokens for spacing, sizing, borders, text, and theme-aware colors.
+---@field SPACING table<string, number>
+---@field SIZING table<string, table>
+---@field BORDER_RADIUS table<string, number>
+---@field TEXT_SIZE table<string, number>
+---@field color4n fun(role: string): ColorTable
+---@field color4 fun(role: string): ColorTable
+---@field invalidateCache fun()
+---@field styleVar fun(name: string): number
+---@field styleVarVec2 fun(name: string): number, number
+---@field init fun(core: table, colorEngine: table, themes: table)
+---@field reset fun()
+
 local M = {}
+
+-- --- Logger ---
+local log = nil ---@type Logger?
 
 -- --- Static Tokens ---
 
@@ -51,19 +68,24 @@ M.TEXT_SIZE = {
 -- --- Dynamic Tokens (Theme-Aware) ---
 
 -- Color cache (invalidated on theme change)
+---@type table<string, table<string, ColorTable>>
 local _colorCache = {}
+---@type string|nil
 local _cacheKey = nil
 
 -- Dependencies (set during init)
+---@type table|nil
 local _core = nil
+---@type table|nil
 local _colorEngine = nil
+---@type table|nil
 local _themes = nil
 local _initialized = false
 
 --- Initialize tokens module
--- @param core Core module reference
--- @param colorEngine ColorEngine module reference
--- @param themes Theme definitions module reference
+---@param core table Core module reference
+---@param colorEngine table ColorEngine module reference
+---@param themes table Theme definitions module reference
 function M.init(core, colorEngine, themes)
     if _initialized then
         return
@@ -73,10 +95,17 @@ function M.init(core, colorEngine, themes)
     _core = core
     _colorEngine = colorEngine
     _themes = themes
+
+    -- Resolve logger
+    if not log and _LogEngine then
+        local ok, logger = pcall(_LogEngine.CreateLogger, "Tokens", { minLevel = "debug" })
+        if ok and logger then log = logger end
+    end
+    if log then log.debug("Tokens initialized") end
 end
 
 --- Generate cache key from current theme state
--- @return string Cache key
+---@return string key Cache key
 local function getCacheKey()
     if not _core then
         return "default"
@@ -89,9 +118,9 @@ local function getCacheKey()
     return themeName .. ":" .. tostring(accent.r) .. ":" .. tostring(accent.g) .. ":" .. tostring(accent.b) .. ":" .. tostring(contrast)
 end
 
---- Get resolved color for a semantic role
--- @param role Role key (e.g., "primary", "background")
--- @return table Color {r, g, b, a}
+--- Get resolved color for a semantic role (with alpha)
+---@param role string Role key (e.g., "primary", "background")
+---@return ColorTable color Color {r, g, b, a}
 function M.color4n(role)
     local key = getCacheKey()
 
@@ -99,6 +128,7 @@ function M.color4n(role)
     if _colorCache[key] and _colorCache[key][role] then
         return _colorCache[key][role]
     end
+    if log then log.trace("Cache miss for role: " .. role) end
 
     -- Resolve color
     local color = nil
@@ -145,8 +175,8 @@ function M.color4n(role)
 end
 
 --- Get resolved color for a semantic role (no alpha)
--- @param role Role key (e.g., "primary", "background")
--- @return table Color {r, g, b}
+---@param role string Role key (e.g., "primary", "background")
+---@return ColorTable color Color {r, g, b}
 function M.color4(role)
     local c = M.color4n(role)
     return { r = c.r, g = c.g, b = c.b }
@@ -156,11 +186,12 @@ end
 function M.invalidateCache()
     _colorCache = {}
     _cacheKey = nil
+    if log then log.debug("Color cache invalidated") end
 end
 
 --- Get style var value
--- @param name Style var name (e.g., "WindowRounding")
--- @return number Style var value
+---@param name string Style var name (e.g., "WindowRounding")
+---@return number value Style var value
 function M.styleVar(name)
     if _themes then
         local baseVars = _themes.getBaseStyleVars()
@@ -172,8 +203,9 @@ function M.styleVar(name)
 end
 
 --- Get style var as Vec2
--- @param name Style var name (e.g., "WindowPadding")
--- @return number, number x, y
+---@param name string Style var name (e.g., "WindowPadding")
+---@return number x X component
+---@return number y Y component
 function M.styleVarVec2(name)
     if _themes then
         local baseVars = _themes.getBaseStyleVars()
@@ -191,6 +223,7 @@ end
 -- --- Reset (for testing) ---
 
 --- Reset tokens module state (for testing)
+---@return nil
 function M.reset()
     _colorCache = {}
     _cacheKey = nil
