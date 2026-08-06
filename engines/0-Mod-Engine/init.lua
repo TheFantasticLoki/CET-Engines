@@ -227,6 +227,23 @@ local function GetThemeList()
     return { "Dark" }
 end
 
+--- Get the current contrast level
+---@return number contrastLevel 1=normal, 2=high, 3=very high
+local function GetContrastLevel()
+    if not Core then return 1 end
+    return Core.getContrastLevel() or 1
+end
+
+--- Set the contrast level
+---@param level number 1=normal, 2=high, 3=very high
+local function SetContrastLevel(level)
+    if Theme and Theme.SetHighContrast then
+        Theme.SetHighContrast(level)
+    elseif Core then
+        Core.setContrastLevel(level)
+    end
+end
+
 --- Subscribe to an event
 ---@param event string Event name
 ---@param handler function Handler function
@@ -501,6 +518,76 @@ local function registerEngines()
     end
 end
 
+--- Bridge saved engine settings to actual engine subsystems at startup.
+--- Called after registerEngines() so saved settings override hardcoded defaults.
+local function bridgeEngineSettings()
+    if not CfgCore then return end
+
+    -- UI-Engine settings
+    local uiMod = CfgCore.getMod("0-Engine-UI")
+    if uiMod and uiMod.settings then
+        local s = uiMod.settings
+        if s.currentTheme and Theme and Theme.SetTheme then
+            Theme.SetTheme(s.currentTheme)
+        end
+        if s.contrastLevel and Theme and Theme.SetHighContrast then
+            Theme.SetHighContrast(s.contrastLevel)
+        end
+        if s.accentColor and Core and Core.setAccentColor then
+            Core.setAccentColor(s.accentColor)
+        end
+        if s.autoSave ~= nil and Core and Core.setAutoSave then
+            Core.setAutoSave(s.autoSave)
+        end
+        if s.showSidebar ~= nil and Core and Core.setSidebarOpen then
+            Core.setSidebarOpen(s.showSidebar)
+        end
+        if s.showLoggerOverlay ~= nil and Logger and Logger.SetOverlay then
+            Logger.SetOverlay(s.showLoggerOverlay)
+        end
+        if s.maxDebugPerFrame and Logger and Logger.SetMaxDebugPerFrame then
+            Logger.SetMaxDebugPerFrame(s.maxDebugPerFrame)
+        end
+    end
+
+    -- Log-Engine settings
+    local logMod = CfgCore.getMod("0-Engine-Log")
+    if logMod and logMod.settings and _LogEngine then
+        local s = logMod.settings
+        if s.globalMinLevel then _LogEngine.SetGlobalLevel(s.globalMinLevel) end
+        if s.logDir then _LogEngine.setLogDir(s.logDir) end
+        if s.maxFileSize then _LogEngine.setMaxFileSize(s.maxFileSize) end
+        if s.maxFiles then _LogEngine.setMaxFiles(s.maxFiles) end
+        if s.maxDebugPerFrame then _LogEngine.setMaxDebugPerFrame(s.maxDebugPerFrame) end
+        if s.dedupEnabled ~= nil then _LogEngine.setDedupEnabled(s.dedupEnabled) end
+        if s.dedupMaxEntries then _LogEngine.setDedupMaxEntries(s.dedupMaxEntries) end
+        if s.ringSize then _LogEngine.setRingSize(s.ringSize) end
+    end
+
+    -- Config-Engine settings
+    local cfgMod = CfgCore.getMod("0-Engine-Config")
+    if cfgMod and cfgMod.settings then
+        local s = cfgMod.settings
+        if s.sidebarWidth and Core and Core.setSidebarWidth then
+            CfgCore.setSidebarWidth(s.sidebarWidth)
+        end
+        if s.sortMode then
+            local _, sortAsc = CfgCore.getSortMode()
+            CfgCore.setSortMode(s.sortMode, sortAsc)
+        end
+        if s.sortAscending ~= nil then
+            local sortMode = CfgCore.getSortMode()
+            CfgCore.setSortMode(sortMode, s.sortAscending)
+        end
+        if s.compactMode ~= nil and CfgCore.setCompactMode then
+            CfgCore.setCompactMode(s.compactMode)
+        end
+        if s.maxUndoSteps and CfgUndoRedo then
+            CfgUndoRedo.init({ maxSteps = s.maxUndoSteps, maxRedoSteps = s.maxRedoSteps or 50 })
+        end
+    end
+end
+
 -- ============================================================================
 -- Module Initialization
 -- ============================================================================
@@ -595,16 +682,30 @@ local function initModules()
     end
 
     if CfgUndoRedo then
-        CfgUndoRedo.init({ maxSteps = 50 })
+        -- Read maxUndoSteps and maxRedoSteps from saved settings
+        local undoSteps = 50
+        local redoSteps = 50
+        local cfgMod = CfgCore and CfgCore.getMod("0-Engine-Config")
+        if cfgMod and cfgMod.settings then
+            if cfgMod.settings.maxUndoSteps then undoSteps = cfgMod.settings.maxUndoSteps end
+            if cfgMod.settings.maxRedoSteps then redoSteps = cfgMod.settings.maxRedoSteps end
+        end
+        CfgUndoRedo.init({ maxSteps = undoSteps, maxRedoSteps = redoSteps })
         if log then log.info("CfgUndoRedo initialized") end
     end
 
     if CfgStateSync then
+        -- Read autoSaveDelayFrames from saved settings
+        local saveDelay = 30
+        local cfgMod = CfgCore and CfgCore.getMod("0-Engine-Config")
+        if cfgMod and cfgMod.settings and cfgMod.settings.autoSaveDelayFrames then
+            saveDelay = cfgMod.settings.autoSaveDelayFrames
+        end
         CfgStateSync.init({
             core = CfgCore or Core,
             storage = Storage,
             logger = log,
-            config = {},
+            config = { AUTO_SAVE_DELAY_FRAMES = saveDelay },
         })
         if log then log.info("CfgStateSync initialized") end
     end
@@ -657,6 +758,9 @@ local function initModules()
 
     -- Register engines
     registerEngines()
+
+    -- Bridge saved settings to engine subsystems
+    bridgeEngineSettings()
 
     -- Emit init complete event
     if Events then
@@ -732,6 +836,8 @@ ModEngine = {
     GetTheme = GetTheme,
     SetTheme = SetTheme,
     GetThemeList = GetThemeList,
+    GetContrastLevel = GetContrastLevel,
+    SetContrastLevel = SetContrastLevel,
     IsRegistered = IsRegistered,
     GetRegisteredMods = GetRegisteredMods,
     Enable = Enable,
@@ -771,6 +877,7 @@ ModEngine = {
     Registry = Registry,
     Context = Context,
     Windows = Windows,
+    _LogEngine = _LogEngine,
 }
 
 -- ============================================================================
@@ -812,7 +919,14 @@ registerForEvent("onDraw", function()
 
         -- Draw Config-Engine window (inline, same pattern as original)
         if CfgCore and CfgModManager then
-            ImGui.SetNextWindowSize(800, 600, ImGuiCond.FirstUseEver)
+            -- Read window size from settings
+            local winW, winH = 800, 600
+            local cfgMod = CfgCore.getMod("0-Engine-Config")
+            if cfgMod and cfgMod.settings then
+                if cfgMod.settings.defaultWindowWidth then winW = cfgMod.settings.defaultWindowWidth end
+                if cfgMod.settings.defaultWindowHeight then winH = cfgMod.settings.defaultWindowHeight end
+            end
+            ImGui.SetNextWindowSize(winW, winH, ImGuiCond.FirstUseEver)
             if ImGui.Begin("Config Engine") then
                 -- Menu bar
                 if ImGui.BeginMenuBar() then
@@ -831,14 +945,23 @@ registerForEvent("onDraw", function()
                 -- Main content: sidebar + content area
                 local sidebarWidth = CfgCore.getSidebarWidth()
 
-                -- Sidebar
-                ImGui.BeginChild("##cfgsidebar", sidebarWidth, 0, true)
-                if CfgSidebar and CfgSidebar.draw then
-                    CfgSidebar.draw()
+                -- Check if sidebar is visible
+                local showSidebar = true
+                local uiMod = CfgCore.getMod("0-Engine-UI")
+                if uiMod and uiMod.settings and uiMod.settings.showSidebar ~= nil then
+                    showSidebar = uiMod.settings.showSidebar
                 end
-                ImGui.EndChild()
 
-                ImGui.SameLine()
+                if showSidebar then
+                    -- Sidebar
+                    ImGui.BeginChild("##cfgsidebar", sidebarWidth, 0, true)
+                    if CfgSidebar and CfgSidebar.draw then
+                        CfgSidebar.draw()
+                    end
+                    ImGui.EndChild()
+
+                    ImGui.SameLine()
+                end
 
                 -- Content area
                 ImGui.BeginChild("##cfgcontent", 0, 0, true)

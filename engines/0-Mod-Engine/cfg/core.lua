@@ -304,6 +304,15 @@ function M.isCompactMode()
     return state.compactMode
 end
 
+--- Set compact mode.
+---@param value boolean Whether compact mode is enabled
+---@return nil
+function M.setCompactMode(value)
+    state.compactMode = value == true
+    state.dirty = true
+    emit("configengine:compactModeChanged", state.compactMode)
+end
+
 --- Toggle compact mode.
 ---@return nil
 function M.toggleCompactMode()

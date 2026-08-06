@@ -164,7 +164,7 @@ end
 ---@return table Color {r, g, b}
 local function getRoleColor(role)
     local color = Tokens.color4n(role)
-    if color then
+    if color and color.r and color.g and color.b then
         return color
     end
     -- Fallback colors
@@ -186,6 +186,9 @@ end
 ---@param a Alpha (0..1)
 ---@return number Packed ImGui color
 local function packColor(r, g, b, a)
+    r = r or 0.5
+    g = g or 0.5
+    b = b or 0.5
     r = math.floor(r * 255 + 0.5)
     g = math.floor(g * 255 + 0.5)
     b = math.floor(b * 255 + 0.5)

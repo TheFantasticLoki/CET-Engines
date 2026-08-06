@@ -19,9 +19,76 @@ local TestRunner = nil
 ---@param value any The new value
 ---@return nil
 local function applySettingLive(modId, key, value)
-    if ModEngine and ModEngine.SetTheme then
-        if key == "currentTheme" then
+    if not ModEngine then return end
+
+    -- UI-Engine live settings
+    if modId == "0-Engine-UI" then
+        if key == "currentTheme" and ModEngine.SetTheme then
             ModEngine.SetTheme(value)
+        elseif key == "contrastLevel" and ModEngine.SetContrastLevel then
+            ModEngine.SetContrastLevel(value)
+        elseif key == "accentColor" and Core and Core.setAccentColor then
+            Core.setAccentColor(value)
+        elseif key == "autoSave" and Core and Core.setAutoSave then
+            Core.setAutoSave(value)
+        elseif key == "showSidebar" and Core and Core.setSidebarOpen then
+            Core.setSidebarOpen(value)
+        elseif key == "showLoggerOverlay" then
+            local logMod = ModEngine and ModEngine.Logger
+            if logMod and logMod.SetOverlay then
+                logMod.SetOverlay(value)
+            end
+        elseif key == "maxDebugPerFrame" then
+            local logMod = ModEngine and ModEngine.Logger
+            if logMod and logMod.SetMaxDebugPerFrame then
+                logMod.SetMaxDebugPerFrame(value)
+            end
+        end
+    end
+
+    -- Log-Engine live settings
+    if modId == "0-Engine-Log" then
+        local logEngine = ModEngine and ModEngine._LogEngine
+        if key == "globalMinLevel" and ModEngine.SetGlobalLevel then
+            ModEngine.SetGlobalLevel(value)
+        elseif key == "logDir" and logEngine and logEngine.setLogDir then
+            logEngine.setLogDir(value)
+        elseif key == "maxFileSize" and logEngine and logEngine.setMaxFileSize then
+            logEngine.setMaxFileSize(value)
+        elseif key == "maxFiles" and logEngine and logEngine.setMaxFiles then
+            logEngine.setMaxFiles(value)
+        elseif key == "maxDebugPerFrame" and logEngine and logEngine.setMaxDebugPerFrame then
+            logEngine.setMaxDebugPerFrame(value)
+        elseif key == "dedupEnabled" and logEngine and logEngine.setDedupEnabled then
+            logEngine.setDedupEnabled(value)
+        elseif key == "dedupMaxEntries" and logEngine and logEngine.setDedupMaxEntries then
+            logEngine.setDedupMaxEntries(value)
+        elseif key == "ringSize" and logEngine and logEngine.setRingSize then
+            logEngine.setRingSize(value)
+        end
+    end
+
+    -- Config-Engine live settings
+    if modId == "0-Engine-Config" then
+        if key == "sortMode" and Core then
+            local _, sortAsc = Core.getSortMode()
+            Core.setSortMode(value, sortAsc)
+        elseif key == "sortAscending" and Core then
+            local sortMode = Core.getSortMode()
+            Core.setSortMode(sortMode, value)
+        elseif key == "sidebarWidth" and Core and Core.setSidebarWidth then
+            Core.setSidebarWidth(value)
+        elseif key == "compactMode" and Core and Core.setCompactMode then
+            Core.setCompactMode(value)
+        elseif key == "maxUndoSteps" or key == "maxRedoSteps" then
+            -- Re-initialize undo/redo with new limits
+            local cfgMod = Core.getMod("0-Engine-Config")
+            if cfgMod and cfgMod.settings and CfgUndoRedo then
+                CfgUndoRedo.init({
+                    maxSteps = cfgMod.settings.maxUndoSteps or 50,
+                    maxRedoSteps = cfgMod.settings.maxRedoSteps or 50,
+                })
+            end
         end
     end
 end

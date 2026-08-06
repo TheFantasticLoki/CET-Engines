@@ -32,8 +32,8 @@ M["0-Engine-UI"] = {
             tooltip = "Select the global UI theme",
             options = {
                 "Dark", "Red", "Cyan", "Blue", "Green", "Amber",
-                "Purple", "Orange", "Pink", "Teal", "Indigo",
-                "Lime", "DeepPurple", "LightGreen", "Brown", "Grey",
+                "Purple", "Rose", "Teal", "Midnight", "Orange",
+                "Gold", "Pink", "White", "Arasaka", "Light",
             },
             default = "Dark",
         },
@@ -47,9 +47,9 @@ M["0-Engine-UI"] = {
         contrastLevel = {
             type = "int_slider",
             label = "Contrast Level",
-            tooltip = "Adjusts contrast for accessibility (1=normal, 2=high)",
+            tooltip = "Adjusts contrast for accessibility (1=normal, 2=high, 3=very high)",
             min = 1,
-            max = 2,
+            max = 3,
             step = 1,
             default = 1,
         },
@@ -65,15 +65,17 @@ M["0-Engine-UI"] = {
             tooltip = "Automatically save settings after changes",
             default = true,
         },
-        autoSaveDelay = {
-            type = "slider",
-            label = "Auto-Save Delay (seconds)",
-            tooltip = "Delay before auto-saving after last change",
-            min = 0.1,
-            max = 5.0,
-            step = 0.1,
-            default = 0.5,
-            format = "%.1f s",
+
+        -- UI
+        ui_header = {
+            type = "header",
+            label = "Interface",
+        },
+        showSidebar = {
+            type = "toggle",
+            label = "Show Sidebar",
+            tooltip = "Show the mod list sidebar on startup",
+            default = true,
         },
 
         -- Debug
@@ -144,6 +146,12 @@ M["0-Engine-Log"] = {
         file_header = {
             type = "header",
             label = "File Output",
+        },
+        logDir = {
+            type = "text",
+            label = "Log Directory",
+            tooltip = "Subdirectory for log files (relative to CET mods folder)",
+            default = "logs",
         },
         maxFileSize = {
             type = "combo",
@@ -251,6 +259,12 @@ M["0-Engine-Config"] = {
             options = { "name", "author", "version" },
             default = "name",
         },
+        sortAscending = {
+            type = "toggle",
+            label = "Sort Ascending",
+            tooltip = "Sort in ascending order (A→Z, oldest first)",
+            default = true,
+        },
         autoSaveDelayFrames = {
             type = "int_slider",
             label = "Auto-Save Delay (frames)",
@@ -274,6 +288,39 @@ M["0-Engine-Config"] = {
             max = 200,
             step = 10,
             default = 50,
+        },
+        maxRedoSteps = {
+            type = "int_slider",
+            label = "Max Redo Steps",
+            tooltip = "Maximum number of redoable changes",
+            min = 10,
+            max = 200,
+            step = 10,
+            default = 50,
+        },
+
+        -- Window
+        window_header = {
+            type = "header",
+            label = "Window",
+        },
+        defaultWindowWidth = {
+            type = "int_slider",
+            label = "Default Window Width",
+            tooltip = "Initial width of the Config-Engine window in pixels",
+            min = 600,
+            max = 1920,
+            step = 50,
+            default = 900,
+        },
+        defaultWindowHeight = {
+            type = "int_slider",
+            label = "Default Window Height",
+            tooltip = "Initial height of the Config-Engine window in pixels",
+            min = 400,
+            max = 1080,
+            step = 50,
+            default = 600,
         },
     },
 }

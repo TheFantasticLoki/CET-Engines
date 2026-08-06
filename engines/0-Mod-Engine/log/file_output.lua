@@ -67,6 +67,26 @@ function M.setLogger(logger)
     log = logger
 end
 
+--- Set the log directory path
+---@param dir string Log directory path
+function M.setLogDir(dir)
+    logDir = dir or ""
+    -- Clear cached paths so they resolve with new dir
+    filePaths = {}
+end
+
+--- Set max file size before rotation
+---@param size number Max file size in bytes
+function M.setMaxFileSize(size)
+    maxFileSize = size or (2 * 1024 * 1024)
+end
+
+--- Set max number of rotated files
+---@param count number Max rotated files
+function M.setMaxFiles(count)
+    maxFiles = count or 5
+end
+
 -- --- Helper Functions ---
 
 --- Get the mod's own directory path (for relative path resolution)

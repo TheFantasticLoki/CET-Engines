@@ -19,13 +19,16 @@ local batchCommands = {}
 local batchDescription = ""
 ---@type number
 local maxSteps = 50
+---@type number
+local maxRedoSteps = 50
 
 --- Initialize the undo/redo system.
----@param options table|nil Optional: { maxSteps }
+---@param options table|nil Optional: { maxSteps, maxRedoSteps }
 ---@return nil
 function M.init(options)
     options = options or {}
     maxSteps = options.maxSteps or 50
+    maxRedoSteps = options.maxRedoSteps or 50
     undoStack = {}
     redoStack = {}
     batchStack = {}
@@ -128,6 +131,12 @@ function M.undo(applyFn)
     end
 
     table.insert(redoStack, command)
+
+    -- Trim redo stack if over max
+    while #redoStack > maxRedoSteps do
+        table.remove(redoStack, 1)
+    end
+
     return command
 end
 

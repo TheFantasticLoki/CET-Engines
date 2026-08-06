@@ -291,6 +291,59 @@ M.FlushAll = FlushAll
 M.FlushAllDedup = FlushAllDedup
 M.GetSessionId = GetSessionId
 
+-- Configuration Setters (for live settings updates)
+function M.setLogDir(dir)
+    if FileOutput and FileOutput.setLogDir then
+        FileOutput.setLogDir(dir)
+    end
+    if Config then Config.LOG_DIR = dir end
+end
+
+function M.setMaxFileSize(size)
+    if FileOutput and FileOutput.setMaxFileSize then
+        FileOutput.setMaxFileSize(size)
+    end
+    if Config then Config.MAX_FILE_SIZE = size end
+end
+
+function M.setMaxFiles(count)
+    if FileOutput and FileOutput.setMaxFiles then
+        FileOutput.setMaxFiles(count)
+    end
+    if Config then Config.MAX_FILES = count end
+end
+
+function M.setMaxDebugPerFrame(count)
+    if Config then Config.MAX_DEBUG_PER_FRAME = count end
+    for _, logger in pairs(loggers) do
+        if logger.setMaxDebugPerFrame then
+            logger.setMaxDebugPerFrame(count)
+        end
+    end
+end
+
+function M.setDedupEnabled(enabled)
+    if Config then Config.DEDUP_ENABLED = enabled end
+    for _, logger in pairs(loggers) do
+        if logger.setDedupEnabled then
+            logger.setDedupEnabled(enabled)
+        end
+    end
+end
+
+function M.setDedupMaxEntries(max)
+    if Config then Config.DEDUP_MAX_ENTRIES = max end
+    for _, logger in pairs(loggers) do
+        if logger.setDedupMaxEntries then
+            logger.setDedupMaxEntries(max)
+        end
+    end
+end
+
+function M.setRingSize(size)
+    if Config then Config.RING_SIZE = size end
+end
+
 -- CET callbacks (called from main init.lua)
 M.onInit = onInit
 M.onDraw = onDraw

@@ -50,6 +50,8 @@ local entryCount = 0
 local currentFrame = 0
 ---@type number Debug messages logged this frame
 local debugCountThisFrame = 0
+---@type number Max debug messages per frame
+local maxDebugPerFrame = 1
 ---@type number Current minimum log level
 local minLevel = LEVEL_DEBUG
 ---@type boolean Whether ImGui overlay is enabled
@@ -210,6 +212,18 @@ function M.IsOverlayEnabled()
     return overlayEnabled
 end
 
+--- Set max debug messages per frame.
+---@param count number Max debug messages per frame
+function M.SetMaxDebugPerFrame(count)
+    maxDebugPerFrame = count or 1
+end
+
+--- Get max debug messages per frame.
+---@return number Max debug messages per frame
+function M.GetMaxDebugPerFrame()
+    return maxDebugPerFrame
+end
+
 --- Log a message at the specified level.
 ---@param modName string Module name
 ---@param message string Log message
@@ -225,8 +239,8 @@ function M.Log(modName, message, level)
     -- Rate limiting for debug messages
     if levelNum == LEVEL_DEBUG then
         debugCountThisFrame = debugCountThisFrame + 1
-        if debugCountThisFrame > 1 then
-            return  -- Only 1 debug message per frame
+        if debugCountThisFrame > maxDebugPerFrame then
+            return  -- Rate limited
         end
     end
 

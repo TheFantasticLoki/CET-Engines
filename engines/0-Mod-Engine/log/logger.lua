@@ -478,6 +478,24 @@ function M.create(modName, config, currentFrameRef)
         flushAllDedup()
     end
 
+    --- Set max debug messages per frame for this logger
+    ---@param count number Max debug messages per frame
+    function logger.setMaxDebugPerFrame(count)
+        maxDebugPerFrame = count or 1
+    end
+
+    --- Set deduplication enabled/disabled for this logger
+    ---@param enabled boolean Whether dedup is enabled
+    function logger.setDedupEnabled(enabled)
+        dedupEnabled = enabled
+    end
+
+    --- Set dedup max entries for this logger
+    ---@param max number Max dedup entries
+    function logger.setDedupMaxEntries(max)
+        dedupMaxEntries = max or 256
+    end
+
     return logger
 end
 

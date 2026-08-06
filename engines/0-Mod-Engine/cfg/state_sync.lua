@@ -135,6 +135,8 @@ end
 -- Should be called every frame.
 ---@param currentFrame The current frame number
 function M.autoSave(currentFrame)
+    -- Check if auto-save is enabled
+    if Core.getAutoSave and not Core.getAutoSave() then return end
     if not Core.isDirty() then return end
 
     local elapsed = currentFrame - Core.getLastSaveFrame()
