@@ -14,101 +14,8 @@ local Categories = nil
 local filterOpen = false
 local themeOpen = false
 
---- Safely get an icon glyph from ImGui.IconGlyphs
----@param name string Icon name (e.g., "Settings", "Star", "Palette")
----@return string|nil glyph
-local function GetSafeIconGlyph(name)
-    if not IconGlyphs or not name then return nil end
-    local glyph = IconGlyphs[name]
-    if type(glyph) == "string" and glyph ~= "" then return glyph end
-    return nil
-end
-
---- Check if we can draw centered text on buttons
----@return boolean
-local function CanDrawCenteredButtonText()
-    return ImGui.GetWindowDrawList and
-        ImGui.GetItemRectMin and
-        ImGui.GetItemRectMax and
-        ImGui.ImDrawListAddText and
-        ImGui.CalcTextSize and
-        ImGui.GetColorU32 and
-        ImGui.GetFontSize
-end
-
---- Draw centered text on the last button
----@param text string Glyph text to draw
-local function DrawCenteredButtonText(text)
-    if not CanDrawCenteredButtonText() then return end
-    pcall(function()
-        local minX, minY = ImGui.GetItemRectMin()
-        local maxX, maxY = ImGui.GetItemRectMax()
-        local textW, textH = ImGui.CalcTextSize(text)
-        local color = ImGui.GetColorU32(1.0, 1.0, 1.0, 0.96)
-        ImGui.ImDrawListAddText(
-            ImGui.GetWindowDrawList(),
-            ImGui.GetFontSize(),
-            minX + ((maxX - minX) - textW) * 0.5,
-            minY + ((maxY - minY) - textH) * 0.5,
-            color,
-            text
-        )
-    end)
-end
-
---- Draw an icon glyph button (CET-compatible pattern from Reflex Engine)
----@param id string Button unique ID
----@param iconName string IconGlyphs name
----@param fallbackText string Fallback text if glyph unavailable
----@param width number Button width
----@param height number Button height
----@param tooltip string|nil Tooltip text
----@return boolean clicked
-local function DrawIconGlyphButton(id, iconName, fallbackText, width, height, tooltip)
-    local glyph = GetSafeIconGlyph(iconName)
-    local display = glyph or fallbackText or ""
-    local drawCentered = CanDrawCenteredButtonText()
-    local label = drawCentered and ("##" .. id) or (display .. "##" .. id)
-    local clicked = ImGui.Button(label, width, height or 0.0)
-
-    if drawCentered then
-        DrawCenteredButtonText(display)
-    end
-
-    if tooltip and ImGui.IsItemHovered() then
-        ImGui.BeginTooltip()
-        ImGui.Text(tooltip)
-        ImGui.EndTooltip()
-    end
-
-    return clicked
-end
-
---- Draw an icon glyph at the current cursor position using ImDrawListAddText.
---- Advances the cursor past the glyph so subsequent text appears after it.
----@param iconName string IconGlyphs name (e.g., "GamepadVariant")
----@return boolean drawn True if glyph was drawn
-local function DrawIconGlyphInline(iconName)
-    if not CanDrawCenteredButtonText() then return false end
-    local glyph = GetSafeIconGlyph(iconName)
-    if not glyph then return false end
-
-    local ok, err = pcall(function()
-        local x, y = ImGui.GetCursorScreenPos()
-        local color = ImGui.GetColorU32(1.0, 1.0, 1.0, 0.9)
-        ImGui.ImDrawListAddText(
-            ImGui.GetWindowDrawList(),
-            ImGui.GetFontSize(),
-            x, y,
-            color,
-            glyph
-        )
-        -- Advance cursor past the glyph
-        local textW = ImGui.CalcTextSize(glyph)
-        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + textW + 4)
-    end)
-    return ok
-end
+--- Glyphs module (late-bound)
+local Glyphs = nil
 
 --- Initialize the sidebar module.
 ---@param deps table { core: CfgCore, searchParser: SearchParser, testResults: TestResults, categories: Categories }
@@ -118,6 +25,11 @@ function M.init(deps)
     SearchParser = deps.searchParser
     TestResults = deps.testResults
     Categories = deps.categories
+    -- Load Glyphs module (may not be available yet)
+    Glyphs = deps.glyphs or (function()
+        local ok, mod = pcall(require, "ui/components/glyphs")
+        return ok and mod or nil
+    end)()
 end
 
 --- Draw the sidebar.
@@ -131,7 +43,7 @@ function M.draw()
     local btnSize = 28
 
     -- Settings button (gear icon)
-    if DrawIconGlyphButton("sidebar_settings", "ApplicationSettings", "Settings", btnSize, btnSize, "Engine Settings") then
+    if Glyphs and Glyphs.Button("sidebar_settings", "ApplicationCog", { size = btnSize, tooltip = "Engine Settings", fallback = "S" }) then
         Core.setContentMode("settings")
     end
     ImGui.SameLine()
@@ -143,7 +55,7 @@ function M.draw()
         ImGui.PushStyleColor(ImGuiCol.Button, 0.3, 0.6, 1.0, 1.0)
     end
     local filterTooltip = hasFilters and ("Filter mods (" .. #activeFilters .. " active)") or "Filter mods"
-    if DrawIconGlyphButton("sidebar_filter", "Star", "Filter", btnSize, btnSize, filterTooltip) then
+    if Glyphs and Glyphs.Button("sidebar_filter", "FilterMenu", { size = btnSize, tooltip = filterTooltip, fallback = "F" }) then
         filterOpen = not filterOpen
         themeOpen = false
     end
@@ -151,7 +63,7 @@ function M.draw()
     ImGui.SameLine()
 
     -- Theme quick-switch (palette icon)
-    if DrawIconGlyphButton("sidebar_theme", "Palette", "Theme", btnSize, btnSize, "Quick Theme Switch") then
+    if Glyphs and Glyphs.Button("sidebar_theme", "Palette", { size = btnSize, tooltip = "Quick Theme Switch", fallback = "T" }) then
         themeOpen = not themeOpen
         filterOpen = false
     end
@@ -160,7 +72,7 @@ function M.draw()
     -- Sort mode
     local sortMode, sortAsc = Core.getSortMode()
     local sortLabel = sortMode == "name" and "A-Z" or sortMode == "author" and "Au" or "Ver"
-    if DrawIconGlyphButton("sidebar_sort", "Sort", sortLabel, btnSize, btnSize, "Sort: " .. sortMode .. (sortAsc and " (asc)" or " (desc)")) then
+    if Glyphs and Glyphs.Button("sidebar_sort", "Sort", { size = btnSize, tooltip = "Sort: " .. sortMode .. (sortAsc and " (asc)" or " (desc)"), fallback = sortLabel }) then
         -- Cycle: name -> author -> version -> name
         local modes = { "name", "author", "version" }
         local nextIdx = 1
@@ -237,6 +149,10 @@ function M.draw()
                 local engineMod = Core.getMod("0-Engine-UI")
                 if engineMod and engineMod.settings and engineMod.settings.currentTheme ~= nil then
                     engineMod.settings.currentTheme = name
+                end
+                -- Mark dirty so auto-save persists the theme change
+                if Core and Core.markDirty then
+                    Core.markDirty()
                 end
             end
         end
