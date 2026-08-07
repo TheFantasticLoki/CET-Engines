@@ -144,6 +144,10 @@ function M.create(modName, config, currentFrameRef)
     local entryCount = 0
     local debugCountThisFrame = 0
 
+    -- Debug message queue (for rate-limited messages)
+    local debugQueue = {}
+    local DEBUG_QUEUE_MAX = 100  -- max queued messages before dropping
+
     -- Deduplication state
     local dedupTable = {}  -- [level..":"..message] = { count, firstSeen, lastSeen, firstEntry }
     local dedupOrder = {}  -- ordered list of dedup keys for eviction
@@ -245,6 +249,10 @@ function M.create(modName, config, currentFrameRef)
         if levelNum == LEVEL_DEBUG then
             debugCountThisFrame = debugCountThisFrame + 1
             if debugCountThisFrame > maxDebugPerFrame then
+                -- Queue the message instead of dropping it
+                if #debugQueue < DEBUG_QUEUE_MAX then
+                    table.insert(debugQueue, { message = message, level = levelNum })
+                end
                 return
             end
         end
@@ -429,20 +437,29 @@ function M.create(modName, config, currentFrameRef)
         FileOutput.flush(modName)
     end
 
-    --- Clear this logger's ring buffer
+    --- Clear this logger's ring buffer and queue
     ---@return void
     function logger.clear()
         entries = {}
         entryCount = 0
         debugCountThisFrame = 0
+        debugQueue = {}
         dedupTable = {}
         dedupOrder = {}
     end
 
-    --- Reset the debug rate limiter (called each frame)
+    --- Reset the debug rate limiter and process queued messages (called each frame)
     ---@return void
     function logger.resetFrameCounter()
         debugCountThisFrame = 0
+
+        -- Process queued debug messages (up to maxDebugPerFrame per frame)
+        local processed = 0
+        while #debugQueue > 0 and processed < maxDebugPerFrame do
+            local queued = table.remove(debugQueue, 1)
+            addEntry(queued.message, queued.level)
+            processed = processed + 1
+        end
     end
 
     --- Get the total number of entries logged (including overwritten)
@@ -494,6 +511,15 @@ function M.create(modName, config, currentFrameRef)
     ---@param max number Max dedup entries
     function logger.setDedupMaxEntries(max)
         dedupMaxEntries = max or 256
+    end
+
+    --- Get debug queue statistics
+    ---@return table { queued, max }
+    function logger.getQueueStats()
+        return {
+            queued = #debugQueue,
+            max = DEBUG_QUEUE_MAX,
+        }
     end
 
     return logger

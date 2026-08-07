@@ -5,7 +5,7 @@
 local M = {}
 
 -- Internal state
----@type { mods: table<string, table>, categories: table, categoryOrder: table, modAssignments: table<string, table>, sidebarWidth: number, selectedMod: string|nil, compactMode: boolean, settingsPanelOpen: boolean, wikiViewerOpen: boolean, wikiModId: string|nil, detachedMods: table<string, table>, expandedCategories: table<string, boolean>, sortMode: string, sortAscending: boolean, searchQuery: string, contentMode: string, activeFilters: table, dirty: boolean, initialized: boolean }
+---@type { mods: table<string, table>, categories: table, categoryOrder: table, modAssignments: table<string, table>, sidebarWidth: number, selectedMod: string|nil, settingsPanelOpen: boolean, wikiViewerOpen: boolean, wikiModId: string|nil, detachedMods: table<string, table>, expandedCategories: table<string, boolean>, sortMode: string, sortAscending: boolean, searchQuery: string, contentMode: string, activeFilters: table, dirty: boolean, initialized: boolean }
 local state = {
     -- Mod registry
     mods = {},              -- { [modId] = { spec, settings, category, subcategory, wiki, pinned, favorite, renderMode, enabled } }
@@ -18,7 +18,6 @@ local state = {
     -- UI state (persisted)
     sidebarWidth = 280,
     selectedMod = nil,
-    compactMode = false,
     settingsPanelOpen = false,
     wikiViewerOpen = false,
     wikiModId = nil,
@@ -83,7 +82,6 @@ function M.reset()
         modAssignments = {},
         sidebarWidth = 280,
         selectedMod = nil,
-        compactMode = false,
         settingsPanelOpen = false,
         wikiViewerOpen = false,
         wikiModId = nil,
@@ -290,29 +288,6 @@ end
 function M.setSidebarWidth(width)
     state.sidebarWidth = width
     state.dirty = true
-end
-
---- Check if compact mode is enabled.
----@return boolean
-function M.isCompactMode()
-    return state.compactMode
-end
-
---- Set compact mode.
----@param value boolean Whether compact mode is enabled
----@return nil
-function M.setCompactMode(value)
-    state.compactMode = value == true
-    state.dirty = true
-    emit("configengine:compactModeChanged", state.compactMode)
-end
-
---- Toggle compact mode.
----@return nil
-function M.toggleCompactMode()
-    state.compactMode = not state.compactMode
-    state.dirty = true
-    emit("configengine:compactModeChanged", state.compactMode)
 end
 
 --- Check if settings panel is open.
@@ -566,7 +541,6 @@ function M.getAllState()
         modAssignments = state.modAssignments,
         sidebarWidth = state.sidebarWidth,
         selectedMod = state.selectedMod,
-        compactMode = state.compactMode,
         expandedCategories = state.expandedCategories,
         sortMode = state.sortMode,
         sortAscending = state.sortAscending,
@@ -589,7 +563,6 @@ function M.applyState(data)
     if data.modAssignments then state.modAssignments = data.modAssignments end
     if data.sidebarWidth then state.sidebarWidth = data.sidebarWidth end
     if data.selectedMod then state.selectedMod = data.selectedMod end
-    if data.compactMode ~= nil then state.compactMode = data.compactMode end
     if data.expandedCategories then state.expandedCategories = data.expandedCategories end
     if data.sortMode then state.sortMode = data.sortMode end
     if data.sortAscending ~= nil then state.sortAscending = data.sortAscending end

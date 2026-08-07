@@ -600,12 +600,6 @@ local function bridgeEngineSettings()
         if s.showSidebar ~= nil and Core and Core.setSidebarOpen then
             Core.setSidebarOpen(s.showSidebar)
         end
-        if s.showLoggerOverlay ~= nil and Logger and Logger.SetOverlay then
-            Logger.SetOverlay(s.showLoggerOverlay)
-        end
-        if s.maxDebugPerFrame and Logger and Logger.SetMaxDebugPerFrame then
-            Logger.SetMaxDebugPerFrame(s.maxDebugPerFrame)
-        end
     end
 
     -- Log-Engine settings
@@ -628,20 +622,6 @@ local function bridgeEngineSettings()
         local s = cfgMod.settings
         if s.sidebarWidth and Core and Core.setSidebarWidth then
             CfgCore.setSidebarWidth(s.sidebarWidth)
-        end
-        if s.sortMode then
-            local _, sortAsc = CfgCore.getSortMode()
-            CfgCore.setSortMode(s.sortMode, sortAsc)
-        end
-        if s.sortAscending ~= nil then
-            local sortMode = CfgCore.getSortMode()
-            CfgCore.setSortMode(sortMode, s.sortAscending)
-        end
-        if s.compactMode ~= nil and CfgCore.setCompactMode then
-            CfgCore.setCompactMode(s.compactMode)
-        end
-        if s.maxUndoSteps and CfgUndoRedo then
-            CfgUndoRedo.init({ maxSteps = s.maxUndoSteps, maxRedoSteps = s.maxRedoSteps or 50 })
         end
     end
 end
@@ -742,15 +722,7 @@ local function initModules()
     end
 
     if CfgUndoRedo then
-        -- Read maxUndoSteps and maxRedoSteps from saved settings
-        local undoSteps = 50
-        local redoSteps = 50
-        local cfgMod = CfgCore and CfgCore.getMod("0-Engine-Config")
-        if cfgMod and cfgMod.settings then
-            if cfgMod.settings.maxUndoSteps then undoSteps = cfgMod.settings.maxUndoSteps end
-            if cfgMod.settings.maxRedoSteps then redoSteps = cfgMod.settings.maxRedoSteps end
-        end
-        CfgUndoRedo.init({ maxSteps = undoSteps, maxRedoSteps = redoSteps })
+        CfgUndoRedo.init({ maxSteps = 50, maxRedoSteps = 50 })
         if log then log.info("CfgUndoRedo initialized") end
     end
 
@@ -826,6 +798,7 @@ local function initModules()
             stateSync = CfgStateSync,
             testResults = TestResults,
             testRunner = TestRunner,
+            components = Components,
         })
         if log then log.info("CfgContentArea initialized") end
     end

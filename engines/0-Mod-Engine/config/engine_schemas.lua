@@ -3,6 +3,7 @@
 
     Configuration schemas for UI-Engine, Log-Engine, and Config-Engine itself.
     These schemas define what settings are available for each engine.
+    Data-only — rendering is handled by content_area.lua custom draw functions.
 ]]
 
 ---@class EngineSchemas
@@ -14,18 +15,13 @@ local M = {}
 
 M["0-Engine-UI"] = {
     name = "UI-Engine",
-    version = "v0.5.0-phase4",
+    version = "v1.0.0-unified",
     author = "0-Loki",
     description = "UI framework providing components, theming, events, and mod registration.",
     category = "Framework",
     subcategory = "UI-Engine",
 
     settings = {
-        -- Theme
-        theme_header = {
-            type = "header",
-            label = "Theme Settings",
-        },
         currentTheme = {
             type = "combo",
             label = "Theme",
@@ -42,7 +38,6 @@ M["0-Engine-UI"] = {
             label = "Accent Color",
             tooltip = "Global accent color used across all UI elements",
             default = { r = 0.4, g = 0.6, b = 1.0, a = 1.0 },
-            alpha = true,
         },
         contrastLevel = {
             type = "int_slider",
@@ -53,50 +48,17 @@ M["0-Engine-UI"] = {
             step = 1,
             default = 1,
         },
-
-        -- Settings
-        settings_header = {
-            type = "header",
-            label = "Settings",
-        },
-        autoSave = {
-            type = "toggle",
-            label = "Auto-Save",
-            tooltip = "Automatically save settings after changes",
-            default = true,
-        },
-
-        -- UI
-        ui_header = {
-            type = "header",
-            label = "Interface",
-        },
         showSidebar = {
             type = "toggle",
             label = "Show Sidebar",
             tooltip = "Show the mod list sidebar on startup",
             default = true,
         },
-
-        -- Debug
-        debug_header = {
-            type = "header",
-            label = "Debug",
-        },
-        showLoggerOverlay = {
+        autoSave = {
             type = "toggle",
-            label = "Show Logger Overlay",
-            tooltip = "Display the logger overlay on screen",
-            default = false,
-        },
-        maxDebugPerFrame = {
-            type = "int_slider",
-            label = "Max Debug Messages/Frame",
-            tooltip = "Maximum debug log messages per frame",
-            min = 1,
-            max = 20,
-            step = 1,
-            default = 5,
+            label = "Auto-Save Settings",
+            tooltip = "Automatically save settings after changes (uses Config-Engine delay)",
+            default = true,
         },
     },
 }
@@ -219,51 +181,17 @@ M["0-Engine-Log"] = {
 
 M["0-Engine-Config"] = {
     name = "Config-Engine",
-    version = "v0.1.0",
+    version = "v1.0.0-unified",
     author = "0-Loki",
     description = "Unified mod configuration manager with settings schemas, undo/redo, and presets.",
     category = "Framework",
     subcategory = "Config-Engine",
 
     settings = {
-        -- Appearance
-        appearance_header = {
-            type = "header",
-            label = "Appearance",
-        },
-        sidebarWidth = {
-            type = "int_slider",
-            label = "Sidebar Width",
-            tooltip = "Width of the mod list sidebar in pixels",
-            min = 200,
-            max = 500,
-            step = 10,
-            default = 280,
-        },
-        compactMode = {
-            type = "toggle",
-            label = "Compact Mode",
-            tooltip = "Use smaller UI elements to save space",
-            default = false,
-        },
-
         -- Behavior
         behavior_header = {
             type = "header",
             label = "Behavior",
-        },
-        sortMode = {
-            type = "combo",
-            label = "Sort Mode",
-            tooltip = "How mods are sorted in the sidebar",
-            options = { "name", "author", "version" },
-            default = "name",
-        },
-        sortAscending = {
-            type = "toggle",
-            label = "Sort Ascending",
-            tooltip = "Sort in ascending order (A→Z, oldest first)",
-            default = true,
         },
         autoSaveDelay = {
             type = "slider",
@@ -276,34 +204,19 @@ M["0-Engine-Config"] = {
             format = "%.1f",
         },
 
-        -- Undo/Redo
-        undo_header = {
-            type = "header",
-            label = "Undo/Redo",
-        },
-        maxUndoSteps = {
-            type = "int_slider",
-            label = "Max Undo Steps",
-            tooltip = "Maximum number of undoable changes",
-            min = 10,
-            max = 200,
-            step = 10,
-            default = 50,
-        },
-        maxRedoSteps = {
-            type = "int_slider",
-            label = "Max Redo Steps",
-            tooltip = "Maximum number of redoable changes",
-            min = 10,
-            max = 200,
-            step = 10,
-            default = 50,
-        },
-
         -- Window
         window_header = {
             type = "header",
             label = "Window",
+        },
+        sidebarWidth = {
+            type = "int_slider",
+            label = "Sidebar Width",
+            tooltip = "Width of the mod list sidebar in pixels",
+            min = 200,
+            max = 500,
+            step = 10,
+            default = 280,
         },
         defaultWindowWidth = {
             type = "int_slider",
