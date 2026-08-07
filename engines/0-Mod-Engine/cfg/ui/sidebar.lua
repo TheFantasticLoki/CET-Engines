@@ -150,10 +150,6 @@ function M.draw()
                 if engineMod and engineMod.settings and engineMod.settings.currentTheme ~= nil then
                     engineMod.settings.currentTheme = name
                 end
-                -- Mark dirty so auto-save persists the theme change
-                if Core and Core.markDirty then
-                    Core.markDirty()
-                end
             end
         end
         ImGui.EndPopup()
@@ -347,7 +343,8 @@ function drawModEntry(modId, selectedMod)
             local badgeX = itemMaxX - textW - 8
             local badgeY = ImGui.GetItemRectMin() + (ImGui.GetItemRectHeight() - ImGui.GetTextLineHeight()) / 2
             if badgeX > windowX then
-                ImGui.GetWindowDrawList():AddText(badgeX, badgeY,
+                local drawList = ImGui.GetWindowDrawList()
+                ImGui.ImDrawListAddText(drawList, ImGui.GetFontSize(), badgeX, badgeY,
                     ImGui.GetColorU32(0.5, 0.5, 0.6, 0.7), spec.version)
             end
         end)

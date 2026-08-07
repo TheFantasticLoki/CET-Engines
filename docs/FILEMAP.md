@@ -74,7 +74,8 @@ engines/
 │   │       ├── console.lua       # ConsoleOutput, RichInput, ConsoleToolbar
 │   │       ├── tables.lua        # BeginTable wrapper
 │   │       ├── primitives.lua    # ClipboardCopy, SafeSelectable, ContextMenu
-│   │       └── icons.lua         # Icon glyphs, DrawCenteredText
+│   │       └── glyphs.lua       # Centralized CET IconGlyphs rendering
+│   │       └── icons.lua        # DEPRECATED: Emoji-only icons (legacy)
 │   ├── features/
 │   │   ├── favorites.lua         # Sidebar star/favorite logic
 │   │   └── presets.lua           # Per-mod presets (may move to Config-Engine)

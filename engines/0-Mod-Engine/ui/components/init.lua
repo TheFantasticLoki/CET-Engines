@@ -25,7 +25,7 @@
 ---@field compose Compose|nil
 ---@field console ConsoleComponents|nil
 ---@field tables TableComponents|nil
----@field icons IconComponents|nil
+---@field glyphs Glyphs|nil
 ---@field iconBrowser IconBrowser|nil
 local M = {}
 
@@ -61,15 +61,15 @@ M.compose = SafeRequire("ui/components/compose")
 M.console = SafeRequire("ui/components/console")
 ---@type TableComponents|nil
 M.tables = SafeRequire("ui/components/tables")
----@type IconComponents|nil
-M.icons = SafeRequire("ui/components/icons")
+---@type Glyphs|nil
+M.glyphs = SafeRequire("ui/components/glyphs")
 ---@type IconBrowser|nil
 M.iconBrowser = SafeRequire("ui/components/icon_browser")
 
 -- Flatten into single API (only functions, don't overwrite sub-module tables)
 local subModules = {
     "primitives", "buttons", "display", "layout", "inputs", "sliders",
-    "containers", "advanced", "compose", "console", "tables", "icons", "iconBrowser"
+    "containers", "advanced", "compose", "console", "tables", "glyphs", "iconBrowser"
 }
 
 for _, modName in ipairs(subModules) do

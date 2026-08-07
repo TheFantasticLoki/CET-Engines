@@ -19,6 +19,9 @@
 
 local M = {}
 
+-- Glyphs module (late-bound to avoid circular deps)
+local Glyphs = nil
+
 -- ============================================================================
 -- Icon Index (built once, cached)
 -- ============================================================================
@@ -166,6 +169,12 @@ function M.Draw(id, options)
     local text, tagFilter = parseQuery(state.searchQuery)
     local icons = searchIcons(text, tagFilter)
 
+    -- Lazy-load Glyphs module
+    if not Glyphs then
+        local ok, mod = pcall(require, "ui/components/glyphs")
+        if ok then Glyphs = mod end
+    end
+
     -- ====================================================================
     -- Performance cap: only render up to MAX_VISIBLE icons.
     -- Users narrow the set with search/tag filters.
@@ -207,18 +216,13 @@ function M.Draw(id, options)
                 -- Button fills the cell
                 local clicked = ImGui.InvisibleButton("##ic" .. i, cellSize, cellSize)
 
-                -- Draw glyph centered on button rect
-                local minX, minY = ImGui.GetItemRectMin()
-                local maxX, maxY = ImGui.GetItemRectMax()
-                local btnW = maxX - minX
-                local btnH = maxY - minY
-                local drawList = ImGui.GetWindowDrawList()
-
                 -- Selection highlight
                 if isSelected then
+                    local minX, minY = ImGui.GetItemRectMin()
+                    local maxX, maxY = ImGui.GetItemRectMax()
                     local pad = 2
                     ImGui.ImDrawListAddRectFilled(
-                        drawList,
+                        ImGui.GetWindowDrawList(),
                         minX + pad, minY + pad,
                         maxX - pad, maxY - pad,
                         ImGui.GetColorU32(0.3, 0.5, 0.9, 0.4),
@@ -226,20 +230,13 @@ function M.Draw(id, options)
                     )
                 end
 
-                local glyphColor = isSelected
-                    and ImGui.GetColorU32(1.0, 1.0, 1.0, 1.0)
-                    or  ImGui.GetColorU32(0.75, 0.75, 0.75, 0.9)
-
-                -- Center glyph using glyphSize (not CalcTextSize which
-                -- returns width at the wrong font size)
-                ImGui.ImDrawListAddText(
-                    drawList,
-                    glyphSize,
-                    minX + (btnW - glyphSize) * 0.5,
-                    minY + (btnH - glyphSize) * 0.5,
-                    glyphColor,
-                    icon.glyph
-                )
+                -- Draw glyph centered on button (via Glyphs module)
+                if Glyphs then
+                    local glyphColor = isSelected
+                        and ImGui.GetColorU32(1.0, 1.0, 1.0, 1.0)
+                        or  ImGui.GetColorU32(0.75, 0.75, 0.75, 0.9)
+                    Glyphs.CenteredOnItem(icon.name, { size = glyphSize, color = glyphColor })
+                end
 
                 if clicked then
                     state.selectedName = icon.name
@@ -276,23 +273,12 @@ function M.Draw(id, options)
         ImGui.Spacing()
         for _, icon in ipairs(_iconList) do
             if icon.name == state.selectedName then
-                -- Icon preview at larger size
-                local previewSize = 48
-                ImGui.InvisibleButton("##preview", previewSize, previewSize)
-                local pMinX, pMinY = ImGui.GetItemRectMin()
-                local pMinX, pMinY = ImGui.GetItemRectMin()
-                local pMaxX, pMaxY = ImGui.GetItemRectMax()
-                local pBtnW = pMaxX - pMinX
-                local pBtnH = pMaxY - pMinY
-                local previewFontSize = previewSize - 8
-                ImGui.ImDrawListAddText(
-                    ImGui.GetWindowDrawList(),
-                    previewFontSize,
-                    pMinX + (pBtnW - previewFontSize) * 0.5,
-                    pMinY + (pBtnH - previewFontSize) * 0.5,
-                    ImGui.GetColorU32(1.0, 1.0, 1.0, 1.0),
-                    icon.glyph
-                )
+                -- Icon preview using Glyphs module
+                if Glyphs then
+                    ImGui.PushID("##preview")
+                    Glyphs.Preview(icon.name, { size = 48 })
+                    ImGui.PopID()
+                end
                 ImGui.SameLine()
                 ImGui.BeginGroup()
                 ImGui.Text(icon.name)
@@ -317,12 +303,15 @@ function M.Draw(id, options)
 end
 
 -- ============================================================================
--- Static Helpers
+-- Static Helpers (delegate to Glyphs module)
 -- ============================================================================
 
 function M.getGlyph(name)
-    if not IconGlyphs or not name then return nil end
-    return IconGlyphs[name]
+    if not Glyphs then
+        local ok, mod = pcall(require, "ui/components/glyphs")
+        if ok then Glyphs = mod end
+    end
+    return Glyphs and Glyphs.Get(name) or nil
 end
 
 function M.getNames()

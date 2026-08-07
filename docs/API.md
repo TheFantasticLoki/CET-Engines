@@ -512,15 +512,42 @@ Toolbar buttons.
 
 ImGui table wrapper.
 
-### Icons
+### Icons & Glyphs
 
-#### `ctx.GetIcon(name)`
+#### `Glyphs.Get(name, fallback)`
 
-Access CET's IconGlyphs.
+Get an icon glyph from the CET `IconGlyphs` global.
 
-#### `ctx.DrawCenteredText(text, size, color)`
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `name` | string | yes | Icon name (e.g., `"Palette"`) |
+| `fallback` | string | no | Fallback if glyph unavailable |
 
-Centered text helper.
+#### `Glyphs.Button(id, iconName, opts)`
+
+Draw a button with a centered icon glyph.
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `id` | string | yes | Unique button ID |
+| `iconName` | string | yes | IconGlyphs name |
+| `opts` | table | no | Options: `size`, `glyphSize`, `tooltip`, `fallback`, `color` |
+
+#### `Glyphs.Inline(iconName, opts)`
+
+Draw a glyph at the current cursor position.
+
+#### `Glyphs.CenteredOnItem(iconName, opts)`
+
+Draw a glyph centered on the last item (button, selectable, etc.).
+
+#### `Glyphs.Preview(iconName, opts)`
+
+Draw a large glyph preview.
+
+#### `Glyphs.Available()`
+
+Check if CET supports `ImDrawListAddText` rendering.
 
 ### Composition Primitives
 
