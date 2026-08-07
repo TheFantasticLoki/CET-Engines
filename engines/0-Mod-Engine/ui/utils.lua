@@ -72,6 +72,32 @@ function M.DeepCopy(tbl)
     return result
 end
 
+--- Resolve a logger instance from Log-Engine with fallback
+---@param name string Logger name
+---@param level string? Minimum log level (default: "warn")
+---@return table? logger Logger instance or nil
+function M.ResolveLogger(name, level)
+    local ok, LogEngine = pcall(require, "log/init")
+    if ok and LogEngine then
+        local ok2, lgr = pcall(LogEngine.CreateLogger, name, { minLevel = level or "warn" })
+        if ok2 and lgr then return lgr end
+    end
+    return nil
+end
+
+--- Generate a theme cache key from current core state
+---@param core CoreState Core state module
+---@return string Cache key
+function M.GetThemeCacheKey(core)
+    if not core then return "default" end
+
+    local themeName = core.getCurrentTheme() or "Dark"
+    local accent = core.getAccentColor() or { r = 0.4, g = 0.6, b = 1.0 }
+    local contrast = core.getContrastLevel() or 1
+
+    return themeName .. ":" .. tostring(accent.r) .. ":" .. tostring(accent.g) .. ":" .. tostring(accent.b) .. ":" .. tostring(contrast)
+end
+
 --- Merge two tables (override takes precedence)
 ---@param base Base table
 ---@param override Override table

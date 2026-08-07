@@ -39,11 +39,7 @@ local NO_DEFAULT_TYPES = {
 ---@return nil
 local function resolveLog()
     if log then return end
-    local ok, LogEngine = pcall(require, "log/init")
-    if ok and LogEngine then
-        local ok2, lgr = pcall(LogEngine.CreateLogger, "SettingsSchema", { minLevel = "warn" })
-        if ok2 and lgr then log = lgr end
-    end
+    log = require("ui/utils").ResolveLogger("SettingsSchema")
 end
 
 --- Validate a complete schema table.
@@ -269,6 +265,80 @@ function M.flattenSettings(settings, prefix)
     end
 
     return flat
+end
+
+--- Validate a value against a setting definition.
+---@param setting table The setting definition
+---@param value any The value to validate
+---@return boolean True if valid
+function M.validateValue(setting, value)
+    if not setting or not setting.type then
+        return false
+    end
+
+    local t = setting.type
+
+    if t == "toggle" then
+        return type(value) == "boolean"
+
+    elseif t == "slider" then
+        if type(value) ~= "number" then return false end
+        if setting.min and value < setting.min then return false end
+        if setting.max and value > setting.max then return false end
+        return true
+
+    elseif t == "int_slider" then
+        if type(value) ~= "number" then return false end
+        if value ~= math.floor(value) then return false end
+        if setting.min and value < setting.min then return false end
+        if setting.max and value > setting.max then return false end
+        return true
+
+    elseif t == "combo" then
+        if not setting.options then return false end
+        -- Value can be string or number matching an option
+        for _, opt in ipairs(setting.options) do
+            if type(opt) == "table" then
+                if opt.value == value then return true end
+            else
+                if opt == value then return true end
+            end
+        end
+        return false
+
+    elseif t == "multi_combo" then
+        if type(value) ~= "table" then return false end
+        return true
+
+    elseif t == "text" then
+        return type(value) == "string"
+
+    elseif t == "number" then
+        if type(value) ~= "number" then return false end
+        if setting.min and value < setting.min then return false end
+        if setting.max and value > setting.max then return false end
+        return true
+
+    elseif t == "color" then
+        if type(value) ~= "table" then return false end
+        if value.r == nil or value.g == nil or value.b == nil then return false end
+        return true
+
+    elseif t == "keybind" then
+        return type(value) == "string"
+
+    elseif t == "info" or t == "header" then
+        return true
+
+    elseif t == "button" then
+        return true
+
+    elseif t == "custom" then
+        return true
+
+    else
+        return false
+    end
 end
 
 return M

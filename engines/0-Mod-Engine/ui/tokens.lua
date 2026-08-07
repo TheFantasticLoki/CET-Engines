@@ -23,6 +23,8 @@
 
 local M = {}
 
+local Utils = require("ui/utils")
+
 -- --- Static Tokens ---
 
 -- Spacing scale
@@ -95,13 +97,9 @@ function M.init(core, colorEngine, themes)
     _colorEngine = colorEngine
     _themes = themes
 
-    -- Resolve Log-Engine as fallback (direct require in unified mod)
+    -- Resolve Log-Engine as fallback
     if not log then
-        local ok, LogEngine = pcall(require, "log/init")
-        if ok and LogEngine then
-            local ok2, lgr = pcall(LogEngine.CreateLogger, "Tokens", { minLevel = "debug" })
-            if ok2 and lgr then log = lgr end
-        end
+        log = Utils.ResolveLogger("Tokens")
     end
 
     if log then log.debug("Tokens module initialized") end
@@ -110,15 +108,7 @@ end
 --- Generate cache key from current theme state
 ---@return string Cache key
 local function getCacheKey()
-    if not _core then
-        return "default"
-    end
-
-    local themeName = _core.getCurrentTheme() or "Dark"
-    local accent = _core.getAccentColor() or { r = 0.4, g = 0.6, b = 1.0 }
-    local contrast = _core.getContrastLevel() or 1
-
-    return themeName .. ":" .. tostring(accent.r) .. ":" .. tostring(accent.g) .. ":" .. tostring(accent.b) .. ":" .. tostring(contrast)
+    return Utils.GetThemeCacheKey(_core)
 end
 
 --- Get resolved color for a semantic role

@@ -71,19 +71,13 @@ function M.StatusBadge(label, color)
     Utils.SafeImGuiCall(ImGui.PopStyleColor, 2)
 end
 
---- Label:value pair row
+--- Label:value pair row (deprecated — use Layout.RowLabel instead)
 ---@param label Label text
 ---@param value Value text
 ---@return nil
 function M.InfoRow(label, value)
-    label = label or ""
-    value = value or ""
-
-    -- Render label (disabled color)
-    Utils.SafeImGuiCall(ImGui.TextDisabled, tostring(label))
-    ImGui.SameLine()
-    -- Render value
-    Utils.SafeImGuiCall(ImGui.Text, tostring(value))
+    local Layout = require("ui/components/layout")
+    Layout.RowLabel(label, value, { labelWidth = 120 })
 end
 
 --- Full-width notification banner

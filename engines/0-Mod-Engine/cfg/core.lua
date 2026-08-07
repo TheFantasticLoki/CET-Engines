@@ -43,11 +43,7 @@ local log = nil
 ---@return nil
 local function resolveLog()
     if log then return end
-    local ok, LogEngine = pcall(require, "log/init")
-    if ok and LogEngine then
-        local ok2, lgr = pcall(LogEngine.CreateLogger, "CfgCore", { minLevel = "debug" })
-        if ok2 and lgr then log = lgr end
-    end
+    log = require("ui/utils").ResolveLogger("CfgCore", "debug")
 end
 
 -- Event emitter (late-bound to avoid circular dependency)

@@ -9,6 +9,13 @@ local Core = nil
 local SearchParser = nil
 local TestResults = nil
 local Categories = nil
+local Tokens = nil
+
+local function resolveTokens()
+    if Tokens then return end
+    local ok, mod = pcall(require, "ui/tokens")
+    if ok then Tokens = mod end
+end
 
 -- Filter state (persisted via Core.activeFilters)
 local filterOpen = false
@@ -290,18 +297,18 @@ function drawModEntry(modId, selectedMod)
     if TestResults then
         local _, status = TestResults.getStatusIcon(modId)
         if status == "pass" then
-            dotColor = { 0.3, 0.9, 0.3, 1.0 }
+            dotColor = Tokens and Tokens.color4n("success") or {r=0.3, g=0.9, b=0.3, a=1.0}
         elseif status == "fail" then
-            dotColor = { 0.9, 0.9, 0.2, 1.0 }
+            dotColor = Tokens and Tokens.color4n("warning") or {r=0.9, g=0.9, b=0.2, a=1.0}
         elseif status == "error" then
-            dotColor = { 0.9, 0.3, 0.3, 1.0 }
+            dotColor = Tokens and Tokens.color4n("error") or {r=0.9, g=0.3, b=0.3, a=1.0}
         end
     end
     -- Enabled/disabled dot (when no tests)
     if not dotColor then
         dotColor = mod.enabled ~= false
-            and { 0.4, 0.7, 0.4, 0.8 }
-            or  { 0.5, 0.5, 0.5, 0.5 }
+            and (Tokens and Tokens.color4n("success") or {r=0.4, g=0.7, b=0.4, a=0.8})
+            or  (Tokens and Tokens.color4n("muted") or {r=0.5, g=0.5, b=0.5, a=0.5})
     end
 
     -- Pin/favorite indicators
@@ -344,8 +351,9 @@ function drawModEntry(modId, selectedMod)
             local badgeY = ImGui.GetItemRectMin() + (ImGui.GetItemRectHeight() - ImGui.GetTextLineHeight()) / 2
             if badgeX > windowX then
                 local drawList = ImGui.GetWindowDrawList()
+                local cVer = Tokens and Tokens.color4n("muted") or {r=0.5, g=0.5, b=0.6}
                 ImGui.ImDrawListAddText(drawList, ImGui.GetFontSize(), badgeX, badgeY,
-                    ImGui.GetColorU32(0.5, 0.5, 0.6, 0.7), spec.version)
+                    ImGui.GetColorU32(cVer.r, cVer.g, cVer.b, 0.7), spec.version)
             end
         end)
     end
@@ -409,11 +417,11 @@ function drawModEntry(modId, selectedMod)
                 ImGui.Separator()
                 local statusColor
                 if r.status == "pass" then
-                    statusColor = { 0.3, 0.9, 0.3 }
+                    statusColor = Tokens and Tokens.color4n("success") or {0.3, 0.9, 0.3}
                 elseif r.status == "fail" then
-                    statusColor = { 0.9, 0.9, 0.2 }
+                    statusColor = Tokens and Tokens.color4n("warning") or {0.9, 0.9, 0.2}
                 else
-                    statusColor = { 0.9, 0.3, 0.3 }
+                    statusColor = Tokens and Tokens.color4n("error") or {0.9, 0.3, 0.3}
                 end
                 ImGui.TextColored(statusColor[1], statusColor[2], statusColor[3], 1.0,
                     string.format("Tests: %d/%d passing", r.passed, r.passed + r.failed))

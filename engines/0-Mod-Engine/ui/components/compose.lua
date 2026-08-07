@@ -22,74 +22,14 @@ local _logger = nil
 function M.init(logger)
     _logger = logger
 
-    -- Resolve Log-Engine as fallback (direct require in unified mod)
     if not _logger then
-        local ok, LogEngine = pcall(require, "log/init")
-        if ok and LogEngine then
-            local ok2, lgr = pcall(LogEngine.CreateLogger, "UI-Engine-Compose", { minLevel = "warn" })
-            if ok2 and lgr then _logger = lgr end
-        end
+        _logger = Utils.ResolveLogger("UI-Engine-Compose")
     end
 end
 
--- --- Row ---
+-- Note: Row, Column, Stack, Flex, and Box were removed as no-ops.
+-- Use ImGui's layout primitives (SameLine, Columns, BeginGroup) directly.
 
---- Row layout (horizontal)
----@param buildFn Function that builds row content
----@return nil
-function M.Row(buildFn)
-    if buildFn and type(buildFn) == "function" then
-        buildFn()
-    end
-end
-
--- --- Column ---
-
---- Column layout (vertical)
----@param buildFn Function that builds column content
----@return nil
-function M.Column(buildFn)
-    if buildFn and type(buildFn) == "function" then
-        buildFn()
-    end
-end
-
--- --- Stack ---
-
---- Stack layout (overlapping)
----@param buildFn Function that builds stack content
----@return nil
-function M.Stack(buildFn)
-    if buildFn and type(buildFn) == "function" then
-        buildFn()
-    end
-end
-
--- --- Flex ---
-
---- Flex layout
----@param direction Direction string: "horizontal" or "vertical"
----@param buildFn Function that builds flex content
----@return nil
-function M.Flex(direction, buildFn)
-    direction = direction or "horizontal"
-
-    -- For horizontal, add SameLine between items
-    if buildFn and type(buildFn) == "function" then
-        buildFn()
-    end
-end
-
--- --- Box ---
-
---- Box layout
----@param buildFn Function that builds box content
----@return nil
-function M.Box(buildFn)
-    if buildFn and type(buildFn) == "function" then
-        buildFn()
-    end
-end
 
 -- --- Padded ---
 

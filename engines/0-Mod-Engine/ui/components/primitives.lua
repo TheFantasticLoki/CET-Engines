@@ -29,15 +29,12 @@ end
 ---@param label Selectable label
 ---@param selected Whether the item is selected
 ---@return boolean, boolean clicked, selected
+--- CET hover-state workaround for Selectable (delegates to Utils)
+---@param label Selectable label
+---@param selected Whether the item is selected
+---@return boolean, boolean clicked, selected
 function M.SafeSelectable(label, selected)
-    label = label or ""
-    selected = selected or false
-
-    local result = Utils.SafeImGuiCall(ImGui.Selectable, label, selected)
-    if result then
-        return result
-    end
-    return false, selected
+    return Utils.SafeSelectable(label, selected)
 end
 
 -- --- Context Menu ---

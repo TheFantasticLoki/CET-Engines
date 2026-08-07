@@ -53,13 +53,9 @@ function M.init(logger, core)
 
     Logger = logger
 
-    -- Resolve Log-Engine as fallback for error logging (direct require in unified mod)
+    -- Resolve Log-Engine as fallback
     if not Logger then
-        local ok, LogEngine = pcall(require, "log/init")
-        if ok and LogEngine then
-            local ok2, lgr = pcall(LogEngine.CreateLogger, "0-Mod-Engine-Events", { minLevel = "warn" })
-            if ok2 and lgr then log = lgr end
-        end
+        Logger = require("ui/utils").ResolveLogger("0-Mod-Engine-Events")
     end
 
     if log then log.debug("Events module initialized") end

@@ -35,17 +35,7 @@ local log = nil
 
 -- --- Helper Functions ---
 
---- Deep copy a table (recursive).
----@param t any Value to copy (tables are deep-copied, primitives returned as-is)
----@return any copy Deep copy of the input
-local function deepCopy(t)
-    if type(t) ~= "table" then return t end
-    local result = {}
-    for k, v in pairs(t) do
-        result[k] = deepCopy(v)
-    end
-    return result
-end
+local Utils = require("ui/utils")
 
 --- Read entire file contents.
 ---@param path string File path
@@ -143,13 +133,9 @@ function M.init(logger)
 
     print("[Storage] Initialized (cwd not available in CET sandbox, using relative paths)")
 
-    -- Resolve Log-Engine as fallback (direct require in unified mod)
+    -- Resolve Log-Engine as fallback
     if not Logger then
-        local ok, LogEngine = pcall(require, "log/init")
-        if ok and LogEngine then
-            local ok2, lgr = pcall(LogEngine.CreateLogger, "Storage", { minLevel = "warn" })
-            if ok2 and lgr then log = lgr end
-        end
+        log = Utils.ResolveLogger("Storage")
     end
 
     -- Try to load from primary file

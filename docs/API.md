@@ -148,6 +148,29 @@ Log a deprecation warning. Use when changing public API.
 | `name` | string | yes | Deprecated function/method name |
 | `alternative` | string | no | Suggested replacement |
 
+#### `UIEngine.ResolveLogger(name, level)`
+
+Resolve a logger instance from Log-Engine with safe fallback.
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `name` | string | yes | Logger name (e.g., "MyModule") |
+| `level` | string | no | Minimum log level (default: "warn") |
+
+**Returns:** `Logger` instance or `nil` if Log-Engine is unavailable.
+
+#### `UIEngine.GetThemeCacheKey(core)`
+
+Generate a unique cache key based on the current theme state (name, accent, contrast).
+
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `core` | table | yes | Core state module reference |
+
+**Returns:** string cache key.
+
 ---
 
 ## Context API — `ctx`

@@ -78,78 +78,13 @@ function M.resolveSettings(schema, saved)
     return resolved, warnings
 end
 
---- Validate a value against a setting definition.
+--- Validate a value against a setting definition (delegates to SettingsSchema).
 ---@param setting table The setting definition
 ---@param value any The value to validate
 ---@return boolean True if valid
 function M.validateValue(setting, value)
-    if not setting or not setting.type then
-        return false
-    end
-
-    local t = setting.type
-
-    if t == "toggle" then
-        return type(value) == "boolean"
-
-    elseif t == "slider" then
-        if type(value) ~= "number" then return false end
-        if setting.min and value < setting.min then return false end
-        if setting.max and value > setting.max then return false end
-        return true
-
-    elseif t == "int_slider" then
-        if type(value) ~= "number" then return false end
-        if value ~= math.floor(value) then return false end
-        if setting.min and value < setting.min then return false end
-        if setting.max and value > setting.max then return false end
-        return true
-
-    elseif t == "combo" then
-        if not setting.options then return false end
-        -- Value can be string or number matching an option
-        for _, opt in ipairs(setting.options) do
-            if type(opt) == "table" then
-                if opt.value == value then return true end
-            else
-                if opt == value then return true end
-            end
-        end
-        return false
-
-    elseif t == "multi_combo" then
-        if type(value) ~= "table" then return false end
-        return true
-
-    elseif t == "text" then
-        return type(value) == "string"
-
-    elseif t == "number" then
-        if type(value) ~= "number" then return false end
-        if setting.min and value < setting.min then return false end
-        if setting.max and value > setting.max then return false end
-        return true
-
-    elseif t == "color" then
-        if type(value) ~= "table" then return false end
-        if value.r == nil or value.g == nil or value.b == nil then return false end
-        return true
-
-    elseif t == "keybind" then
-        return type(value) == "string"
-
-    elseif t == "info" or t == "header" then
-        return true
-
-    elseif t == "button" then
-        return true
-
-    elseif t == "custom" then
-        return true
-
-    else
-        return false
-    end
+    local Schema = require("cfg/settings_schema")
+    return Schema.validateValue(setting, value)
 end
 
 --- Get a nested setting value using dot-separated key path.

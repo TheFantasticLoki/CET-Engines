@@ -29,11 +29,7 @@ function M.init(deps)
 
     -- Resolve Log-Engine as fallback
     if not Logger then
-        local ok, LogEngine = pcall(require, "log/init")
-        if ok and LogEngine then
-            local ok2, lgr = pcall(LogEngine.CreateLogger, "ModManager", { minLevel = "warn" })
-            if ok2 and lgr then Logger = lgr end
-        end
+        Logger = require("ui/utils").ResolveLogger("ModManager")
     end
 end
 

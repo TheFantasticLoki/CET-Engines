@@ -12,6 +12,13 @@ local CfgUndoRedo = nil
 local CfgStateSync = nil
 local TestResults = nil
 local TestRunner = nil
+local Tokens = nil
+
+local function resolveTokens()
+    if Tokens then return end
+    local ok, mod = pcall(require, "ui/tokens")
+    if ok then Tokens = mod end
+end
 
 --- Apply a setting change to the live engine (e.g. theme changes)
 ---@param modId string The mod identifier
@@ -207,11 +214,14 @@ function drawModPanel()
             if r then
                 ImGui.Separator()
                 if r.status == "pass" then
-                    ImGui.TextColored(0.3, 0.9, 0.3, 1, string.format("Tests: %d/%d passing", r.passed, r.passed + r.failed))
+                    local c = Tokens and Tokens.color4n("success") or {r=0.3, g=0.9, b=0.3}
+                    ImGui.TextColored(c.r, c.g, c.b, 1, string.format("Tests: %d/%d passing", r.passed, r.passed + r.failed))
                 elseif r.status == "fail" then
-                    ImGui.TextColored(0.9, 0.9, 0.2, 1, string.format("Tests: %d/%d passing", r.passed, r.passed + r.failed))
+                    local c = Tokens and Tokens.color4n("warning") or {r=0.9, g=0.9, b=0.2}
+                    ImGui.TextColored(c.r, c.g, c.b, 1, string.format("Tests: %d/%d passing", r.passed, r.passed + r.failed))
                 else
-                    ImGui.TextColored(0.9, 0.3, 0.3, 1, "Tests: Error")
+                    local c = Tokens and Tokens.color4n("error") or {r=0.9, g=0.3, b=0.3}
+                    ImGui.TextColored(c.r, c.g, c.b, 1, "Tests: Error")
                 end
             end
         end
@@ -223,9 +233,9 @@ function drawModPanel()
         local r = TestResults.get(selectedMod)
         if r then
             local badgeText = r.passed .. "/" .. (r.passed + r.failed)
-            local badgeColor = r.status == "pass" and { 0.3, 0.9, 0.3 }
-                or r.status == "fail" and { 0.9, 0.9, 0.2 }
-                or { 0.9, 0.3, 0.3 }
+            local badgeColor = r.status == "pass" and (Tokens and Tokens.color4n("success") or {r=0.3, g=0.9, b=0.3})
+                or r.status == "fail" and (Tokens and Tokens.color4n("warning") or {r=0.9, g=0.9, b=0.2})
+                or (Tokens and Tokens.color4n("error") or {r=0.9, g=0.3, b=0.3})
             local badgeW = ImGui.CalcTextSize(badgeText)
             local avail = ImGui.GetContentRegionAvail()
             ImGui.SameLine(avail - badgeW - 4)
@@ -364,9 +374,12 @@ function drawTestPanel()
     -- Aggregate stats
     local stats = TestResults.getAggregateStats()
     ImGui.Text(string.format("Total: %d mods with tests", stats.total))
-    ImGui.TextColored(0.3, 0.9, 0.3, 1, string.format("  Passing: %d", stats.passing))
-    ImGui.TextColored(0.9, 0.9, 0.2, 1, string.format("  Failing: %d", stats.failing))
-    ImGui.TextColored(0.9, 0.3, 0.3, 1, string.format("  Errors: %d", stats.errors))
+    local cPass = Tokens and Tokens.color4n("success") or {r=0.3, g=0.9, b=0.3}
+    local cFail = Tokens and Tokens.color4n("warning") or {r=0.9, g=0.9, b=0.2}
+    local cErr = Tokens and Tokens.color4n("error") or {r=0.9, g=0.3, b=0.3}
+    ImGui.TextColored(cPass.r, cPass.g, cPass.b, 1, string.format("  Passing: %d", stats.passing))
+    ImGui.TextColored(cFail.r, cFail.g, cFail.b, 1, string.format("  Failing: %d", stats.failing))
+    ImGui.TextColored(cErr.r, cErr.g, cErr.b, 1, string.format("  Errors: %d", stats.errors))
 
     ImGui.Spacing()
     ImGui.Separator()

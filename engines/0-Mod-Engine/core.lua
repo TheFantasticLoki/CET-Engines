@@ -98,13 +98,9 @@ local initialized = false
 ---@type Logger? Log-Engine logger instance (lazy-resolved)
 local log = nil
 
--- Resolve Log-Engine as fallback for logging (direct require in unified mod)
+-- Resolve Log-Engine as fallback for logging
 do
-    local ok, LogEngine = pcall(require, "log/init")
-    if ok and LogEngine then
-        local ok2, lgr = pcall(LogEngine.CreateLogger, "Core", { minLevel = "debug" })
-        if ok2 and lgr then log = lgr end
-    end
+    log = require("ui/utils").ResolveLogger("Core", "debug")
 end
 
 -- --- Event Emission ---

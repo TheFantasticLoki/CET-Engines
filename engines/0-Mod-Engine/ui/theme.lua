@@ -39,6 +39,8 @@
 
 local M = {}
 
+local Utils = require("ui/utils")
+
 -- --- Internal State ---
 
 ---@type any|nil Core module reference
@@ -93,13 +95,9 @@ function M.init(core, colorEngine, tokens, themes, logger)
     _themes = themes
     _logger = logger
 
-    -- Resolve Log-Engine as fallback (direct require in unified mod)
+    -- Resolve Log-Engine as fallback
     if not _logger then
-        local ok, LogEngine = pcall(require, "log/init")
-        if ok and LogEngine then
-            local ok2, lgr = pcall(LogEngine.CreateLogger, "UI-Engine-Theme", { minLevel = "warn" })
-            if ok2 and lgr then _logger = lgr end
-        end
+        _logger = Utils.ResolveLogger("UI-Engine-Theme")
     end
 
     -- Initialize tokens module
@@ -118,15 +116,7 @@ end
 --- Generate composite cache key
 ---@return string Cache key
 local function getCacheKey()
-    if not _core then
-        return "default"
-    end
-
-    local themeName = _core.getCurrentTheme() or "Dark"
-    local accent = _core.getAccentColor() or { r = 0.4, g = 0.6, b = 1.0 }
-    local contrast = _core.getContrastLevel() or 1
-
-    return themeName .. ":" .. tostring(accent.r) .. ":" .. tostring(accent.g) .. ":" .. tostring(accent.b) .. ":" .. tostring(contrast)
+    return Utils.GetThemeCacheKey(_core)
 end
 
 --- Invalidate color cache

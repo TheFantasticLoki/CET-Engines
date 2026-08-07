@@ -105,11 +105,7 @@ function M.init(deps)
             debug = function(msg) rawLogger.Log("Registry", msg, "debug") end,
         }
     else
-        local ok, LogEngine = pcall(require, "log/init")
-        if ok and LogEngine then
-            local ok2, lgr = pcall(LogEngine.CreateLogger, "UI-Engine-Registry", { minLevel = "warn" })
-            if ok2 and lgr then log = lgr end
-        end
+        log = require("ui/utils").ResolveLogger("UI-Engine-Registry")
     end
 end
 

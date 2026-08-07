@@ -57,11 +57,7 @@ function M.init(deps)
     if deps and deps.log then
         log = deps.log
     else
-        local ok, LogEngine = pcall(require, "log/init")
-        if ok and LogEngine then
-            local ok2, lgr = pcall(LogEngine.CreateLogger, "UI-Engine-Context", { minLevel = "debug" })
-            if ok2 and lgr then log = lgr end
-        end
+        log = Utils.ResolveLogger("UI-Engine-Context")
     end
 end
 

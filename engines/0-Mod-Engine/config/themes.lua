@@ -50,6 +50,8 @@ M.THEMES = {
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 1.0, g = 1.0, b = 1.0 },
             muted = { r = 0.5, g = 0.5, b = 0.6 },
+            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },
         },
     },
     Red = {
@@ -65,6 +67,8 @@ M.THEMES = {
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 1.0, g = 1.0, b = 1.0 },
             muted = { r = 0.5, g = 0.5, b = 0.6 },
+            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },
         },
     },
     Cyan = {
@@ -80,6 +84,8 @@ M.THEMES = {
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 1.0, g = 1.0, b = 1.0 },
             muted = { r = 0.5, g = 0.5, b = 0.6 },
+            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },
         },
     },
     Blue = {
@@ -95,6 +101,8 @@ M.THEMES = {
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 1.0, g = 1.0, b = 1.0 },
             muted = { r = 0.5, g = 0.5, b = 0.6 },
+            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },
         },
     },
     Green = {
@@ -110,6 +118,8 @@ M.THEMES = {
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 1.0, g = 1.0, b = 1.0 },
             muted = { r = 0.5, g = 0.5, b = 0.6 },
+            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },
         },
     },
     Amber = {
@@ -125,6 +135,8 @@ M.THEMES = {
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 1.0, g = 1.0, b = 1.0 },
             muted = { r = 0.5, g = 0.5, b = 0.6 },
+            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },
         },
     },
     Purple = {
@@ -140,6 +152,8 @@ M.THEMES = {
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 1.0, g = 1.0, b = 1.0 },
             muted = { r = 0.5, g = 0.5, b = 0.6 },
+            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },
         },
     },
     Rose = {
@@ -155,6 +169,8 @@ M.THEMES = {
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 1.0, g = 1.0, b = 1.0 },
             muted = { r = 0.5, g = 0.5, b = 0.6 },
+            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },
         },
     },
     Teal = {
@@ -170,6 +186,8 @@ M.THEMES = {
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 1.0, g = 1.0, b = 1.0 },
             muted = { r = 0.5, g = 0.5, b = 0.6 },
+            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },
         },
     },
     Midnight = {
@@ -185,6 +203,8 @@ M.THEMES = {
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 1.0, g = 1.0, b = 1.0 },
             muted = { r = 0.5, g = 0.5, b = 0.6 },
+            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },
         },
     },
     Orange = {
@@ -200,6 +220,8 @@ M.THEMES = {
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 1.0, g = 1.0, b = 1.0 },
             muted = { r = 0.5, g = 0.5, b = 0.6 },
+            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },
         },
     },
     Gold = {
@@ -215,6 +237,8 @@ M.THEMES = {
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 1.0, g = 1.0, b = 1.0 },
             muted = { r = 0.5, g = 0.5, b = 0.6 },
+            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },
         },
     },
     Pink = {
@@ -229,8 +253,8 @@ M.THEMES = {
             modified = { r = 0.58, g = 0.22, b = 0.90 },
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 1.0, g = 1.0, b = 1.0 },
-            muted = { r = 0.5, g = 0.5, b = 0.6 },
-        },
+            muted = { r = 0.5, g = 0.5, b = 0.6 },            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },        },
     },
     White = {
         accent = { r = 0.85, g = 0.85, b = 0.90 },
@@ -244,8 +268,8 @@ M.THEMES = {
             modified = { r = 0.58, g = 0.22, b = 0.90 },
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 0.10, g = 0.10, b = 0.12 },
-            muted = { r = 0.5, g = 0.5, b = 0.6 },
-        },
+            muted = { r = 0.5, g = 0.5, b = 0.6 },            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },        },
     },
     Arasaka = {
         accent = { r = 0.80, g = 0.10, b = 0.10 },
@@ -260,6 +284,8 @@ M.THEMES = {
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 1.0, g = 1.0, b = 1.0 },
             muted = { r = 0.5, g = 0.5, b = 0.6 },
+            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },
         },
     },
     Light = {
@@ -275,6 +301,8 @@ M.THEMES = {
             favorite = { r = 0.95, g = 0.52, b = 0.10 },
             text = { r = 0.10, g = 0.10, b = 0.12 },
             muted = { r = 0.5, g = 0.5, b = 0.6 },
+            warning = { r = 0.9, g = 0.9, b = 0.2 },
+            error = { r = 0.9, g = 0.3, b = 0.3 },
         },
     },
 }
