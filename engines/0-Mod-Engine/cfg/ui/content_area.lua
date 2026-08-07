@@ -89,6 +89,8 @@ local function applySettingLive(modId, key, value)
                     maxRedoSteps = cfgMod.settings.maxRedoSteps or 50,
                 })
             end
+        elseif key == "autoSaveDelay" and CfgStateSync and CfgStateSync.setAutoSaveDelay then
+            CfgStateSync.setAutoSaveDelay(value)
         end
     end
 end
@@ -187,7 +189,12 @@ function drawModPanel()
                         end
                     end
                 end
-                if CfgStateSync then CfgStateSync.autoSave(0) end
+                -- Mark dirty when values change. Auto-save defers during active
+                -- widget interaction (see state_sync.autoSave) and debounces
+                -- after interaction ends.
+                if Core and Core.markDirty then
+                    Core.markDirty()
+                end
             end
         end
     end
@@ -276,7 +283,9 @@ function drawEngineSettings(engineId)
                     end
                 end
             end
-            if CfgStateSync then CfgStateSync.autoSave(0) end
+            if Core and Core.markDirty then
+                Core.markDirty()
+            end
         end
     else
         ImGui.TextDisabled("Settings renderer not available")

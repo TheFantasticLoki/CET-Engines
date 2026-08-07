@@ -9,8 +9,8 @@ M.DEFAULT_SIDEBAR_WIDTH = 280
 M.DEFAULT_SORT_MODE = "name"
 M.DEFAULT_COMPACT_MODE = false
 
--- Auto-save: frames between last change and persist (30 frames ≈ 0.5s @ 60fps)
-M.AUTO_SAVE_DELAY_FRAMES = 30
+-- Auto-save: seconds between last change and persist
+M.AUTO_SAVE_DELAY_SECS = 5.0
 
 -- Undo/Redo
 M.MAX_UNDO_STEPS = 50

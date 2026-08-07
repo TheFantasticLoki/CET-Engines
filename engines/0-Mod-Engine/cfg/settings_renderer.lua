@@ -52,7 +52,8 @@ function M.renderSettings(modId, spec, settings)
                 local label = setting.label or key
                 local clicked
                 newValue, clicked = ImGui.Checkbox(label, value)
-                settingChanged = clicked
+                -- Only report changed if value actually differs (not just clicked)
+                settingChanged = (newValue ~= value)
 
             elseif setting.type == "slider" then
                 local label = setting.label or key
@@ -199,7 +200,8 @@ function M.renderSettings(modId, spec, settings)
                 if valid then
                     settings[key] = newValue
                     changed = true
-                    if Core and Core.markDirty then Core.markDirty() end
+                    -- NOTE: markDirty() is NOT called here. The caller decides
+                    -- when to mark dirty (e.g., after interaction ends).
                     if Events and Events.emit then
                         Events.emit("configengine:settingChanged", modId, key, newValue, value)
                     end

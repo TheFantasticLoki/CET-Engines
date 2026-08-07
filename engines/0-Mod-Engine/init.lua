@@ -695,17 +695,29 @@ local function initModules()
     end
 
     if CfgStateSync then
-        -- Read autoSaveDelayFrames from saved settings
-        local saveDelay = 30
+        -- Read autoSaveDelay (seconds) from saved settings.
+        -- Migrates old autoSaveDelayFrames (frame-based) to autoSaveDelay (seconds).
+        local saveDelay = 0.5
         local cfgMod = CfgCore and CfgCore.getMod("0-Engine-Config")
-        if cfgMod and cfgMod.settings and cfgMod.settings.autoSaveDelayFrames then
-            saveDelay = cfgMod.settings.autoSaveDelayFrames
+        if cfgMod and cfgMod.settings then
+            if cfgMod.settings.autoSaveDelay then
+                -- New format: seconds
+                saveDelay = cfgMod.settings.autoSaveDelay
+            elseif cfgMod.settings.autoSaveDelayFrames then
+                -- Old format: frames → seconds (assume 60fps)
+                saveDelay = cfgMod.settings.autoSaveDelayFrames / 60
+                saveDelay = math.max(0.5, math.min(5.0, saveDelay))
+                -- Migrate: write back in new format, drop old key
+                cfgMod.settings.autoSaveDelay = saveDelay
+                cfgMod.settings.autoSaveDelayFrames = nil
+                if log then log.info("CfgStateSync: migrated autoSaveDelayFrames → autoSaveDelay (" .. string.format("%.1f", saveDelay) .. "s)") end
+            end
         end
         CfgStateSync.init({
             core = CfgCore or Core,
             storage = Storage,
             logger = log,
-            config = { AUTO_SAVE_DELAY_FRAMES = saveDelay },
+            config = { AUTO_SAVE_DELAY_SECS = saveDelay },
         })
         if log then log.info("CfgStateSync initialized") end
     end
@@ -758,6 +770,12 @@ local function initModules()
 
     -- Register engines
     registerEngines()
+
+    -- Load saved settings from Storage into ConfigEngine state
+    if CfgStateSync then
+        CfgStateSync.loadAll()
+        if log then log.info("Loaded persisted settings") end
+    end
 
     -- Bridge saved settings to engine subsystems
     bridgeEngineSettings()
@@ -907,6 +925,11 @@ registerForEvent("onDraw", function()
     -- Update Log-Engine frame counter
     if _LogEngine and _LogEngine.onDraw then
         _LogEngine.onDraw()
+    end
+
+    -- Auto-save pending changes
+    if CfgStateSync then
+        CfgStateSync.autoSave(frameCount)
     end
 
     -- SINGLE pcall wrapping all ImGui calls (CET FFI breaks with per-call pcall)

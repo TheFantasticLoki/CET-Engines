@@ -265,14 +265,15 @@ M["0-Engine-Config"] = {
             tooltip = "Sort in ascending order (A→Z, oldest first)",
             default = true,
         },
-        autoSaveDelayFrames = {
-            type = "int_slider",
-            label = "Auto-Save Delay (frames)",
-            tooltip = "Frames to wait before auto-saving (30 ≈ 0.5s at 60fps)",
-            min = 10,
-            max = 120,
-            step = 5,
-            default = 30,
+        autoSaveDelay = {
+            type = "slider",
+            label = "Auto-Save Delay (seconds)",
+            tooltip = "Seconds to wait after last change before saving",
+            min = 0.5,
+            max = 15.0,
+            step = 0.5,
+            default = 5.0,
+            format = "%.1f",
         },
 
         -- Undo/Redo

@@ -63,10 +63,19 @@ end
 ---@param content string Content to write
 ---@return boolean success True on success
 local function writeFile(path, content)
+    print("[Storage] writeFile: attempting '" .. path .. "' (" .. #content .. " bytes)")
     local f = io.open(path, "w")
-    if not f then return false end
-    f:write(content)
+    if not f then
+        print("[Storage] writeFile: FAILED to open '" .. path .. "' for writing")
+        return false
+    end
+    local ok, err = pcall(function() f:write(content) end)
     f:close()
+    if not ok then
+        print("[Storage] writeFile: write error: " .. tostring(err))
+        return false
+    end
+    print("[Storage] writeFile: SUCCESS '" .. path .. "'")
     return true
 end
 
@@ -78,6 +87,35 @@ local function logError(msg)
     elseif log then
         log.error(msg)
     end
+end
+
+--- Scan a table recursively for non-JSON-serializable values (functions, userdata, threads).
+--- Returns a sanitized copy with problematic values replaced by nil.
+---@param t table The table to scan
+---@param path string Current path for diagnostics
+---@return table sanitized Sanitized copy
+local function sanitizeForJson(t, path)
+    if type(t) ~= "table" then return t end
+    local result = {}
+    for k, v in pairs(t) do
+        local vtype = type(v)
+        if vtype == "function" then
+            print("[Storage] SANITIZE: removing function at " .. path .. "." .. tostring(k))
+            -- Don't copy it
+        elseif vtype == "userdata" or vtype == "thread" then
+            print("[Storage] SANITIZE: removing " .. vtype .. " at " .. path .. "." .. tostring(k))
+        elseif vtype == "table" then
+            local ok, sub = pcall(sanitizeForJson, v, path .. "." .. tostring(k))
+            if ok then
+                result[k] = sub
+            else
+                print("[Storage] SANITIZE: table failed at " .. path .. "." .. tostring(k) .. ": " .. tostring(sub))
+            end
+        else
+            result[k] = v
+        end
+    end
+    return result
 end
 
 --- Log an info message via legacy Logger or Log-Engine.
@@ -102,6 +140,8 @@ function M.init(logger)
     initialized = true
 
     Logger = logger
+
+    print("[Storage] Initialized (cwd not available in CET sandbox, using relative paths)")
 
     -- Resolve Log-Engine as fallback (direct require in unified mod)
     if not Logger then
@@ -148,11 +188,15 @@ end
 --- Save all data to disk (atomic write pattern: temp → backup → primary).
 ---@return boolean success True on success, false on failure
 function M.Save()
+    print("[Storage] Save() called, data has " .. tostring(next(data) and "content" or "EMPTY") .. ", dirty=" .. tostring(dirty))
     local ok, err = pcall(function()
         -- Step 1: Write to temp file
-        local encoded = json.encode(data)
+        print("[Storage] encoding data...")
+        local sanitized = sanitizeForJson(data, "root")
+        local encoded = json.encode(sanitized)
+        print("[Storage] encoded " .. #encoded .. " bytes")
         if not writeFile(TEMP_FILE, encoded) then
-            error("Failed to write temp file")
+            error("Failed to write temp file: " .. TEMP_FILE)
         end
 
         -- Step 2: Copy current to backup (if exists)
@@ -171,6 +215,7 @@ function M.Save()
     end)
 
     if not ok then
+        print("[Storage] Save FAILED: " .. tostring(err))
         logError("Save failed: " .. tostring(err))
         return false
     end

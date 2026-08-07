@@ -5,7 +5,7 @@
 local M = {}
 
 -- Internal state
----@type { mods: table<string, table>, categories: table, categoryOrder: table, modAssignments: table<string, table>, sidebarWidth: number, selectedMod: string|nil, compactMode: boolean, settingsPanelOpen: boolean, wikiViewerOpen: boolean, wikiModId: string|nil, detachedMods: table<string, table>, expandedCategories: table<string, boolean>, sortMode: string, sortAscending: boolean, searchQuery: string, contentMode: string, activeFilters: table, dirty: boolean, lastSaveFrame: number, initialized: boolean }
+---@type { mods: table<string, table>, categories: table, categoryOrder: table, modAssignments: table<string, table>, sidebarWidth: number, selectedMod: string|nil, compactMode: boolean, settingsPanelOpen: boolean, wikiViewerOpen: boolean, wikiModId: string|nil, detachedMods: table<string, table>, expandedCategories: table<string, boolean>, sortMode: string, sortAscending: boolean, searchQuery: string, contentMode: string, activeFilters: table, dirty: boolean, initialized: boolean }
 local state = {
     -- Mod registry
     mods = {},              -- { [modId] = { spec, settings, category, subcategory, wiki, pinned, favorite, renderMode, enabled } }
@@ -32,7 +32,6 @@ local state = {
 
     -- Auto-save
     dirty = false,
-    lastSaveFrame = 0,
     initialized = false,
 }
 
@@ -100,7 +99,6 @@ function M.reset()
         contentMode = "mod",
         activeFilters = {},
         dirty = false,
-        lastSaveFrame = 0,
         initialized = false,
     }
 end
@@ -537,28 +535,17 @@ function M.hasModTag(modId, tag)
     return false
 end
 
---- Get the last save frame.
----@return number
-function M.getLastSaveFrame()
-    return state.lastSaveFrame
-end
-
---- Set the last save frame.
----@param frame number The frame number
----@return nil
-function M.setLastSaveFrame(frame)
-    state.lastSaveFrame = frame
-end
-
 -- ============================================================
 -- Serialization
 -- ============================================================
 
 --- Serialize all state for persistence.
+--- NOTE: mods are NOT included here — they are saved separately by
+--- state_sync.saveAll() which only persists settings/pinned/favorite.
+--- Including mods would cache stale specs (with old labels) in storage.
 ---@return table<string, any> Serializable state
 function M.getAllState()
     return {
-        mods = state.mods,
         modAssignments = state.modAssignments,
         sidebarWidth = state.sidebarWidth,
         selectedMod = state.selectedMod,
@@ -573,12 +560,15 @@ function M.getAllState()
 end
 
 --- Apply state from persisted data.
+--- NOTE: mods are intentionally NOT restored from storage.
+--- Specs always come from engine_schemas.lua (source code).
+--- Restoring stale cached specs would show old labels/keys in the UI.
 ---@param data table|nil The persisted state table
 ---@return nil
 function M.applyState(data)
     if not data or type(data) ~= "table" then return end
 
-    if data.mods then state.mods = data.mods end
+    -- NOTE: data.mods is intentionally ignored (specs come from source)
     if data.modAssignments then state.modAssignments = data.modAssignments end
     if data.sidebarWidth then state.sidebarWidth = data.sidebarWidth end
     if data.selectedMod then state.selectedMod = data.selectedMod end

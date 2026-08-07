@@ -21,7 +21,8 @@ local Logger = nil
 local Config = nil
 
 -- Auto-save state
-local AUTO_SAVE_DELAY = 30 -- frames
+local AUTO_SAVE_DELAY = 0.5 -- seconds
+local lastSaveTime = 0     -- os.clock() timestamp of last save
 
 --- Initialize state sync.
 ---@param deps table { core: CfgCore, storage: table|nil, logger: Logger|nil, config: table }
@@ -31,7 +32,17 @@ function M.init(deps)
     Storage = deps.storage
     Logger = deps.logger
     Config = deps.config or {}
-    AUTO_SAVE_DELAY = Config.AUTO_SAVE_DELAY_FRAMES or 30
+    AUTO_SAVE_DELAY = Config.AUTO_SAVE_DELAY_SECS or 0.5
+    lastSaveTime = os.clock()
+end
+
+--- Update auto-save delay at runtime (called when user changes the setting).
+---@param secs number Delay in seconds
+---@return nil
+function M.setAutoSaveDelay(secs)
+    if type(secs) == "number" and secs > 0 then
+        AUTO_SAVE_DELAY = secs
+    end
 end
 
 --- Load all persisted state from storage.
@@ -124,6 +135,9 @@ function M.saveAll()
 
     Core.clearDirty()
 
+    -- Actually write to disk
+    Storage.Save()
+
     if Logger then
         Logger.debug("ConfigEngine", "State saved")
     end
@@ -136,13 +150,31 @@ end
 ---@param currentFrame The current frame number
 function M.autoSave(currentFrame)
     -- Check if auto-save is enabled
-    if Core.getAutoSave and not Core.getAutoSave() then return end
-    if not Core.isDirty() then return end
+    if Core.getAutoSave and not Core.getAutoSave() then
+        return
+    end
+    if not Core.isDirty() then
+        return
+    end
 
-    local elapsed = currentFrame - Core.getLastSaveFrame()
+    -- Defer saving while a widget is actively being interacted with
+    -- (slider drag, checkbox click, text input, etc.).
+    -- This prevents mid-interaction writes to disk. The dirty flag stays
+    -- true, so saving resumes once the interaction ends.
+    local active = false
+    if ImGui and ImGui.IsAnyItemActive then
+        local ok, isActive = pcall(ImGui.IsAnyItemActive)
+        if ok then active = isActive end
+    end
+    if active then
+        return
+    end
+
+    local now = os.clock()
+    local elapsed = now - lastSaveTime
     if elapsed >= AUTO_SAVE_DELAY then
         M.saveAll()
-        Core.setLastSaveFrame(currentFrame)
+        lastSaveTime = now
     end
 end
 

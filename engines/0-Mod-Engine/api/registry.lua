@@ -86,11 +86,18 @@ function M.init(deps)
     Events = deps and deps.Events
     Logger = deps and deps.Logger
 
-    -- Resolve Log-Engine as fallback
-    if Logger then
-        log = Logger
-    elseif deps and deps.log then
+    -- Resolve Log-Engine as primary logger (has .info(), .warn(), etc.)
+    if deps and deps.log then
         log = deps.log
+    elseif Logger then
+        -- Legacy Logger module: wrap to provide .info()/.warn() interface
+        local rawLogger = Logger
+        log = {
+            info = function(msg) rawLogger.Log("Registry", msg, "info") end,
+            warn = function(msg) rawLogger.Log("Registry", msg, "warn") end,
+            error = function(msg) rawLogger.Log("Registry", msg, "error") end,
+            debug = function(msg) rawLogger.Log("Registry", msg, "debug") end,
+        }
     else
         local ok, LogEngine = pcall(require, "log/init")
         if ok and LogEngine then
