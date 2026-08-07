@@ -8,6 +8,11 @@ local M = {}
 ---@param spec table The registration spec table
 ---@return string One of: "schema", "custom", "hybrid", "external"
 function M.detectMode(spec)
+    -- Allow explicit override via spec.renderMode
+    if spec.renderMode and type(spec.renderMode) == "string" then
+        return spec.renderMode
+    end
+
     local hasSettings = spec.settings ~= nil and type(spec.settings) == "table"
     local hasDraw = spec.draw ~= nil and type(spec.draw) == "function"
 

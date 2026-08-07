@@ -133,13 +133,19 @@ function M.saveAll()
     end
     Storage.Set("configengine", STORAGE_KEYS.MODS, modSettings)
 
-    Core.clearDirty()
-
-    -- Actually write to disk
-    Storage.Save()
-
-    if Logger then
-        Logger.debug("ConfigEngine", "State saved")
+    -- Actually write to disk — clear dirty ONLY after successful save
+    local saveOk, saveErr = pcall(Storage.Save)
+    if saveOk then
+        Core.clearDirty()
+        if Logger then
+            Logger.debug("ConfigEngine", "State saved")
+        end
+    else
+        -- Save failed — re-mark dirty so next frame retries
+        Core.markDirty()
+        if Logger then
+            Logger.error("ConfigEngine", "State save failed: " .. tostring(saveErr))
+        end
     end
 
     return true

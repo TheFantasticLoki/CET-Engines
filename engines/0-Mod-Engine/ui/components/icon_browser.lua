@@ -21,6 +21,8 @@ local M = {}
 
 -- Glyphs module (late-bound to avoid circular deps)
 local Glyphs = nil
+-- Tokens module (late-bound for theme-aware colors)
+local Tokens = nil
 
 -- ============================================================================
 -- Icon Index (built once, cached)
@@ -174,6 +176,11 @@ function M.Draw(id, options)
         local ok, mod = pcall(require, "ui/components/glyphs")
         if ok then Glyphs = mod end
     end
+    -- Lazy-load Tokens module
+    if not Tokens then
+        local ok, mod = pcall(require, "ui/tokens")
+        if ok then Tokens = mod end
+    end
 
     -- ====================================================================
     -- Performance cap: only render up to MAX_VISIBLE icons.
@@ -221,20 +228,22 @@ function M.Draw(id, options)
                     local minX, minY = ImGui.GetItemRectMin()
                     local maxX, maxY = ImGui.GetItemRectMax()
                     local pad = 2
+                    local selColor = Tokens and Tokens.color4n("primary") or {r=0.3, g=0.5, b=0.9}
                     ImGui.ImDrawListAddRectFilled(
                         ImGui.GetWindowDrawList(),
                         minX + pad, minY + pad,
                         maxX - pad, maxY - pad,
-                        ImGui.GetColorU32(0.3, 0.5, 0.9, 0.4),
+                        ImGui.GetColorU32(selColor.r, selColor.g, selColor.b, 0.4),
                         4, 0
                     )
                 end
 
                 -- Draw glyph centered on button (via Glyphs module)
                 if Glyphs then
+                    local inactiveColor = Tokens and Tokens.color4n("muted") or {r=0.75, g=0.75, b=0.75}
                     local glyphColor = isSelected
                         and ImGui.GetColorU32(1.0, 1.0, 1.0, 1.0)
-                        or  ImGui.GetColorU32(0.75, 0.75, 0.75, 0.9)
+                        or  ImGui.GetColorU32(inactiveColor.r, inactiveColor.g, inactiveColor.b, 0.9)
                     Glyphs.CenteredOnItem(icon.name, { size = glyphSize, color = glyphColor })
                 end
 

@@ -5,27 +5,12 @@
 local M = {}
 
 --- Get the default value for a setting definition.
--- Duplicated from settings_schema to avoid circular dependency in tests.
+-- Delegates to SettingsSchema.getDefault to avoid duplication.
 ---@param setting table The setting definition table
 ---@return any The default value
 function M._getDefault(setting)
-    if setting.type == "color" then
-        if setting.default then
-            return { r = setting.default.r, g = setting.default.g, b = setting.default.b, a = setting.default.a }
-        end
-        return { r = 1, g = 1, b = 1, a = 1 }
-    end
-    if setting.type == "multi_combo" then
-        if setting.default then
-            local copy = {}
-            for i, v in ipairs(setting.default) do
-                copy[i] = v
-            end
-            return copy
-        end
-        return {}
-    end
-    return setting.default
+    local Schema = require("cfg/settings_schema")
+    return Schema.getDefault(setting)
 end
 
 --- Resolve settings by merging defaults with saved values.
@@ -83,6 +68,7 @@ end
 ---@param value any The value to validate
 ---@return boolean True if valid
 function M.validateValue(setting, value)
+    -- Lazy-load Schema to avoid circular dependency in tests
     local Schema = require("cfg/settings_schema")
     return Schema.validateValue(setting, value)
 end

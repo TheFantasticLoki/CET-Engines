@@ -198,12 +198,20 @@ function M.renderSettings(modId, spec, settings)
                     valid = Resolver.validateValue(setting, newValue)
                 end
                 if valid then
+                    local oldValue = settings[key]
                     settings[key] = newValue
                     changed = true
-                    -- NOTE: markDirty() is NOT called here. The caller decides
-                    -- when to mark dirty (e.g., after interaction ends).
+                    -- Push undo command so individual setting changes are undoable
+                    if UndoRedo and UndoRedo.makeSettingCommand then
+                        local cmd = UndoRedo.makeSettingCommand(modId, key, oldValue, newValue)
+                        UndoRedo.execute(cmd, function(c)
+                            -- This is a "dry-run" — the setting is already applied.
+                            -- The actual reversal is handled by ConfigUndo in init.lua.
+                            return true
+                        end)
+                    end
                     if Events and Events.emit then
-                        Events.emit("configengine:settingChanged", modId, key, newValue, value)
+                        Events.emit("configengine:settingChanged", modId, key, newValue, oldValue)
                     end
                 end
             end

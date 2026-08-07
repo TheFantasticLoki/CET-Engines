@@ -76,7 +76,7 @@ echo ""
 # Set package.path to include workspace root and engine directories for requires
 # The engine modules use short paths like "ui/utils" which need to resolve to
 # engines/UI-Engine/ui/utils.lua
-export LUA_PATH="$WORKSPACE_ROOT/?.lua;$WORKSPACE_ROOT/?/init.lua;$WORKSPACE_ROOT/engines/UI-Engine/?.lua;$WORKSPACE_ROOT/engines/UI-Engine/?/init.lua;;"
+export LUA_PATH="$WORKSPACE_ROOT/?.lua;$WORKSPACE_ROOT/?/init.lua;$WORKSPACE_ROOT/engines/0-Mod-Engine/?.lua;$WORKSPACE_ROOT/engines/0-Mod-Engine/?/init.lua;$WORKSPACE_ROOT/engines/UI-Engine/?.lua;$WORKSPACE_ROOT/engines/UI-Engine/?/init.lua;;"
 
 # Run with timeout to prevent hanging
 if timeout 30 "$LUA_CMD" "$TEST_RUNNER" 2>&1; then

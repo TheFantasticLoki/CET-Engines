@@ -53,10 +53,10 @@ function M.init(logger, core)
 
     Logger = logger
 
-    -- Resolve Log-Engine as fallback
-    if not Logger then
-        Logger = require("ui/utils").ResolveLogger("0-Mod-Engine-Events")
-    end
+    -- Resolve a Log-Engine logger instance for debug/trace calls.
+    -- NOTE: `Logger` may be the modules/logger module (has .Log, not .debug).
+    -- ResolveLogger returns a Log-Engine logger instance (has .debug, .info, etc.)
+    log = require("ui/utils").ResolveLogger("0-Mod-Engine-Events")
 
     if log then log.debug("Events module initialized") end
 

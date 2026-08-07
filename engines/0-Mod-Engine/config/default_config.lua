@@ -30,6 +30,18 @@ M.DEFAULT_SETTINGS = {
     settingsVersion = 1,
 }
 
+-- --- Default Config-Engine Settings ---
+
+M.CONFIG_DEFAULTS = {
+    AUTO_SAVE_DELAY_SECS = 0.5,
+    MAX_UNDO_STEPS = 50,
+    MAX_REDO_STEPS = 50,
+    MIN_SIDEBAR_WIDTH = 200,
+    MAX_SIDEBAR_WIDTH = 500,
+    DEFAULT_WINDOW_WIDTH = 900,
+    DEFAULT_WINDOW_HEIGHT = 600,
+}
+
 -- --- Default UI State ---
 
 M.DEFAULT_UI = {

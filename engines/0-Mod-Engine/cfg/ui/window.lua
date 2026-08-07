@@ -9,6 +9,8 @@ local M = {}
 local Core = nil
 local Components = nil
 local Tokens = nil
+local Sidebar = nil
+local ContentArea = nil
 
 --- Initialize the window module.
 ---@param deps table { core: CfgCore, components: table, tokens: table }
@@ -17,6 +19,11 @@ function M.init(deps)
     Core = deps.core
     Components = deps.components
     Tokens = deps.tokens
+    -- Pre-load sidebar and content area (avoid pcall require every frame)
+    local okS, sidebarMod = pcall(require, "cfg/ui/sidebar")
+    if okS then Sidebar = sidebarMod end
+    local okC, contentMod = pcall(require, "cfg/ui/content_area")
+    if okC then ContentArea = contentMod end
 end
 
 --- Draw the main Config-Engine window.
@@ -25,11 +32,6 @@ end
 ---@return nil
 function M.draw(ctx)
     if not Core or not Components then return end
-
-    local Sidebar = nil
-    local ContentArea = nil
-    pcall(function() Sidebar = require("cfg/ui/sidebar") end)
-    pcall(function() ContentArea = require("cfg/ui/content_area") end)
 
     -- Main window layout using columns
     local sidebarWidth = Core.getSidebarWidth()

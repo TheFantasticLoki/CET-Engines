@@ -19,45 +19,102 @@ Complete directory structure with file descriptions and module relationships.
 | `AGENTS.md` | Comprehensive guidelines for AI agents working in this workspace. Covers code organization, API design, error handling, theme system, performance, testing, documentation, versioning, and CET compatibility. |
 | `README.md` | Human-readable workspace overview, directory structure, quick start guide, and links to documentation. |
 | `.gitignore` | Ignores `versions/`, `docs/plans/`, `deployment/game/`, `deployment/vortex/`, `dependencies/`, `patched/`, `reference/`. |
-| `CET_DRAWLIST_GUIDE.md` | **CRITICAL** — CET DrawList API guide explaining the userdata bracket indexing limitation and correct static function pattern for custom rendering. |
 
 ---
 
-## `engines/` — Mods We Develop
+## `engines/0-Mod-Engine/` — Unified CET Mod
 
-> **Note:** Phases 0-2 are complete. The following files exist in `engines/UI-Engine/`:
-> - `init.lua` (406 lines) — Entry point, SafeRequire, public API ✅
-> - `core.lua` (362 lines) — Centralized state store ✅
-> - `api/events.lua` (150 lines) — Pub/sub event system ✅
-> - `modules/logger.lua` (264 lines) — Leveled logging ✅
-> - `modules/storage.lua` (195 lines) — Atomic JSON key-value ✅
-> - `ui/utils.lua` (103 lines) — Shared utilities ✅
-> - `config/default_config.lua` (88 lines) — Default configuration values ✅
-> - `config/themes.lua` (359 lines) — 16 built-in themes ✅
-> - `ui/color_engine.lua` (280 lines) — WCAG color science ✅
-> - `ui/tokens.lua` (203 lines) — Design tokens ✅
-> - `ui/theme.lua` (562 lines) — Theme push/pop engine ✅
->
-> The detailed structure below shows the planned architecture for all phases.
+> All engines are consolidated into a single mod. Subdirectories: `api/`, `cfg/`, `config/`, `log/`, `modules/`, `ui/`.
 
-```
-engines/
-├── UI-Engine/                    # UI framework (active rewrite)
-│   ├── init.lua                  # Entry point, SafeRequire, public API
-│   ├── core.lua                  # Centralized state store
-│   ├── api/
-│   │   ├── registry.lua          # Register/RegisterWindow/Unregister
-│   │   ├── context.lua           # Themed ctx metatable proxy
-│   │   ├── events.lua            # Pub/sub event system
-│   │   └── init.lua              # API barrel re-export
-│   ├── ui/
-│   │   ├── window.lua            # Main window orchestrator
-│   │   ├── sidebar.lua           # Sidebar with categorized mod list
-│   │   ├── content_area.lua      # Content dispatch to mod draw()
-│   │   ├── card.lua              # Card header component
-│   │   ├── settings_panel.lua    # 5-tab settings UI
-│   │   ├── theme.lua             # Theme push/pop engine
-│   │   ├── color_engine.lua      # WCAG color science
+### Entry Point
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `init.lua` | ~950 | Unified entry point. SafeRequire pattern, module loading, CET callbacks, backward-compat globals. |
+
+### Core Systems
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `core.lua` | ~600 | Centralized state store for UI-Engine. Theme, accent, contrast, sidebar, dirty flag. |
+
+### API Layer (`api/`)
+
+| File | Purpose |
+|------|---------|
+| `api/events.lua` | Pub/sub event system with source labels, pcall-guarded dispatch, mod-scoped cleanup. |
+| `api/registry.lua` | Register/RegisterWindow/Unregister API for mod panels. |
+| `api/context.lua` | Themed `ctx` metatable proxy delegating to Components. |
+| `api/windows.lua` | Standalone window management. |
+
+### UI Layer (`ui/`)
+
+| File | Purpose |
+|------|---------|
+| `ui/utils.lua` | Shared utilities: Tooltip, SafeSelectable, DeepCopy, ResolveLogger, GetThemeCacheKey. |
+| `ui/theme.lua` | Theme push/pop engine with caching, validation, high contrast, overrides. |
+| `ui/tokens.lua` | Design tokens: spacing, sizing, border radius, text size, theme-aware colors. |
+| `ui/color_engine.lua` | WCAG color science: contrast ratios, color generation, accessibility validation. |
+| `ui/animation.lua` | Easing functions, Lerp, Timer, color blending for smooth transitions. |
+| `ui/components/` | Barrel re-export of ~50+ widget sub-modules (primitives, buttons, display, layout, etc.). |
+| `ui/components/display.lua` | Notification system, progress bars, histograms, status indicators. |
+| `ui/components/icon_browser.lua` | Searchable icon grid for browsing Material Design icons. |
+
+### Config-Engine (`cfg/`)
+
+| File | Purpose |
+|------|---------|
+| `cfg/core.lua` | Config-Engine state store: mods, categories, UI state, dirty flag, auto-save toggle. |
+| `cfg/mod_manager.lua` | Mod discovery, registration, lifecycle, auto-categorization. |
+| `cfg/settings_schema.lua` | Setting type definitions, validation, schema management. |
+| `cfg/settings_resolver.lua` | Merges defaults with saved values, validates against schema. |
+| `cfg/settings_renderer.lua` | Converts settings schemas to ImGui widgets automatically. |
+| `cfg/undo_redo.lua` | Command pattern with ring buffer for settings changes. |
+| `cfg/state_sync.lua` | Synchronizes Config-Engine state with Storage. Auto-save with debounce. |
+| `cfg/render_mode.lua` | Detects render mode: schema, custom, hybrid, external. |
+| `cfg/search_parser.lua` | Parses advanced search syntax from sidebar search bar. |
+| `cfg/test_runner.lua` | Runs mod-registered tests with isolation and error handling. |
+| `cfg/test_results.lua` | Stores and aggregates test results per mod. |
+| `cfg/ui/window.lua` | Main Config-Engine window: orchestrates sidebar + content area. |
+| `cfg/ui/sidebar.lua` | Toolbar, search, filters, categories, theme quick-switch. |
+| `cfg/ui/content_area.lua` | Mod settings, engine settings, test results panels. |
+
+### Config (`config/`)
+
+| File | Purpose |
+|------|---------|
+| `config/default_config.lua` | Single source of default values for all modules. |
+| `config/themes.lua` | 16 built-in theme definitions. |
+| `config/engine_schemas.lua` | Built-in engine settings schemas. |
+| `config/categories.lua` | Category definitions with icons and subcategories. |
+
+### Modules (`modules/`)
+
+| File | Purpose |
+|------|---------|
+| `modules/logger.lua` | Leveled logging with ring buffer and overlay. |
+| `modules/storage.lua` | Atomic JSON key-value storage (temp → backup → primary pattern). |
+
+### Log-Engine (`log/`)
+
+| File | Purpose |
+|------|---------|
+| `log/init.lua` | Unified Log-Engine entry point. Logger creation, file output, stats. |
+| `log/config.lua` | Default configuration values for Log-Engine. |
+| `log/file_output.lua` | File I/O with rotation and backup. |
+| `log/logger.lua` | Core logger engine with deduplication and rate limiting. |
+| `log/stats.lua` | Cross-mod statistics tracking. |
+
+---
+
+## `tests/` — Shared Test Infrastructure
+
+| File | Purpose |
+|------|---------|
+| `tests/init.lua` | Test runner: discovers and executes unit tests. |
+| `tests/assert.lua` | Assertion library: assert_equal, assert_true, assert_false, assert_error. |
+| `tests/mocks/` | CET, ImGui, GameUI mocks for headless testing. |
+| `tests/unit/` | Unit test files (one per module). |
 │   │   ├── tokens.lua            # Design tokens
 │   │   ├── docs.lua              # In-game wiki renderer
 │   │   ├── utils.lua             # Shared utilities (Tooltip, CET workarounds)

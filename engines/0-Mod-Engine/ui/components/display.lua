@@ -236,7 +236,11 @@ function M.Notification(text, type, duration)
         color = Tokens.color4n("primary")
     end
 
-    -- Add to notifications list
+    -- Add to notifications list (cap at 20 to prevent unbounded growth)
+    local MAX_NOTIFICATIONS = 20
+    if #notifications >= MAX_NOTIFICATIONS then
+        table.remove(notifications, 1)
+    end
     table.insert(notifications, {
         text = text,
         type = type,

@@ -83,13 +83,10 @@ for _, modName in ipairs(subModules) do
     end
 end
 
--- Diagnostic: log what we loaded and flattened
+-- Diagnostic state for component loading
 local _diagAdvLoaded = (type(M.advanced) == "table")
 local _diagAdvSlider = (type(M.AdvancedSlider) == "function")
-print(string.format("[Components] Loaded: advanced=%s, AdvancedSlider=%s, total functions=%d",
-    tostring(_diagAdvLoaded), tostring(_diagAdvSlider), (function()
-        local n = 0; for _ in pairs(M) do n = n + 1 end; return n
-    end)()))
+-- Note: run diagnostics lazily via M.getDiagnostics() instead of on every load
 
 -- Initialize modules that need dependencies
 --- Initialize all component modules with dependencies
@@ -101,11 +98,6 @@ function M.init(logger, core, theme)
     if logger and logger.debug then
         logger.debug("[Components] Initializing component library")
     end
-
-    -- Diagnostic: log init state
-    print(string.format("[Components] init() called: advanced=%s, advanced.init=%s, theme=%s, logger=%s",
-        tostring(M.advanced ~= nil), tostring(M.advanced and type(M.advanced.init) == "function"),
-        tostring(theme ~= nil), tostring(logger ~= nil)))
 
     if M.containers and M.containers.init then
         M.containers.init(core)

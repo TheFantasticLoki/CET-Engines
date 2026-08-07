@@ -17,15 +17,21 @@ local Events = nil
 local UIEngine = nil
 ---@type Logger|nil
 local Logger = nil
+---@type table|nil
+local CfgUndoRedo = nil
+---@type table|nil
+local Categories = nil
 
 --- Initialize the mod manager.
----@param deps table { core: CfgCore, events: table, modEngine: table|nil, logger: Logger|nil }
+---@param deps table { core: CfgCore, events: table, modEngine: table|nil, logger: Logger|nil, undoRedo: table|nil, categories: table|nil }
 ---@return nil
 function M.init(deps)
     Core = deps.core
     Events = deps.events
     UIEngine = deps.modEngine
     Logger = deps.logger
+    CfgUndoRedo = deps.undoRedo
+    Categories = deps.categories
 
     -- Resolve Log-Engine as fallback
     if not Logger then
@@ -91,9 +97,9 @@ function M.register(modId, spec)
         end
         Core.setMod(modId, updateData)
         if Logger then
-            Logger.info("ModManager", "Mod updated: " .. modId)
+            Logger.info("Mod updated: " .. modId)
         elseif log then
-            log.info("ModManager: mod updated: " .. modId)
+            log.info("Mod updated: " .. modId)
         end
         Events.emit("configengine:modRegistered", modId, spec)
         return true, nil
@@ -129,18 +135,20 @@ function M.register(modId, spec)
     Core.setMod(modId, modState)
 
     -- Auto-categorize: use spec.category if provided, else default
-    local Categories = nil
-    pcall(function() Categories = require("config/categories") end)
-    if Categories then
+    local modCategories = Categories or (function()
+        local ok, mod = pcall(require, "config/categories")
+        return ok and mod or nil
+    end)()
+    if modCategories then
         local assignment = Core.getModCategory(modId)
         if not assignment then
-            local cat = spec.category or Categories.defaultCategory or "Uncategorized"
+            local cat = spec.category or modCategories.defaultCategory or "Uncategorized"
             Core.setModCategory(modId, cat, spec.subcategory)
         end
     end
 
     if Logger then
-        Logger.info("ModManager", "Mod registered: " .. modId .. " (" .. renderMode .. ")")
+        Logger.info("Mod registered: " .. modId .. " (" .. renderMode .. ")")
     end
 
     Events.emit("configengine:modRegistered", modId, spec)
@@ -157,8 +165,12 @@ function M.unregister(modId)
     end
 
     Core.removeMod(modId)
+    -- Clear undo/redo entries for this mod to prevent stale references
+    if CfgUndoRedo and CfgUndoRedo.clearForMod then
+        CfgUndoRedo.clearForMod(modId)
+    end
     if Logger then
-        Logger.info("ModManager", "Mod unregistered: " .. modId)
+        Logger.info("Mod unregistered: " .. modId)
     end
     Events.emit("configengine:modUnregistered", modId)
     return true

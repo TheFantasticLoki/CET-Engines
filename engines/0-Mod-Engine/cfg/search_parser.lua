@@ -37,7 +37,7 @@ function M.parse(query)
     end
 
     -- Extract unquoted key=value pairs (e.g., tag=favorite)
-    -- Only match if not already captured by quoted pattern
+    -- Note: unquoted values stop at spaces. Use quotes for values with spaces: category="Quality of Life"
     for key, value in query:gmatch('(%w+)=([%w_]+)') do
         local alreadyMatched = false
         for _, f in ipairs(filters) do

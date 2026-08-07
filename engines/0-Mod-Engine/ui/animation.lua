@@ -139,6 +139,9 @@ function M.LerpColor(c1, c2, t)
     return result
 end
 
+--- Nil-value diagnostic counter (module scope, not global)
+local _clampNilCount = 0
+
 --- Clamp a value between min and max
 ---@param val Value to clamp (nil treated as min)
 ---@param min Minimum
@@ -146,8 +149,6 @@ end
 ---@return number Clamped value
 function M.Clamp(val, min, max)
     if val == nil then
-        -- Diagnostic: trace nil values back to source
-        if not _clampNilCount then _clampNilCount = 0 end
         _clampNilCount = _clampNilCount + 1
         if _clampNilCount <= 5 then
             print(string.format("[Animation] Clamp received nil val (min=%s, max=%s) — stack: %s",

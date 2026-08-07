@@ -6,6 +6,7 @@ local M = {}
 
 -- Dependencies (late-bound)
 local Core = nil
+local ModEngine = nil  -- UI-Engine public API (for theme switching)
 local SearchParser = nil
 local TestResults = nil
 local Categories = nil
@@ -25,10 +26,11 @@ local themeOpen = false
 local Glyphs = nil
 
 --- Initialize the sidebar module.
----@param deps table { core: CfgCore, searchParser: SearchParser, testResults: TestResults, categories: Categories }
+---@param deps table { core: CfgCore, modEngine: table|nil, searchParser: SearchParser, testResults: TestResults, categories: Categories }
 ---@return nil
 function M.init(deps)
     Core = deps.core
+    ModEngine = deps.modEngine
     SearchParser = deps.searchParser
     TestResults = deps.testResults
     Categories = deps.categories

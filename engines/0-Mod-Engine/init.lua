@@ -444,6 +444,35 @@ local function ConfigUndo()
                 return true
             end
             return false
+        elseif cmd.type == "preset" then
+            local mod = CfgCore.getMod(cmd.modId)
+            if mod then
+                mod.settings = cmd.oldSettings
+                CfgCore.markDirty()
+                return true
+            end
+            return false
+        elseif cmd.type == "batch" then
+            -- Undo batch in reverse order
+            if cmd.commands then
+                for i = #cmd.commands, 1, -1 do
+                    local sub = cmd.commands[i].command or cmd.commands[i]
+                    if sub.type == "setting" then
+                        local mod = CfgCore.getMod(sub.modId)
+                        if mod and mod.settings then
+                            CfgResolver.setValue(mod.settings, sub.key, sub.oldValue)
+                        end
+                    elseif sub.type == "preset" then
+                        local mod = CfgCore.getMod(sub.modId)
+                        if mod then
+                            mod.settings = sub.oldSettings
+                        end
+                    end
+                end
+                CfgCore.markDirty()
+                return true
+            end
+            return false
         end
         return false
     end) ~= nil
@@ -460,6 +489,35 @@ local function ConfigRedo()
             local mod = CfgCore.getMod(cmd.modId)
             if mod and mod.settings then
                 CfgResolver.setValue(mod.settings, cmd.key, cmd.newValue)
+                CfgCore.markDirty()
+                return true
+            end
+            return false
+        elseif cmd.type == "preset" then
+            local mod = CfgCore.getMod(cmd.modId)
+            if mod then
+                mod.settings = cmd.newSettings
+                CfgCore.markDirty()
+                return true
+            end
+            return false
+        elseif cmd.type == "batch" then
+            -- Re-apply batch in forward order
+            if cmd.commands then
+                for _, entry in ipairs(cmd.commands) do
+                    local sub = entry.command or entry
+                    if sub.type == "setting" then
+                        local mod = CfgCore.getMod(sub.modId)
+                        if mod and mod.settings then
+                            CfgResolver.setValue(mod.settings, sub.key, sub.newValue)
+                        end
+                    elseif sub.type == "preset" then
+                        local mod = CfgCore.getMod(sub.modId)
+                        if mod then
+                            mod.settings = sub.newSettings
+                        end
+                    end
+                end
                 CfgCore.markDirty()
                 return true
             end
@@ -666,6 +724,8 @@ local function initModules()
             events = Events,
             modEngine = ModEngine,
             logger = log,
+            undoRedo = CfgUndoRedo,
+            categories = Categories,
         })
         if log then log.info("CfgModManager initialized") end
     end
@@ -748,6 +808,7 @@ local function initModules()
     if CfgSidebar then
         CfgSidebar.init({
             core = CfgCore or Core,
+            modEngine = ModEngine,
             searchParser = SearchParser,
             testResults = TestResults,
             categories = Categories,
@@ -758,6 +819,7 @@ local function initModules()
     if CfgContentArea then
         CfgContentArea.init({
             core = CfgCore or Core,
+            uiCore = Core,
             settingsRenderer = CfgRenderer,
             resolver = CfgResolver,
             undoRedo = CfgUndoRedo,
@@ -897,6 +959,10 @@ ModEngine = {
     Windows = Windows,
     _LogEngine = _LogEngine,
 }
+
+-- ============================================================================
+-- Backward Compatibility (deprecated)
+-- ============================================================================
 
 -- ============================================================================
 -- Backward Compatibility (deprecated)

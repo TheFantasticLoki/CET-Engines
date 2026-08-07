@@ -22,6 +22,43 @@ local maxSteps = 50
 ---@type number
 local maxRedoSteps = 50
 
+--- Clear undo/redo stacks.
+---@return nil
+function M.clear()
+    undoStack = {}
+    redoStack = {}
+end
+
+--- Clear undo/redo entries for a specific mod.
+---@param modId string The mod identifier
+---@return nil
+function M.clearForMod(modId)
+    local function filterByMod(stack)
+        local result = {}
+        for _, cmd in ipairs(stack) do
+            if cmd.type == "batch" then
+                -- Filter batch sub-commands
+                local filtered = {}
+                for _, entry in ipairs(cmd.commands) do
+                    local sub = entry.command or entry
+                    if sub.modId ~= modId then
+                        table.insert(filtered, entry)
+                    end
+                end
+                if #filtered > 0 then
+                    cmd.commands = filtered
+                    table.insert(result, cmd)
+                end
+            elseif cmd.modId ~= modId then
+                table.insert(result, cmd)
+            end
+        end
+        return result
+    end
+    undoStack = filterByMod(undoStack)
+    redoStack = filterByMod(redoStack)
+end
+
 --- Initialize the undo/redo system.
 ---@param options table|nil Optional: { maxSteps, maxRedoSteps }
 ---@return nil

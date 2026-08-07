@@ -52,7 +52,7 @@ M.DEFAULT_MIN_LEVEL = "debug"
 -- File output
 M.MAX_FILE_SIZE = 2 * 1024 * 1024  -- 2MB per file before rotation
 M.MAX_FILES = 5                      -- number of rotated files to keep
-M.LOG_DIR = "logs"                      -- write logs in logs/ subdirectory
+M.LOG_DIR = ""                      -- write logs in mod's own directory (CET cannot create subdirs)
 M.LOG_FILE_SUFFIX = ".log"           -- file extension
 
 -- Rate limiting

@@ -51,8 +51,13 @@ function M.runModTests(modId, mode)
     -- Time the test
     local startTime = os.clock()
 
-    -- pcall-wrap the entire test function
-    local ok, result = pcall(testFn)
+    -- pcall-wrap the entire test function with a test context
+    local testCtx = {
+        core = Core,
+        modId = modId,
+        settings = mod.settings or {},
+    }
+    local ok, result = pcall(testFn, testCtx)
 
     local elapsed = os.clock() - startTime
 

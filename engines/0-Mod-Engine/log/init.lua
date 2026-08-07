@@ -20,7 +20,7 @@
 --- Manages logger instances, statistics, and file output.
 
 -- PROVE THIS FILE IS BEING EXECUTED (first line of executable code)
-print("[LogEngine] log/init.lua executing (file version check)")
+print("[LogEngine] log/init.lua executing")
 
 -- --- SafeRequire Pattern ---
 
@@ -42,7 +42,6 @@ local Config = SafeRequire("log/config")
 local FileOutput = SafeRequire("log/file_output")
 local LoggerModule = SafeRequire("log/logger")
 local Stats = SafeRequire("log/stats")
-print("[LogEngine] Sub-modules: Config=" .. tostring(Config ~= nil) .. " FileOutput=" .. tostring(FileOutput ~= nil) .. " LoggerModule=" .. tostring(LoggerModule ~= nil) .. " Stats=" .. tostring(Stats ~= nil))
 
 -- --- Internal State ---
 

@@ -445,6 +445,27 @@ function M.clearDirty()
     state.dirty = false
 end
 
+-- ============================================================
+-- Auto-Save Toggle (delegates to UI-Engine Core)
+-- ============================================================
+
+--- Whether auto-save is enabled (default: true).
+---@type boolean
+local _autoSave = true
+
+--- Get auto-save enabled state.
+---@return boolean True if auto-save is enabled
+function M.getAutoSave()
+    return _autoSave
+end
+
+--- Set auto-save enabled state.
+---@param enabled boolean Whether auto-save should be enabled
+---@return nil
+function M.setAutoSave(enabled)
+    _autoSave = (enabled == true)
+end
+
 --- Get content mode.
 ---@return string "mod" | "settings" | "tests"
 function M.getContentMode()

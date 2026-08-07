@@ -6,6 +6,7 @@ local M = {}
 
 -- Dependencies (late-bound)
 local Core = nil
+local UIEngineCore = nil  -- UI-Engine's Core (for live settings like accent color, auto-save)
 local SettingsRenderer = nil
 local CfgResolver = nil
 local CfgUndoRedo = nil
@@ -34,12 +35,14 @@ local function applySettingLive(modId, key, value)
             ModEngine.SetTheme(value)
         elseif key == "contrastLevel" and ModEngine.SetContrastLevel then
             ModEngine.SetContrastLevel(value)
-        elseif key == "accentColor" and Core and Core.setAccentColor then
-            Core.setAccentColor(value)
-        elseif key == "autoSave" and Core and Core.setAutoSave then
-            Core.setAutoSave(value)
-        elseif key == "showSidebar" and Core and Core.setSidebarOpen then
-            Core.setSidebarOpen(value)
+        elseif key == "accentColor" and UIEngineCore and UIEngineCore.setAccentColor then
+            UIEngineCore.setAccentColor(value)
+        elseif key == "autoSave" then
+            -- Sync auto-save toggle to both CfgCore (state_sync checks it) and UIEngineCore
+            if Core and Core.setAutoSave then Core.setAutoSave(value) end
+            if UIEngineCore and UIEngineCore.setAutoSave then UIEngineCore.setAutoSave(value) end
+        elseif key == "showSidebar" and UIEngineCore and UIEngineCore.setSidebarOpen then
+            UIEngineCore.setSidebarOpen(value)
         elseif key == "showLoggerOverlay" then
             local logMod = ModEngine and ModEngine.Logger
             if logMod and logMod.SetOverlay then
@@ -103,10 +106,11 @@ local function applySettingLive(modId, key, value)
 end
 
 --- Initialize the content area module.
----@param deps table { core: CfgCore, settingsRenderer: SettingsRenderer, resolver: SettingsResolver, undoRedo: UndoRedo, stateSync: StateSync, testResults: TestResults, testRunner: TestRunner }
+---@param deps table { core: CfgCore, uiCore: Core|nil, settingsRenderer: SettingsRenderer, resolver: SettingsResolver, undoRedo: UndoRedo, stateSync: StateSync, testResults: TestResults, testRunner: TestRunner }
 ---@return nil
 function M.init(deps)
     Core = deps.core
+    UIEngineCore = deps.uiCore
     SettingsRenderer = deps.settingsRenderer
     CfgResolver = deps.resolver
     CfgUndoRedo = deps.undoRedo
@@ -137,7 +141,7 @@ end
 function drawModPanel()
     local selectedMod = Core.getSelectedMod()
     if not selectedMod then
-        ImGui.Spacing(20)
+        ImGui.Dummy(0, 20)
         ImGui.TextDisabled("Select a mod from the sidebar")
         ImGui.TextDisabled("to view and configure its settings.")
         return
@@ -174,6 +178,14 @@ function drawModPanel()
         return
     end
 
+    -- For "external" mode: show descriptive message
+    if mod.renderMode == "external" then
+        ImGui.Spacing()
+        ImGui.TextDisabled("This mod manages its own UI externally.")
+        ImGui.TextDisabled("No settings are exposed to Config-Engine.")
+        return
+    end
+
     -- For "schema" and "hybrid" modes: compact header with info popup
     -- Name
     ImGui.Text(spec.name or selectedMod)
@@ -181,8 +193,9 @@ function drawModPanel()
     -- Info button ( ⓘ ) — opens a popup with mod details
     ImGui.SameLine()
     ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 10)
-    ImGui.PushStyleColor(ImGuiCol.Button, 0.25, 0.45, 0.75, 0.6)
-    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, 0.35, 0.55, 0.85, 0.8)
+    local infoColor = Tokens and Tokens.color4n("primary") or {r=0.25, g=0.45, b=0.75}
+    ImGui.PushStyleColor(ImGuiCol.Button, infoColor.r, infoColor.g, infoColor.b, 0.6)
+    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, infoColor.r, infoColor.g, infoColor.b, 0.8)
     ImGui.PushStyleColor(ImGuiCol.Text, 1, 1, 1, 0.9)
     local infoId = "i##info_" .. selectedMod
     if ImGui.Button(infoId, 18, 18) then
