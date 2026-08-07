@@ -996,6 +996,75 @@ registerForEvent("onDraw", function()
             ImGui.End()
         end
 
+        -- Draw detached mod windows (right-click → "Open in Window")
+        if CfgCore then
+            local detached = CfgCore.getDetachedMods()
+            if detached then
+                for modId, winState in pairs(detached) do
+                    local mod = CfgCore.getMod(modId)
+                    if mod then
+                        local spec = mod.spec or {}
+                        local title = (spec.name or modId) .. "##detached_" .. modId
+                        ImGui.SetNextWindowPos(winState.x, winState.y, ImGuiCond.FirstUseEver)
+                        ImGui.SetNextWindowSize(winState.width, winState.height, ImGuiCond.FirstUseEver)
+                        local visible = ImGui.Begin(title, true)
+                        if visible then
+                            -- Render mod settings inline (same as content_area drawModPanel)
+                            ImGui.Text(spec.name or modId)
+                            ImGui.Separator()
+                            if spec.version then ImGui.Text("Version: " .. spec.version) end
+                            if spec.author then ImGui.Text("Author: " .. spec.author) end
+                            if spec.description then ImGui.TextWrapped(spec.description) end
+                            ImGui.Spacing()
+                            ImGui.Separator()
+                            ImGui.Spacing()
+
+                            -- Render settings if schema-based
+                            if (mod.renderMode == "schema" or mod.renderMode == "hybrid") and CfgRenderer and CfgRenderer.renderSettings then
+                                local changed = CfgRenderer.renderSettings(modId, spec, mod.settings)
+                                if changed and spec.settings then
+                                    for key, _ in pairs(spec.settings) do
+                                        if mod.settings[key] ~= nil then
+                                            -- Apply live (same logic as content_area)
+                                            if ModEngine and modId == "0-Engine-UI" then
+                                                if key == "currentTheme" and ModEngine.SetTheme then ModEngine.SetTheme(mod.settings[key])
+                                                elseif key == "contrastLevel" and ModEngine.SetContrastLevel then ModEngine.SetContrastLevel(mod.settings[key])
+                                                end
+                                            end
+                                        end
+                                    end
+                                    if CfgCore.markDirty then CfgCore.markDirty() end
+                                end
+                            end
+
+                            -- Custom draw
+                            if (mod.renderMode == "custom" or mod.renderMode == "hybrid") and spec.draw then
+                                local modCtx = { modId = modId, spec = spec }
+                                setmetatable(modCtx, {
+                                    __index = function(_, k)
+                                        if ImGui[k] then return ImGui[k] end
+                                        return nil
+                                    end
+                                })
+                                local drawOk2, drawErr2 = pcall(spec.draw, modCtx)
+                                if not drawOk2 then
+                                    ImGui.TextColored(1, 0.3, 0.3, 1, "Draw error: " .. tostring(drawErr2))
+                                end
+                            end
+                        end
+                        -- Handle close button (visibility becomes false when X is clicked)
+                        if not visible then
+                            CfgCore.reattachMod(modId)
+                        end
+                        ImGui.End()
+                    else
+                        -- Mod no longer exists, clean up
+                        CfgCore.reattachMod(modId)
+                    end
+                end
+            end
+        end
+
         -- Pop theme
         if Theme then Theme.PopTheme() end
 

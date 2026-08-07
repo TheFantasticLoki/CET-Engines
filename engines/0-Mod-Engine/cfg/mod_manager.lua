@@ -132,13 +132,14 @@ function M.register(modId, spec)
     -- Store in core
     Core.setMod(modId, modState)
 
-    -- Auto-categorize
+    -- Auto-categorize: use spec.category if provided, else default
     local Categories = nil
     pcall(function() Categories = require("config/categories") end)
     if Categories then
         local assignment = Core.getModCategory(modId)
         if not assignment then
-            Core.setModCategory(modId, Categories.defaultCategory or "Uncategorized")
+            local cat = spec.category or Categories.defaultCategory or "Uncategorized"
+            Core.setModCategory(modId, cat, spec.subcategory)
         end
     end
 

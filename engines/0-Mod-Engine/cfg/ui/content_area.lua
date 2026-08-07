@@ -151,33 +151,91 @@ function drawModPanel()
     local spec = mod.spec or {}
     spec._modId = selectedMod
 
-    -- Mod header
-    ImGui.Text(spec.name or selectedMod)
-    ImGui.Separator()
-    if spec.version then ImGui.Text("Version: " .. spec.version) end
-    if spec.author then ImGui.Text("Author: " .. spec.author) end
-    if spec.description then ImGui.TextWrapped(spec.description) end
+    -- For "custom" mode: the draw function owns the entire panel (no header clutter)
+    if mod.renderMode == "custom" and spec.draw then
+        local modCtx = { modId = selectedMod, spec = spec }
+        setmetatable(modCtx, {
+            __index = function(_, k)
+                if ImGui[k] then return ImGui[k] end
+                return nil
+            end
+        })
+        local ok, err = pcall(spec.draw, modCtx)
+        if not ok then
+            ImGui.TextColored(1, 0.3, 0.3, 1, "Draw error: " .. tostring(err))
+        end
+        return
+    end
 
-    -- Test badge in header
+    -- For "schema" and "hybrid" modes: compact header with info popup
+    -- Name
+    ImGui.Text(spec.name or selectedMod)
+
+    -- Info button ( ⓘ ) — opens a popup with mod details
+    ImGui.SameLine()
+    ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 10)
+    ImGui.PushStyleColor(ImGuiCol.Button, 0.25, 0.45, 0.75, 0.6)
+    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, 0.35, 0.55, 0.85, 0.8)
+    ImGui.PushStyleColor(ImGuiCol.Text, 1, 1, 1, 0.9)
+    local infoId = "i##info_" .. selectedMod
+    if ImGui.Button(infoId, 18, 18) then
+        ImGui.OpenPopup("##info_popup_" .. selectedMod)
+    end
+    ImGui.PopStyleColor(3)
+    ImGui.PopStyleVar(1)
+
+    if ImGui.BeginPopup("##info_popup_" .. selectedMod) then
+        ImGui.Text(spec.name or selectedMod)
+        ImGui.Separator()
+        if spec.version then ImGui.TextDisabled("Version:  v" .. spec.version) end
+        if spec.author then ImGui.TextDisabled("Author:   " .. spec.author) end
+        ImGui.TextDisabled("Mod ID:   " .. selectedMod)
+        if mod.renderMode then ImGui.TextDisabled("Mode:     " .. mod.renderMode) end
+        local assignment = Core.getModCategory(selectedMod)
+        if assignment and assignment.category then
+            local catText = assignment.category
+            if assignment.subcategory then catText = catText .. " › " .. assignment.subcategory end
+            ImGui.TextDisabled("Category: " .. catText)
+        end
+        if spec.description and spec.description ~= "" then
+            ImGui.Separator()
+            ImGui.TextWrapped(spec.description)
+        end
+        -- Test status
+        if TestResults then
+            local r = TestResults.get(selectedMod)
+            if r then
+                ImGui.Separator()
+                if r.status == "pass" then
+                    ImGui.TextColored(0.3, 0.9, 0.3, 1, string.format("Tests: %d/%d passing", r.passed, r.passed + r.failed))
+                elseif r.status == "fail" then
+                    ImGui.TextColored(0.9, 0.9, 0.2, 1, string.format("Tests: %d/%d passing", r.passed, r.passed + r.failed))
+                else
+                    ImGui.TextColored(0.9, 0.3, 0.3, 1, "Tests: Error")
+                end
+            end
+        end
+        ImGui.EndPopup()
+    end
+
+    -- Test badge (inline, right-aligned)
     if TestResults then
         local r = TestResults.get(selectedMod)
         if r then
-            ImGui.SameLine()
-            if r.status == "pass" then
-                ImGui.TextColored(0.3, 0.9, 0.3, 1, "✓ " .. r.passed .. "/" .. (r.passed + r.failed))
-            elseif r.status == "fail" then
-                ImGui.TextColored(0.9, 0.9, 0.2, 1, "⚠ " .. r.passed .. "/" .. (r.passed + r.failed))
-            else
-                ImGui.TextColored(0.9, 0.3, 0.3, 1, "✗ Error")
-            end
+            local badgeText = r.passed .. "/" .. (r.passed + r.failed)
+            local badgeColor = r.status == "pass" and { 0.3, 0.9, 0.3 }
+                or r.status == "fail" and { 0.9, 0.9, 0.2 }
+                or { 0.9, 0.3, 0.3 }
+            local badgeW = ImGui.CalcTextSize(badgeText)
+            local avail = ImGui.GetContentRegionAvail()
+            ImGui.SameLine(avail - badgeW - 4)
+            ImGui.TextColored(badgeColor[1], badgeColor[2], badgeColor[3], 0.8, badgeText)
         end
     end
 
-    ImGui.Spacing()
     ImGui.Separator()
-    ImGui.Spacing()
 
-    -- Settings
+    -- Settings (schema and hybrid modes)
     if mod.renderMode == "schema" or mod.renderMode == "hybrid" then
         if SettingsRenderer and SettingsRenderer.renderSettings then
             local changed = SettingsRenderer.renderSettings(selectedMod, spec, mod.settings)
@@ -189,9 +247,6 @@ function drawModPanel()
                         end
                     end
                 end
-                -- Mark dirty when values change. Auto-save defers during active
-                -- widget interaction (see state_sync.autoSave) and debounces
-                -- after interaction ends.
                 if Core and Core.markDirty then
                     Core.markDirty()
                 end
@@ -199,8 +254,8 @@ function drawModPanel()
         end
     end
 
-    -- Custom draw
-    if (mod.renderMode == "custom" or mod.renderMode == "hybrid") and spec.draw then
+    -- Custom draw (hybrid mode only — custom mode returned above)
+    if mod.renderMode == "hybrid" and spec.draw then
         local modCtx = { modId = selectedMod, spec = spec }
         setmetatable(modCtx, {
             __index = function(_, k)
@@ -214,20 +269,22 @@ function drawModPanel()
         end
     end
 
-    -- Reset button
-    ImGui.Spacing()
-    ImGui.Separator()
-    if ImGui.Button("Reset to Defaults") then
-        if CfgResolver and CfgResolver.resolveSettings and CfgUndoRedo and CfgUndoRedo.makePresetCommand then
-            local oldSettings = {}
-            for k, v in pairs(mod.settings or {}) do oldSettings[k] = v end
-            local newSettings = CfgResolver.resolveSettings(spec, nil)
-            local cmd = CfgUndoRedo.makePresetCommand(selectedMod, oldSettings, newSettings, "Reset to Defaults")
-            CfgUndoRedo.execute(cmd, function(c)
-                Core.setMod(c.modId, { settings = c.newSettings })
-                Core.markDirty()
-                return true
-            end)
+    -- Reset button (only for schema/hybrid modes that have settings)
+    if mod.renderMode == "schema" or mod.renderMode == "hybrid" then
+        ImGui.Spacing()
+        ImGui.Separator()
+        if ImGui.Button("Reset to Defaults") then
+            if CfgResolver and CfgResolver.resolveSettings and CfgUndoRedo and CfgUndoRedo.makePresetCommand then
+                local oldSettings = {}
+                for k, v in pairs(mod.settings or {}) do oldSettings[k] = v end
+                local newSettings = CfgResolver.resolveSettings(spec, nil)
+                local cmd = CfgUndoRedo.makePresetCommand(selectedMod, oldSettings, newSettings, "Reset to Defaults")
+                CfgUndoRedo.execute(cmd, function(c)
+                    Core.setMod(c.modId, { settings = c.newSettings })
+                    Core.markDirty()
+                    return true
+                end)
+            end
         end
     end
 end

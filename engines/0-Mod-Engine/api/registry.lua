@@ -69,6 +69,12 @@ local function validateSpec(id, spec)
     if spec.onDisable ~= nil and type(spec.onDisable) ~= "function" then
         return false, "Invalid spec.onDisable: must be function or nil"
     end
+    if spec.tooltip ~= nil and type(spec.tooltip) ~= "string" then
+        return false, "Invalid spec.tooltip: must be string or nil"
+    end
+    if spec.tooltipFn ~= nil and type(spec.tooltipFn) ~= "function" then
+        return false, "Invalid spec.tooltipFn: must be function or nil"
+    end
     return true, nil
 end
 

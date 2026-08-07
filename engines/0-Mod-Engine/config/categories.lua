@@ -24,14 +24,17 @@ M.subcategories = {
     Uncategorized = {},
 }
 
--- Icons for categories (optional, uses UI-Engine icons)
+-- Icons for categories (IconGlyphs names from Material Design Icons)
+-- Rendered via ImDrawListAddText to bypass font glyph limitations.
 M.icons = {
-    Gameplay = "settings",
-    Graphics = "eye",
-    Audio = "info",
-    ["Quality of Life"] = "star",
-    Framework = "edit",
-    Uncategorized = "menu",
+    Gameplay = "GamepadVariant",
+    Graphics = "Palette",
+    Audio = "VolumeHigh",
+    ["Quality of Life"] = "LightbulbOutline",
+    Framework = "PuzzleOutline",
+    Uncategorized = "DotsHorizontal",
+    Development = "CodeTags",
+    ["UI/HUD"] = "MonitorDashboard",
 }
 
 -- Default category for newly registered mods

@@ -84,6 +84,32 @@ local function DrawIconGlyphButton(id, iconName, fallbackText, width, height, to
     return clicked
 end
 
+--- Draw an icon glyph at the current cursor position using ImDrawListAddText.
+--- Advances the cursor past the glyph so subsequent text appears after it.
+---@param iconName string IconGlyphs name (e.g., "GamepadVariant")
+---@return boolean drawn True if glyph was drawn
+local function DrawIconGlyphInline(iconName)
+    if not CanDrawCenteredButtonText() then return false end
+    local glyph = GetSafeIconGlyph(iconName)
+    if not glyph then return false end
+
+    local ok, err = pcall(function()
+        local x, y = ImGui.GetCursorScreenPos()
+        local color = ImGui.GetColorU32(1.0, 1.0, 1.0, 0.9)
+        ImGui.ImDrawListAddText(
+            ImGui.GetWindowDrawList(),
+            ImGui.GetFontSize(),
+            x, y,
+            color,
+            glyph
+        )
+        -- Advance cursor past the glyph
+        local textW = ImGui.CalcTextSize(glyph)
+        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + textW + 4)
+    end)
+    return ok
+end
+
 --- Initialize the sidebar module.
 ---@param deps table { core: CfgCore, searchParser: SearchParser, testResults: TestResults, categories: Categories }
 ---@return nil
@@ -295,7 +321,8 @@ function M.draw()
         if mods and #mods > 0 then
             renderedCats[catName] = true
             local expanded = Core.isCategoryExpanded(catName)
-            local header = (expanded and "\xc2\x96\xb2 " or "\xc2\x96\xbc ") .. catName .. " (" .. #mods .. ")"
+
+            local header = catName .. " (" .. #mods .. ")"
 
             if ImGui.TreeNodeEx(catName, ImGuiTreeNodeFlags.NoTreePushOnOpen, header) then
                 if not expanded then Core.toggleCategory(catName) end
@@ -312,7 +339,8 @@ function M.draw()
     -- Render ungrouped mods (not in any defined category)
     for catName, mods in pairs(grouped) do
         if not renderedCats[catName] and #mods > 0 then
-            if ImGui.TreeNodeEx(catName, ImGuiTreeNodeFlags.NoTreePushOnOpen, catName .. " (" .. #mods .. ")") then
+            local header = catName .. " (" .. #mods .. ")"
+            if ImGui.TreeNodeEx(catName, ImGuiTreeNodeFlags.NoTreePushOnOpen, header) then
                 for _, modId in ipairs(mods) do
                     drawModEntry(modId, selectedMod)
                 end
@@ -345,54 +373,163 @@ function drawModEntry(modId, selectedMod)
     local label = spec.name or modId
     local isSelected = selectedMod == modId
 
+    -- ── Row layout: [status dot] [name] [version badge] ──────────────
+    local dotColor = nil
+    if TestResults then
+        local _, status = TestResults.getStatusIcon(modId)
+        if status == "pass" then
+            dotColor = { 0.3, 0.9, 0.3, 1.0 }
+        elseif status == "fail" then
+            dotColor = { 0.9, 0.9, 0.2, 1.0 }
+        elseif status == "error" then
+            dotColor = { 0.9, 0.3, 0.3, 1.0 }
+        end
+    end
+    -- Enabled/disabled dot (when no tests)
+    if not dotColor then
+        dotColor = mod.enabled ~= false
+            and { 0.4, 0.7, 0.4, 0.8 }
+            or  { 0.5, 0.5, 0.5, 0.5 }
+    end
+
     -- Pin/favorite indicators
     local prefix = ""
-    if mod.pinned then prefix = prefix .. "* " end
-    if mod.favorite then prefix = prefix .. "+ " end
+    if mod.pinned then prefix = prefix .. "★ " end
+    if mod.favorite then prefix = prefix .. "♥ " end
+
+    -- Build display label: "  ● prefixName"
+    local displayLabel = "  " .. prefix .. label
 
     -- Selectable
-    ImGui.Selectable(prefix .. label, isSelected)
+    ImGui.Selectable(displayLabel, isSelected)
     if ImGui.IsItemClicked() then
         Core.setSelectedMod(modId)
         Core.setContentMode("mod")
     end
 
-    -- Test indicator (inline after selectable)
-    if TestResults then
-        local icon, status = TestResults.getStatusIcon(modId)
-        if status ~= "none" then
-            ImGui.SameLine()
-            if status == "pass" then
-                ImGui.TextColored(0.3, 0.9, 0.3, 1, icon)
-            elseif status == "fail" then
-                ImGui.TextColored(0.9, 0.9, 0.2, 1, icon)
-            else
-                ImGui.TextColored(0.9, 0.3, 0.3, 1, icon)
-            end
+    -- Draw status dot in the left margin (overlapping the selectable)
+    -- Use the item rect to position a small colored circle
+    pcall(function()
+        local minX, minY = ImGui.GetItemRectMin()
+        local drawList = ImGui.GetWindowDrawList()
+        if drawList and minX then
+            local dotR = 3
+            local dotX = minX + 6
+            local dotY = minY + (ImGui.GetItemRectHeight() / 2)
+            local packed = ImGui.GetColorU32(dotColor[1], dotColor[2], dotColor[3], dotColor[4])
+            ImGui.ImDrawListAddCircleFilled(drawList, dotX, dotY, dotR, packed, 0)
         end
+    end)
+
+    -- Version badge (right-aligned, muted)
+    if spec.version then
+        pcall(function()
+            local textW = ImGui.CalcTextSize(spec.version)
+            local maxW = ImGui.GetContentRegionAvail()
+            local itemMaxX = ImGui.GetItemRectMax()
+            local windowX = ImGui.GetCursorScreenPos()
+            local badgeX = itemMaxX - textW - 8
+            local badgeY = ImGui.GetItemRectMin() + (ImGui.GetItemRectHeight() - ImGui.GetTextLineHeight()) / 2
+            if badgeX > windowX then
+                ImGui.GetWindowDrawList():AddText(badgeX, badgeY,
+                    ImGui.GetColorU32(0.5, 0.5, 0.6, 0.7), spec.version)
+            end
+        end)
     end
 
-    -- Tooltip
+    -- ── Rich Tooltip ─────────────────────────────────────────────────
     if ImGui.IsItemHovered() then
         ImGui.BeginTooltip()
-        ImGui.Text(spec.description or label)
-        if spec.version then ImGui.Text("Version: " .. spec.version) end
-        if spec.author then ImGui.Text("Author: " .. spec.author) end
-        -- Test status tooltip
+
+        -- Header: name + version
+        ImGui.TextColored(0.9, 0.9, 1.0, 1.0, label)
+        if spec.version then
+            ImGui.SameLine()
+            ImGui.TextDisabled("v" .. spec.version)
+        end
+
+        -- Author
+        if spec.author then
+            ImGui.TextDisabled("by " .. spec.author)
+        end
+
+        -- Description
+        if spec.description and spec.description ~= "" then
+            ImGui.Spacing()
+            ImGui.TextWrapped(spec.description)
+        end
+
+        -- Metadata section
+        ImGui.Separator()
+
+        -- Category
+        local assignment = Core.getModCategory(modId)
+        if assignment and assignment.category then
+            local catText = assignment.category
+            if assignment.subcategory then
+                catText = catText .. " › " .. assignment.subcategory
+            end
+            ImGui.TextDisabled("Category: ")
+            ImGui.SameLine()
+            ImGui.Text(catText)
+        end
+
+        -- Render mode
+        if mod.renderMode then
+            ImGui.TextDisabled("Mode: ")
+            ImGui.SameLine()
+            ImGui.Text(mod.renderMode)
+        end
+
+        -- Tags
+        local tags = Core.getModTags(modId)
+        if tags and #tags > 0 then
+            ImGui.TextDisabled("Tags: ")
+            ImGui.SameLine()
+            ImGui.Text(table.concat(tags, ", "))
+        end
+
+        -- Test status
         if TestResults then
             local r = TestResults.get(modId)
             if r then
                 ImGui.Separator()
-                ImGui.Text(string.format("Tests: %d/%d passing", r.passed, r.passed + r.failed))
+                local statusColor
+                if r.status == "pass" then
+                    statusColor = { 0.3, 0.9, 0.3 }
+                elseif r.status == "fail" then
+                    statusColor = { 0.9, 0.9, 0.2 }
+                else
+                    statusColor = { 0.9, 0.3, 0.3 }
+                end
+                ImGui.TextColored(statusColor[1], statusColor[2], statusColor[3], 1.0,
+                    string.format("Tests: %d/%d passing", r.passed, r.passed + r.failed))
                 if r.warnings and r.warnings > 0 then
-                    ImGui.TextDisabled(r.warnings .. " warnings")
+                    ImGui.TextDisabled("  " .. r.warnings .. " warning(s)")
                 end
             end
         end
+
+        -- Custom tooltip from mod author
+        if spec.tooltipFn and type(spec.tooltipFn) == "function" then
+            ImGui.Separator()
+            local ok, customLines = pcall(spec.tooltipFn, mod)
+            if ok and type(customLines) == "string" then
+                ImGui.TextWrapped(customLines)
+            elseif ok and type(customLines) == "table" then
+                for _, line in ipairs(customLines) do
+                    ImGui.TextWrapped(tostring(line))
+                end
+            end
+        elseif spec.tooltip and type(spec.tooltip) == "string" then
+            ImGui.Separator()
+            ImGui.TextWrapped(spec.tooltip)
+        end
+
         ImGui.EndTooltip()
     end
 
-    -- Right-click context menu
+    -- ── Right-click context menu ─────────────────────────────────────
     if ImGui.BeginPopupContextItem("##mod_ctx_" .. modId) then
         if ImGui.MenuItem("Pin", nil, mod.pinned) then
             Core.setMod(modId, { pinned = not mod.pinned })

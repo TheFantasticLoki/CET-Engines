@@ -80,17 +80,13 @@ function M.init(deps)
     Events = deps and deps.Events
     Logger = deps and deps.Logger
 
-    -- Resolve Log-Engine as fallback
-    if Logger then
-        log = Logger
-    elseif deps and deps.log then
-        log = deps.log
-    else
-        local ok, LogEngine = pcall(require, "log/init")
-        if ok and LogEngine then
-            local ok2, lgr = pcall(LogEngine.CreateLogger, "UI-Engine-Windows", { minLevel = "warn" })
-            if ok2 and lgr then log = lgr end
-        end
+    -- Resolve logger: prefer Log-Engine (has .info/.warn/.error API),
+    -- fall back to legacy Logger (only has .Log(modName, msg, level)).
+    -- NEVER assign legacy Logger to `log` — it lacks the .info() method.
+    local ok, LogEngine = pcall(require, "log/init")
+    if ok and LogEngine then
+        local ok2, lgr = pcall(LogEngine.CreateLogger, "UI-Engine-Windows", { minLevel = "warn" })
+        if ok2 and lgr then log = lgr end
     end
 end
 
