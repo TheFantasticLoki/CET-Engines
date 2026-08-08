@@ -108,7 +108,7 @@ local function SectionCard(id, buildFn)
     ImGui.PopStyleColor(1)
 end
 
---- Draw a section title (same as content_area.lua SectionTitle).
+--- Draw a section title.
 ---@param text string Title text
 local function SectionTitle(text)
     resolveColors()

@@ -83,11 +83,6 @@ for _, modName in ipairs(subModules) do
     end
 end
 
--- Diagnostic state for component loading
-local _diagAdvLoaded = (type(M.advanced) == "table")
-local _diagAdvSlider = (type(M.AdvancedSlider) == "function")
--- Note: run diagnostics lazily via M.getDiagnostics() instead of on every load
-
 -- Initialize modules that need dependencies
 --- Initialize all component modules with dependencies
 ---@param logger Logger module reference

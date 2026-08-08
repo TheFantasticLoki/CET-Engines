@@ -71,7 +71,7 @@ function M.StatusBadge(label, color)
     Utils.SafeImGuiCall(ImGui.PopStyleColor, 2)
 end
 
---- Label:value pair row (deprecated — use Layout.RowLabel instead)
+--- Label:value pair row (used by tests, deprecated — use Layout.RowLabel instead)
 ---@param label Label text
 ---@param value Value text
 ---@return nil
@@ -125,6 +125,29 @@ end
 
 -- --- Chart Widgets ---
 
+--- Calculate min/max range for data array, respecting caller overrides.
+---@param data Array of numeric values
+---@param options Optional: {min, max}
+---@return number min, number max Normalized min/max (min < max guaranteed)
+local function calcDataRange(data, options)
+    local min = options.min
+    local max = options.max
+    if not min then
+        min = data[1]
+        for _, v in ipairs(data) do
+            if v < min then min = v end
+        end
+    end
+    if not max then
+        max = data[1]
+        for _, v in ipairs(data) do
+            if v > max then max = v end
+        end
+    end
+    if min == max then max = min + 1 end
+    return min, max
+end
+
 --- Simple line plot
 ---@param label Plot label
 ---@param data Array of numeric values
@@ -143,23 +166,7 @@ function M.Plot(label, data, options)
         return
     end
 
-    -- Calculate min/max if not provided
-    local min = options.min
-    local max = options.max
-    if not min then
-        min = data[1]
-        for _, v in ipairs(data) do
-            if v < min then min = v end
-        end
-    end
-    if not max then
-        max = data[1]
-        for _, v in ipairs(data) do
-            if v > max then max = v end
-        end
-    end
-    if min == max then max = min + 1 end
-
+    local min, max = calcDataRange(data, options)
     Utils.SafeImGuiCall(ImGui.PlotLines, label, data, #data, 0, nil, min, max, width, height)
 
     if tooltip and tooltip ~= "" then
@@ -185,23 +192,7 @@ function M.Histogram(label, data, options)
         return
     end
 
-    -- Calculate min/max if not provided
-    local min = options.min
-    local max = options.max
-    if not min then
-        min = data[1]
-        for _, v in ipairs(data) do
-            if v < min then min = v end
-        end
-    end
-    if not max then
-        max = data[1]
-        for _, v in ipairs(data) do
-            if v > max then max = v end
-        end
-    end
-    if min == max then max = min + 1 end
-
+    local min, max = calcDataRange(data, options)
     Utils.SafeImGuiCall(ImGui.PlotHistogram, label, data, #data, 0, nil, min, max, width, height)
 
     if tooltip and tooltip ~= "" then
@@ -209,7 +200,7 @@ function M.Histogram(label, data, options)
     end
 end
 
--- --- Notification ---
+-- --- Notification (used by tests) ---
 
 -- Internal notification state
 local notifications = {}

@@ -274,27 +274,27 @@ function M.canRedo()
     return not inBatch and #redoStack > 0
 end
 
---- Get the description of the next undo command.
+--- Get the description of the next undo command (used by tests).
 ---@return string|nil
 function M.getUndoDescription()
     if #undoStack == 0 then return nil end
     return undoStack[#undoStack].description
 end
 
---- Get the description of the next redo command.
+--- Get the description of the next redo command (used by tests).
 ---@return string|nil
 function M.getRedoDescription()
     if #redoStack == 0 then return nil end
     return redoStack[#redoStack].description
 end
 
---- Get undo stack size.
+--- Get undo stack size (used by tests).
 ---@return number
 function M.getUndoCount()
     return #undoStack
 end
 
---- Get redo stack size.
+--- Get redo stack size (used by tests).
 ---@return number
 function M.getRedoCount()
     return #redoStack

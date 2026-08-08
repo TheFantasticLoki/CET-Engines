@@ -50,13 +50,6 @@ function M.get(modId)
     return results[modId]
 end
 
---- Get test history for a mod.
----@param modId string The mod identifier
----@return table Array of result entries (most recent first)
-function M.getHistory(modId)
-    return history[modId] or {}
-end
-
 --- Get aggregate stats across all mods.
 ---@return table { total: number, passing: number, failing: number, errors: number, noTests: number }
 function M.getAggregateStats()
@@ -84,21 +77,6 @@ function M.getStatusIcon(modId)
     if r.status == "fail" then return "⚠", "fail" end
     if r.status == "error" then return "✗", "error" end
     return "○", "none"
-end
-
---- Clear results for a mod.
----@param modId string The mod identifier
----@return nil
-function M.clear(modId)
-    results[modId] = nil
-    history[modId] = nil
-end
-
---- Clear all results.
----@return nil
-function M.clearAll()
-    results = {}
-    history = {}
 end
 
 return M

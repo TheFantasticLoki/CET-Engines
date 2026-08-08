@@ -63,7 +63,6 @@ local Utils = SafeRequire("ui/utils")
 local ThemeDefs = SafeRequire("config/themes")
 local ColorEngine = SafeRequire("ui/color_engine")
 local Tokens = SafeRequire("ui/tokens")
-local DefaultConfig = SafeRequire("config/default_config")
 local Theme = SafeRequire("ui/theme")
 local Animation = SafeRequire("ui/animation")
 
@@ -429,6 +428,56 @@ local function ConfigResetSettings(modId)
     return CfgModManager.resetSettings(modId)
 end
 
+--- Apply a single command in the given direction ("undo" or "redo").
+--- Used by both ConfigUndo and ConfigRedo to avoid duplicating the dispatch logic.
+---@param cmd table The command to apply
+---@param direction string "undo" or "redo"
+---@return boolean success
+local function applyCommand(cmd, direction)
+    if cmd.type == "setting" then
+        local mod = CfgCore.getMod(cmd.modId)
+        if mod and mod.settings then
+            local value = (direction == "undo") and cmd.oldValue or cmd.newValue
+            CfgResolver.setValue(mod.settings, cmd.key, value)
+            CfgCore.markDirty()
+            return true
+        end
+        return false
+    elseif cmd.type == "preset" then
+        local mod = CfgCore.getMod(cmd.modId)
+        if mod then
+            mod.settings = (direction == "undo") and cmd.oldSettings or cmd.newSettings
+            CfgCore.markDirty()
+            return true
+        end
+        return false
+    elseif cmd.type == "batch" and cmd.commands then
+        -- Undo iterates reverse, redo iterates forward
+        local start, stop, step = 1, #cmd.commands, 1
+        if direction == "undo" then
+            start, stop, step = #cmd.commands, 1, -1
+        end
+        for i = start, stop, step do
+            local sub = cmd.commands[i].command or cmd.commands[i]
+            if sub.type == "setting" then
+                local mod = CfgCore.getMod(sub.modId)
+                if mod and mod.settings then
+                    local value = (direction == "undo") and sub.oldValue or sub.newValue
+                    CfgResolver.setValue(mod.settings, sub.key, value)
+                end
+            elseif sub.type == "preset" then
+                local mod = CfgCore.getMod(sub.modId)
+                if mod then
+                    mod.settings = (direction == "undo") and sub.oldSettings or sub.newSettings
+                end
+            end
+        end
+        CfgCore.markDirty()
+        return true
+    end
+    return false
+end
+
 --- Undo the last Config-Engine setting change
 ---@return boolean success
 local function ConfigUndo()
@@ -436,45 +485,7 @@ local function ConfigUndo()
         return false
     end
     return CfgUndoRedo.undo(function(cmd)
-        if cmd.type == "setting" then
-            local mod = CfgCore.getMod(cmd.modId)
-            if mod and mod.settings then
-                CfgResolver.setValue(mod.settings, cmd.key, cmd.oldValue)
-                CfgCore.markDirty()
-                return true
-            end
-            return false
-        elseif cmd.type == "preset" then
-            local mod = CfgCore.getMod(cmd.modId)
-            if mod then
-                mod.settings = cmd.oldSettings
-                CfgCore.markDirty()
-                return true
-            end
-            return false
-        elseif cmd.type == "batch" then
-            -- Undo batch in reverse order
-            if cmd.commands then
-                for i = #cmd.commands, 1, -1 do
-                    local sub = cmd.commands[i].command or cmd.commands[i]
-                    if sub.type == "setting" then
-                        local mod = CfgCore.getMod(sub.modId)
-                        if mod and mod.settings then
-                            CfgResolver.setValue(mod.settings, sub.key, sub.oldValue)
-                        end
-                    elseif sub.type == "preset" then
-                        local mod = CfgCore.getMod(sub.modId)
-                        if mod then
-                            mod.settings = sub.oldSettings
-                        end
-                    end
-                end
-                CfgCore.markDirty()
-                return true
-            end
-            return false
-        end
-        return false
+        return applyCommand(cmd, "undo")
     end) ~= nil
 end
 
@@ -485,45 +496,7 @@ local function ConfigRedo()
         return false
     end
     return CfgUndoRedo.redo(function(cmd)
-        if cmd.type == "setting" then
-            local mod = CfgCore.getMod(cmd.modId)
-            if mod and mod.settings then
-                CfgResolver.setValue(mod.settings, cmd.key, cmd.newValue)
-                CfgCore.markDirty()
-                return true
-            end
-            return false
-        elseif cmd.type == "preset" then
-            local mod = CfgCore.getMod(cmd.modId)
-            if mod then
-                mod.settings = cmd.newSettings
-                CfgCore.markDirty()
-                return true
-            end
-            return false
-        elseif cmd.type == "batch" then
-            -- Re-apply batch in forward order
-            if cmd.commands then
-                for _, entry in ipairs(cmd.commands) do
-                    local sub = entry.command or entry
-                    if sub.type == "setting" then
-                        local mod = CfgCore.getMod(sub.modId)
-                        if mod and mod.settings then
-                            CfgResolver.setValue(mod.settings, sub.key, sub.newValue)
-                        end
-                    elseif sub.type == "preset" then
-                        local mod = CfgCore.getMod(sub.modId)
-                        if mod then
-                            mod.settings = sub.newSettings
-                        end
-                    end
-                end
-                CfgCore.markDirty()
-                return true
-            end
-            return false
-        end
-        return false
+        return applyCommand(cmd, "redo")
     end) ~= nil
 end
 

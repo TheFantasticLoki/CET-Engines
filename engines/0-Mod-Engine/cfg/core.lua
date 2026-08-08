@@ -153,20 +153,6 @@ function M.getModIds()
     return ids
 end
 
---- Get mods filtered by category.
----@param category string The category name
----@return string[] Array of modId strings
-function M.getModsByCategory(category)
-    local result = {}
-    for modId, mod in pairs(state.mods) do
-        local assignment = state.modAssignments[modId]
-        if assignment and assignment.category == category then
-            table.insert(result, modId)
-        end
-    end
-    return result
-end
-
 --- Get sorted mod IDs.
 ---@return table Array of mod ID strings
 function M.getSortedModIds()
@@ -290,41 +276,6 @@ function M.setSidebarWidth(width)
     state.dirty = true
 end
 
---- Check if settings panel is open.
----@return boolean
-function M.isSettingsPanelOpen()
-    return state.settingsPanelOpen
-end
-
---- Toggle settings panel.
----@return nil
-function M.toggleSettingsPanel()
-    state.settingsPanelOpen = not state.settingsPanelOpen
-    state.dirty = true
-end
-
---- Check if wiki viewer is open.
----@return boolean
-function M.isWikiViewerOpen()
-    return state.wikiViewerOpen
-end
-
---- Open wiki viewer for a mod.
----@param modId string The mod identifier
----@return nil
-function M.openWikiViewer(modId)
-    state.wikiViewerOpen = true
-    state.wikiModId = modId
-    emit("configengine:wikiOpened", modId)
-end
-
---- Close wiki viewer.
----@return nil
-function M.closeWikiViewer()
-    state.wikiViewerOpen = false
-    state.wikiModId = nil
-end
-
 --- Get search query.
 ---@return string
 function M.getSearchQuery()
@@ -360,7 +311,7 @@ end
 -- Detached Windows
 -- ============================================================
 
---- Check if a mod is detached.
+--- Check if a mod is detached (used by tests).
 ---@param modId string The mod identifier
 ---@return boolean
 function M.isDetached(modId)
@@ -471,60 +422,6 @@ function M.setActiveFilters(filters)
     state.activeFilters = filters or {}
     state.dirty = true
     emit("configengine:filtersChanged", filters)
-end
-
---- Add a tag to a mod.
----@param modId string The mod identifier
----@param tag string The tag to add
----@return nil
-function M.addModTag(modId, tag)
-    local mod = state.mods[modId]
-    if not mod then return end
-    if not mod.tags then mod.tags = {} end
-    -- Avoid duplicates
-    for _, t in ipairs(mod.tags) do
-        if t == tag then return end
-    end
-    table.insert(mod.tags, tag)
-    state.dirty = true
-    emit("configengine:modTagAdded", modId, tag)
-end
-
---- Remove a tag from a mod.
----@param modId string The mod identifier
----@param tag string The tag to remove
----@return nil
-function M.removeModTag(modId, tag)
-    local mod = state.mods[modId]
-    if not mod or not mod.tags then return end
-    for i, t in ipairs(mod.tags) do
-        if t == tag then
-            table.remove(mod.tags, i)
-            state.dirty = true
-            emit("configengine:modTagRemoved", modId, tag)
-            return
-        end
-    end
-end
-
---- Get tags for a mod.
----@param modId string The mod identifier
----@return string[] Array of tag strings
-function M.getModTags(modId)
-    local mod = state.mods[modId]
-    return mod and mod.tags or {}
-end
-
---- Check if a mod has a specific tag.
----@param modId string The mod identifier
----@param tag string The tag to check
----@return boolean
-function M.hasModTag(modId, tag)
-    local tags = M.getModTags(modId)
-    for _, t in ipairs(tags) do
-        if t == tag then return true end
-    end
-    return false
 end
 
 -- ============================================================

@@ -218,18 +218,6 @@ function M.setSearchQuery(value)
     end
 end
 
----@return table
-function M.getFavorites()
-    return sidebar.favorites
-end
-
----@param value table
-function M.setFavorites(value)
-    local old = sidebar.favorites
-    sidebar.favorites = value
-    emitEvent("core:favoritesChanged", value, old)
-end
-
 -- --- Features Sub-store Getters/Setters ---
 
 ---@param id string
@@ -248,7 +236,7 @@ function M.setSectionState(id, value)
     end
 end
 
--- --- Settings Sub-store Getters/Setters ---
+-- --- Settings Sub-store Getters/Setters (used by tests) ---
 
 ---@return number
 function M.getSettingsVersion()

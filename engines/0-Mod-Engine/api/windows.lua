@@ -173,7 +173,6 @@ function M.drawAll()
         local spec = Core.getWindow(id)
         if spec and spec.draw_fn then
             -- Draw the window with error boundary
-            local windowOpen = true
             local ok, err = pcall(function()
                 -- Set window size if specified
                 if spec.width and spec.height then

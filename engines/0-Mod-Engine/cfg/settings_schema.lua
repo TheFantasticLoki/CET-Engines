@@ -204,7 +204,7 @@ function M.getDefault(setting)
     return setting.default
 end
 
---- Build a flat index of all setting keys in a schema (for search).
+--- Build a flat index of all setting keys in a schema (for search, used by tests).
 ---@param settings table The settings table (may be nested with groups)
 ---@param prefix string[]|nil Key prefix for nested settings
 ---@return table Array of { key, label, type } entries
@@ -243,7 +243,7 @@ function M.buildIndex(settings, prefix)
     return index
 end
 
---- Collect all setting keys and their definitions into a flat table.
+--- Collect all setting keys and their definitions into a flat table (used by tests).
 ---@param settings table The settings table (may be nested with groups)
 ---@param prefix string[]|nil Key prefix for nested settings
 ---@return table<string, table> Flat map of { [fullKey] = settingDef }

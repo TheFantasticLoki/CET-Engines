@@ -17,8 +17,6 @@
 ---@field color4n fun(role: string): ColorRGBA
 ---@field color4 fun(role: string): ColorRGB
 ---@field invalidateCache fun(): nil
----@field styleVar fun(name: string): number
----@field styleVarVec2 fun(name: string): number, number
 ---@field reset fun(): nil
 
 local M = {}

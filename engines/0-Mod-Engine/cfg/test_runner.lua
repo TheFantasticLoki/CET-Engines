@@ -144,16 +144,4 @@ function M.runAllTests(mode)
     return allResults
 end
 
---- Check if startup tests have been run.
----@return boolean
-function M.startupComplete()
-    return _startupRun
-end
-
---- Reset startup flag (for testing or re-run).
----@return nil
-function M.resetStartup()
-    _startupRun = false
-end
-
 return M

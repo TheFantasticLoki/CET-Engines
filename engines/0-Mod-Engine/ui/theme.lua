@@ -70,10 +70,6 @@ local _actualColorsPushed = 0
 ---@type number Count of actual ImGui vars pushed
 local _actualVarsPushed = 0
 
--- Style color count (number of PushStyleColor calls per PushTheme)
-local STYLE_COLOR_COUNT = 27
--- Style var count (number of PushStyleVar calls per PushTheme)
-local STYLE_VAR_COUNT = 9
 
 -- --- Initialization ---
 
@@ -414,38 +410,7 @@ function M.SetHighContrast(level)
     M.InvalidateCache()
 end
 
---- Get contrast report for current theme
----@return table Contrast report
-function M.GetContrastReport()
-    if not _core or not _colorEngine or not _themes then
-        return {}
-    end
-
-    local themeName = _core.getCurrentTheme() or "Dark"
-    local themeDef = _themes.getTheme(themeName)
-    if not themeDef then
-        return {}
-    end
-
-    local report = {}
-    local roles = themeDef.roles
-
-    for roleKey, color in pairs(roles) do
-        local textContrast = _colorEngine.ContrastRatio(color, { r = 1, g = 1, b = 1 })
-        local bgContrast = _colorEngine.ContrastRatio(color, roles.background or { r = 0.035, g = 0.030, b = 0.040 })
-
-        report[roleKey] = {
-            textContrast = textContrast,
-            bgContrast = bgContrast,
-            wcagAA = textContrast >= 4.5,
-            wcagAAA = textContrast >= 7.0,
-        }
-    end
-
-    return report
-end
-
--- --- Theme Overrides ---
+-- --- Theme Overrides (used by tests) ---
 
 --- Set theme override for a role
 ---@param role string Role key (e.g., "primary", "background")
@@ -471,7 +436,7 @@ function M.ClearThemeOverrides()
     M.InvalidateCache()
 end
 
--- --- Theme Import/Export ---
+-- --- Theme Export (used by tests) ---
 
 --- Export theme as table
 ---@param themeName string Theme name
@@ -491,55 +456,6 @@ function M.ExportTheme(themeName)
         accent = { r = themeDef.accent.r, g = themeDef.accent.g, b = themeDef.accent.b },
         roles = {},
     }
-end
-
---- Import theme from table
----@param themeName string Theme name
----@param themeData table Theme data table
----@return boolean, string|nil success, error message
-function M.ImportTheme(themeName, themeData)
-    if not themeName or type(themeName) ~= "string" then
-        return false, "Invalid theme name"
-    end
-
-    if not themeData or type(themeData) ~= "table" then
-        return false, "Invalid theme data"
-    end
-
-    -- Validate accent color
-    if themeData.accent then
-        if not M.ValidateAccentColor(themeData.accent) then
-            if _logger then
-                _logger.Log("Theme", "ImportTheme: invalid accent color", "error")
-            end
-            return false, "Invalid accent color"
-        end
-    end
-
-    -- Store in themes module
-    if _themes and _themes.THEMES then
-        _themes.THEMES[themeName] = {
-            accent = themeData.accent or { r = 0.4, g = 0.6, b = 1.0 },
-            roles = themeData.roles or {},
-        }
-
-        -- Add to theme order if not already there
-        local found = false
-        for _, name in ipairs(_themes.THEME_ORDER) do
-            if name == themeName then
-                found = true
-                break
-            end
-        end
-        if not found then
-            table.insert(_themes.THEME_ORDER, themeName)
-        end
-    end
-
-    -- Invalidate cache
-    M.InvalidateCache()
-
-    return true, nil
 end
 
 -- --- Theme Validation ---

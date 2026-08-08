@@ -130,36 +130,7 @@ function M.ErrorBoundary(buildFn, fallback)
     end
 end
 
--- --- Bounds Tracking ---
-
--- Internal bounds state
-local _lastBounds = { x = 0, y = 0, w = 0, h = 0 }
-
---- Get the last rendered bounds
----@return table {x, y, w, h}
-function M.GetLastBounds()
-    return _lastBounds
-end
-
---- Update last bounds (called internally after rendering)
----@return nil
-function M.UpdateLastBounds()
-    local cursorX, cursorY = ImGui.GetCursorScreenPos()
-    local availW, availH = ImGui.GetContentRegionAvail()
-    _lastBounds = {
-        x = cursorX,
-        y = cursorY,
-        w = availW,
-        h = availH,
-    }
-end
-
--- --- Available Space ---
-
---- Get the total available space for the current window.
--- Uses GetWindowSize() to return the full window dimensions, which is
--- more useful for layout calculations than GetContentRegionAvail() (which
--- returns remaining space from cursor and can be 0 after content renders).
+--- Get the total available space for the current window (used by tests).
 ---@return number, number width, height (both >= 0)
 function M.GetAvailableSpace()
     local w, h = ImGui.GetWindowSize()

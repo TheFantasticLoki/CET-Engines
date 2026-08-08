@@ -398,7 +398,7 @@ function M.getBaseStyleVars()
     return M.BASE_STYLE_VARS
 end
 
---- Get role definitions
+--- Get role definitions (used by tests)
 ---@return table Array of role definition tables
 function M.getRoles()
     return M.ROLES
