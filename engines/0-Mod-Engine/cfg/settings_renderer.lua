@@ -11,6 +11,8 @@ local Events = nil
 local Components = nil
 local UndoRedo = nil
 local Resolver = nil
+local Tokens = nil  -- For section card styling
+local _sectionHeights = {}  -- Cache for section card heights (keyed by section ID)
 
 --- Initialize the settings renderer.
 ---@param deps table { core: CfgCore, events: table, components: table, undoRedo: UndoRedo, resolver: SettingsResolver }
@@ -21,6 +23,102 @@ function M.init(deps)
     Components = deps.components
     UndoRedo = deps.undoRedo
     Resolver = deps.resolver
+end
+
+--- Resolve Tokens module for styling.
+local function resolveTokens()
+    if Tokens then return end
+    local ok, mod = pcall(require, "ui/tokens")
+    if ok then Tokens = mod end
+end
+
+--- Section card styling helpers (same as content_area.lua).
+local _panelBg = nil
+local _muted = nil
+
+local function resolveColors()
+    if _panelBg then return end
+    resolveTokens()
+    _panelBg = Tokens and Tokens.color4n("panel") or { r = 0.06, g = 0.06, b = 0.07 }
+    _muted = Tokens and Tokens.color4n("muted") or { r = 0.5, g = 0.5, b = 0.6 }
+end
+
+--- Measure content height by rendering it offscreen, then restore cursor.
+---@param buildFn function Content builder
+---@return number Measured height in pixels
+local function MeasureContentHeight(buildFn)
+    local savedX, savedY = ImGui.GetCursorScreenPos()
+
+    -- Render content invisibly to measure
+    ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.0)
+    ImGui.BeginGroup()
+    buildFn()
+    ImGui.EndGroup()
+    ImGui.PopStyleVar(1)
+
+    local _, bottom = ImGui.GetItemRectMax()
+    local measuredHeight = bottom - savedY
+
+    -- Restore cursor position
+    ImGui.SetCursorScreenPos(savedX, savedY)
+
+    return measuredHeight
+end
+
+--- Draw a styled section card with cached height measurement.
+--- On first render (no cache): measures content invisibly, caches the height,
+--- then renders content inside a BeginChild with the correct size.
+--- On subsequent frames: reuses cached height — no measurement needed.
+--- When schema changes (clearHeightCache called), re-measures on next frame.
+---@param id string Unique ID for the section
+---@param buildFn function Content builder
+local function SectionCard(id, buildFn)
+    resolveColors()
+
+    local contentHeight = _sectionHeights[id]
+
+    if not contentHeight then
+        -- First frame (or after cache clear): measure content height.
+        -- MeasureContentHeight renders buildFn() invisibly to get the pixel height.
+        -- NOTE: This creates widgets twice on the first frame only (once for measurement,
+        -- once for display). AdvancedSlider's DrawList rendering bypasses Alpha=0, so
+        -- ghost sliders appear briefly. This is acceptable — subsequent frames use cache.
+        contentHeight = MeasureContentHeight(buildFn)
+        _sectionHeights[id] = contentHeight
+    end
+
+    -- Add padding (top: 10, bottom: 10)
+    local totalHeight = contentHeight + 20
+
+    -- Clamp to available space (minimum 50px)
+    local availW, availH = ImGui.GetContentRegionAvail()
+    totalHeight = math.max(50, math.min(totalHeight, availH))
+
+    -- Render with measured/cached height
+    ImGui.PushStyleColor(ImGuiCol.ChildBg, _panelBg.r, _panelBg.g, _panelBg.b, 0.6)
+    ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, 12, 10)
+    ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4)
+    ImGui.BeginChild(id, -1, totalHeight, true)
+
+    -- Build content (single render)
+    buildFn()
+
+    ImGui.EndChild()
+    ImGui.PopStyleVar(2)
+    ImGui.PopStyleColor(1)
+end
+
+--- Draw a section title (same as content_area.lua SectionTitle).
+---@param text string Title text
+local function SectionTitle(text)
+    resolveColors()
+    ImGui.TextColored(_muted.r, _muted.g, _muted.b, 0.7, text)
+    ImGui.Spacing()
+end
+
+--- Clear cached heights and force re-measurement on next frame.
+function M.clearHeightCache()
+    _sectionHeights = {}
 end
 
 --- Render settings for a mod.
@@ -47,12 +145,69 @@ function M.renderSettings(modId, spec, settings)
         end
 
         if visible then
-            -- Render based on type (direct ImGui — no Components dependency)
-            if setting.type == "toggle" then
+            -- Handle section type (wraps settings in a SectionCard)
+            if setting.type == "section" then
+                local sectionLabel = setting.label or key
+                local sectionId = "##section_" .. key
+
+                SectionCard(sectionId, function()
+                    SectionTitle(sectionLabel)
+                    -- Render nested settings
+                    if setting.settings then
+                        -- Create a temporary spec with nested settings
+                        local nestedSpec = { settings = setting.settings }
+                        -- Create a settings container for nested values
+                        local nestedSettings = settings[key] or {}
+                        -- Merge settings into nested container
+                        for k, _ in pairs(setting.settings) do
+                            if settings[k] ~= nil then
+                                nestedSettings[k] = settings[k]
+                            end
+                        end
+                        -- Render nested settings
+                        if M.renderSettings(modId, nestedSpec, nestedSettings) then
+                            -- Copy changed values back to main settings
+                            for k, v in pairs(nestedSettings) do
+                                if settings[k] ~= v then
+                                    settings[k] = v
+                                    changed = true
+                                end
+                            end
+                        end
+                    end
+                end)
+
+            -- Handle divider type
+            elseif setting.type == "divider" then
+                ImGui.Separator()
+                ImGui.Spacing()
+
+            -- Handle spacer type
+            elseif setting.type == "spacer" then
+                local height = setting.height or 8
+                ImGui.Dummy(0, height)
+
+            -- Handle custom section with render function
+            elseif setting.type == "custom_section" then
+                local sectionLabel = setting.label or key
+                local sectionId = "##custom_section_" .. key
+
+                if setting.render and type(setting.render) == "function" then
+                    SectionCard(sectionId, function()
+                        SectionTitle(sectionLabel)
+                        local result = setting.render(settings, key)
+                        if result ~= nil then
+                            newValue = result
+                            settingChanged = true
+                        end
+                    end)
+                end
+
+            -- Handle existing types (backward compatible)
+            elseif setting.type == "toggle" then
                 local label = setting.label or key
                 local clicked
                 newValue, clicked = ImGui.Checkbox(label, value)
-                -- Only report changed if value actually differs (not just clicked)
                 settingChanged = (newValue ~= value)
 
             elseif setting.type == "slider" then
@@ -62,25 +217,14 @@ function M.renderSettings(modId, spec, settings)
                 local step = setting.step or 0.1
                 local format = setting.format or "%.3f"
                 local v = value or setting.default or min
-                -- Visible label before slider
                 ImGui.Text(label)
                 ImGui.SetNextItemWidth(280)
-                -- Use AdvancedSlider with full config (buttons, tooltips, labels)
                 newValue, settingChanged = Components.AdvancedSlider("##" .. key, v, {
-                    min = min,
-                    max = max,
-                    default = setting.default,
-                    step = step,
-                    format = format,
-                    label = label,
-                    tooltip = setting.tooltip or nil,
-                    description = setting.description or nil,
-                    showTicks = false,
-                    showButtons = true,
-                    showDefaultLine = true,
-                    showTooltip = true,
-                    width = 280,
-                    trackHeight = 16,
+                    min = min, max = max, default = setting.default,
+                    step = step, format = format, label = label,
+                    tooltip = setting.tooltip, description = setting.description,
+                    showTicks = false, showButtons = true, showDefaultLine = true,
+                    showTooltip = true, width = 280, trackHeight = 16,
                 })
                 ImGui.Spacing()
 
@@ -90,26 +234,15 @@ function M.renderSettings(modId, spec, settings)
                 local max = setting.max or 100
                 local step = setting.step or 1
                 local v = math.floor(value or setting.default or min)
-                -- Visible label before slider
                 ImGui.Text(label)
                 ImGui.SetNextItemWidth(280)
-                -- Use AdvancedSlider with integer step, full config
                 local rawVal
                 rawVal, settingChanged = Components.AdvancedSlider("##" .. key, v, {
-                    min = min,
-                    max = max,
-                    default = setting.default,
-                    step = step,
-                    format = "%d",
-                    label = label,
-                    tooltip = setting.tooltip or nil,
-                    description = setting.description or nil,
-                    showTicks = false,
-                    showButtons = true,
-                    showDefaultLine = true,
-                    showTooltip = true,
-                    width = 280,
-                    trackHeight = 16,
+                    min = min, max = max, default = setting.default,
+                    step = step, format = "%d", label = label,
+                    tooltip = setting.tooltip, description = setting.description,
+                    showTicks = false, showButtons = true, showDefaultLine = true,
+                    showTooltip = true, width = 280, trackHeight = 16,
                 })
                 newValue = math.floor(rawVal + 0.5)
                 ImGui.Spacing()
@@ -130,7 +263,6 @@ function M.renderSettings(modId, spec, settings)
                 end
 
             elseif setting.type == "multi_combo" then
-                -- Simplified: just show a text placeholder for multi_combo
                 ImGui.TextDisabled(setting.label or key .. " (multi-select)")
                 settingChanged = false
 
@@ -148,9 +280,9 @@ function M.renderSettings(modId, spec, settings)
                 local label = setting.label or key
                 local c = value or { r = 1, g = 1, b = 1, a = 1 }
                 local arr = { c.r or 1, c.g or 1, c.b or 1, c.a or 1 }
-                local changed
-                changed, arr[1], arr[2], arr[3], arr[4] = ImGui.ColorEdit4(label, arr)
-                if changed then
+                local colorChanged
+                colorChanged, arr[1], arr[2], arr[3], arr[4] = ImGui.ColorEdit4(label, arr)
+                if colorChanged then
                     newValue = { r = arr[1], g = arr[2], b = arr[3], a = arr[4] }
                     settingChanged = true
                 end
@@ -192,7 +324,6 @@ function M.renderSettings(modId, spec, settings)
 
             -- Handle value change
             if settingChanged then
-                -- Validate before applying
                 local valid = true
                 if Resolver and Resolver.validateValue then
                     valid = Resolver.validateValue(setting, newValue)
@@ -201,12 +332,9 @@ function M.renderSettings(modId, spec, settings)
                     local oldValue = settings[key]
                     settings[key] = newValue
                     changed = true
-                    -- Push undo command so individual setting changes are undoable
                     if UndoRedo and UndoRedo.makeSettingCommand then
                         local cmd = UndoRedo.makeSettingCommand(modId, key, oldValue, newValue)
                         UndoRedo.execute(cmd, function(c)
-                            -- This is a "dry-run" — the setting is already applied.
-                            -- The actual reversal is handled by ConfigUndo in init.lua.
                             return true
                         end)
                     end
@@ -235,7 +363,6 @@ function M.renderSettingByKey(modId, spec, settings, keyPath)
         table.insert(parts, part)
     end
 
-    -- Navigate to the setting definition
     local settingDef = spec.settings
     local settingValues = settings
     for i, part in ipairs(parts) do
@@ -254,7 +381,6 @@ function M.renderSettingByKey(modId, spec, settings, keyPath)
 
     if not settingDef then return false end
 
-    -- Render single setting
     local fakeSpec = { settings = { [parts[#parts]] = settingDef } }
     local fakeSettings = { [parts[#parts]] = settingValues }
     return M.renderSettings(modId, fakeSpec, fakeSettings)

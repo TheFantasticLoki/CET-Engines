@@ -15,6 +15,7 @@ local TestResults = nil
 local TestRunner = nil
 local Tokens = nil
 local Components = nil  -- UI-Engine component library for modern settings rendering
+local Glyphs = nil  -- Icon glyph rendering
 local log = nil  -- Dedicated logger for content area diagnostics
 
 local function resolveTokens()
@@ -27,6 +28,58 @@ local function resolveComponents()
     if Components then return end
     local ok, mod = pcall(require, "ui/components")
     if ok then Components = mod end
+end
+
+local function resolveGlyphs()
+    if Glyphs then return end
+    local ok, mod = pcall(require, "ui/components/glyphs")
+    if ok then Glyphs = mod end
+end
+
+--- Draw a clickable glyph without button background.
+--- Uses InvisibleButton for click detection + drawList for rendering.
+---@param id string Unique ID for the glyph
+---@param iconName string IconGlyphs name (e.g., "InformationOutline")
+---@param opts table|nil Options: { size, color, tooltip }
+---@return boolean clicked
+local function GlyphButton(id, iconName, opts)
+    opts = opts or {}
+    resolveGlyphs()
+    if not Glyphs or not Glyphs.Available() then return false end
+
+    local glyph = Glyphs.Get(iconName, opts.fallback)
+    if not glyph then return false end
+
+    local size = opts.size or 20
+    local color = opts.color or ImGui.GetColorU32(1.0, 1.0, 1.0, 0.8)
+
+    -- Create invisible clickable area
+    local clicked = ImGui.InvisibleButton(id, size, size)
+
+    -- Draw the glyph centered in the button area
+    local minX, minY = ImGui.GetItemRectMin()
+    local maxX, maxY = ImGui.GetItemRectMax()
+    local btnW = maxX - minX
+    local btnH = maxY - minY
+    local renderSize = size - 4
+
+    ImGui.ImDrawListAddText(
+        ImGui.GetWindowDrawList(),
+        renderSize,
+        minX + (btnW - renderSize) * 0.5,
+        minY + (btnH - renderSize) * 0.5,
+        color,
+        glyph
+    )
+
+    -- Tooltip
+    if opts.tooltip and ImGui.IsItemHovered() then
+        ImGui.BeginTooltip()
+        ImGui.Text(opts.tooltip)
+        ImGui.EndTooltip()
+    end
+
+    return clicked
 end
 
 local function resolveLogger()
@@ -98,7 +151,7 @@ local function applySettingLive(modId, key, value)
 end
 
 --- Initialize the content area module.
----@param deps table { core: CfgCore, uiCore: Core|nil, settingsRenderer: SettingsRenderer, resolver: SettingsResolver, undoRedo: UndoRedo, stateSync: StateSync, testResults: TestResults, testRunner: TestRunner, components: table|nil }
+---@param deps table { core: CfgCore, uiCore: Core|nil, settingsRenderer: SettingsRenderer, resolver: SettingsResolver, undoRedo: UndoRedo, stateSync: StateSync, testResults: TestResults, testRunner: TestRunner, components: table|nil, storage: table|nil }
 ---@return nil
 function M.init(deps)
     resolveLogger()
@@ -115,6 +168,12 @@ function M.init(deps)
     Components = deps.components
 
     if log then log.info("M.init: END") end
+end
+
+--- Clear cached heights and force re-measurement on next frame.
+--- Delegates to SettingsRenderer which owns the actual section height cache.
+function M.clearHeightCache()
+    if log then log.info("Height cache cleared - will re-measure on next frame") end
 end
 
 --- Draw the content area (dispatches based on contentMode).
@@ -332,9 +391,98 @@ function drawSettingsPanel()
 
     if log then log.info("drawSettingsPanel: START") end
 
-    -- Header with icon and version
+    -- Header with title and info glyph
     local headerColor = Tokens and Tokens.color4n("primary") or { r = 0.4, g = 0.6, b = 1.0 }
     ImGui.TextColored(headerColor.r, headerColor.g, headerColor.b, 1, "Engine Settings")
+
+    -- Info glyph right after title (left side)
+    ImGui.SameLine()
+    if GlyphButton("##engine_info", "InformationOutline", { size = 18, tooltip = "Engine Information" }) then
+        ImGui.OpenPopup("##engine_info_popup")
+    end
+
+    -- Back to Mods button on right side
+    local availW = ImGui.GetContentRegionAvail()
+    ImGui.SameLine(availW - 100)
+    ImGui.PushStyleColor(ImGuiCol.Button, 0.3, 0.3, 0.3, 0.6)
+    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, 0.4, 0.4, 0.4, 0.8)
+    ImGui.PushStyleColor(ImGuiCol.Text, 0.9, 0.9, 0.9, 1.0)
+    if ImGui.Button("Back to Mods", 90, 22) then
+        Core.setContentMode("mod")
+    end
+    ImGui.PopStyleColor(3)
+
+    -- Engine info popup
+    if ImGui.BeginPopup("##engine_info_popup") then
+        ImGui.Text("0-Mod-Engine v1.0.0-unified")
+        ImGui.Separator()
+
+        -- Engine versions
+        local engines = {
+            { id = "0-Engine-UI", name = "UI-Engine" },
+            { id = "0-Engine-Log", name = "Log-Engine" },
+            { id = "0-Engine-Config", name = "Config-Engine" },
+        }
+
+        for _, engine in ipairs(engines) do
+            local mod = Core.getMod(engine.id)
+            if mod then
+                local spec = mod.spec or {}
+                local version = spec.version or "unknown"
+                local renderMode = mod.renderMode or "unknown"
+
+                -- Test status
+                local testStatus = ""
+                if TestResults then
+                    local r = TestResults.get(engine.id)
+                    if r then
+                        if r.passed == r.total then
+                            testStatus = string.format("  [PASS %d/%d]", r.passed, r.total)
+                        else
+                            testStatus = string.format("  [FAIL %d/%d]", r.passed, r.total)
+                        end
+                    else
+                        testStatus = "  [NO TESTS]"
+                    end
+                end
+
+                ImGui.Text(string.format("%s: %s (%s)%s", engine.name, version, renderMode, testStatus))
+            else
+                ImGui.TextDisabled(string.format("%s: not loaded", engine.name))
+            end
+        end
+
+        -- DevKit info
+        ImGui.Separator()
+        ImGui.Text("DevKit:")
+        local devkitMod = Core.getMod("UI-Engine-DevKit")
+        if devkitMod then
+            local devkitSpec = devkitMod.spec or {}
+            local devkitVersion = devkitSpec.version or "unknown"
+            ImGui.Text(string.format("  Version: %s", devkitVersion))
+
+            -- DevKit test status
+            if TestResults then
+                local r = TestResults.get("UI-Engine-DevKit")
+                if r then
+                    if r.passed == r.total then
+                        ImGui.TextColored(0.3, 0.9, 0.3, 1.0, string.format("  Tests: %d/%d PASS", r.passed, r.total))
+                    else
+                        ImGui.TextColored(0.9, 0.9, 0.2, 1.0, string.format("  Tests: %d/%d PASS", r.passed, r.total))
+                    end
+                else
+                    ImGui.TextDisabled("  Tests: No results")
+                end
+            end
+        else
+            ImGui.TextDisabled("  Not loaded")
+        end
+
+        ImGui.Separator()
+        ImGui.TextDisabled("Author: The Fantastic loki")
+        ImGui.EndPopup()
+    end
+
     ImGui.Separator()
     ImGui.Spacing()
 
@@ -350,7 +498,7 @@ function drawSettingsPanel()
         local tabUI = ImGui.BeginTabItem("UI Engine")
         if log then log.info(string.format("drawSettingsPanel: BeginTabItem 'UI Engine' returned: %s", tostring(tabUI))) end
         if tabUI then
-            drawUIEngineSettings()
+            drawEngineSettings("0-Engine-UI")
             ImGui.EndTabItem()
         end
 
@@ -358,7 +506,7 @@ function drawSettingsPanel()
         local tabLog = ImGui.BeginTabItem("Log Engine")
         if log then log.info(string.format("drawSettingsPanel: BeginTabItem 'Log Engine' returned: %s", tostring(tabLog))) end
         if tabLog then
-            drawLogEngineSettings()
+            drawEngineSettings("0-Engine-Log")
             ImGui.EndTabItem()
         end
 
@@ -366,418 +514,74 @@ function drawSettingsPanel()
         local tabCfg = ImGui.BeginTabItem("Config Engine")
         if log then log.info(string.format("drawSettingsPanel: BeginTabItem 'Config Engine' returned: %s", tostring(tabCfg))) end
         if tabCfg then
-            drawConfigEngineSettings()
+            drawEngineSettings("0-Engine-Config")
+            
+            -- Clear height cache button
+            ImGui.Spacing()
+            ImGui.Separator()
+            ImGui.Spacing()
+            if ImGui.Button("Clear Section Height Cache") then
+                M.clearHeightCache()
+                if SettingsRenderer and SettingsRenderer.clearHeightCache then
+                    SettingsRenderer.clearHeightCache()
+                end
+                if log then log.info("Height cache cleared by user") end
+            end
+            ImGui.SameLine()
+            ImGui.TextDisabled("(forces re-measurement on next frame)")
+            
             ImGui.EndTabItem()
         end
 
         ImGui.EndTabBar()
     end
-
-    -- Back to mod view
-    ImGui.Spacing()
-    ImGui.Separator()
-    ImGui.Spacing()
-    if ImGui.Button("Back to Mods") then
-        Core.setContentMode("mod")
-    end
 end
 
 -- ====================================================================
--- Section card helper — wraps content in a styled child window
+-- Engine Settings (schema-driven rendering)
 -- ====================================================================
-local _panelBg = nil
-local _muted = nil
 
-local function resolveColors()
-    if _panelBg then return end
-    _panelBg = Tokens and Tokens.color4n("panel") or { r = 0.06, g = 0.06, b = 0.07 }
-    _muted = Tokens and Tokens.color4n("muted") or { r = 0.5, g = 0.5, b = 0.6 }
-end
-
---- Measure content height by rendering it offscreen, then restore cursor.
---- @param buildFn function Content builder
---- @return number Measured height in pixels
-local function MeasureContentHeight(buildFn)
-    local savedX, savedY = ImGui.GetCursorScreenPos()
-
-    -- Render content invisibly to measure
-    ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.0)
-    ImGui.BeginGroup()
-    buildFn()
-    ImGui.EndGroup()
-    ImGui.PopStyleVar(1)
-
-    local _, bottom = ImGui.GetItemRectMax()
-    local measuredHeight = bottom - savedY
-
-    -- Restore cursor position
-    ImGui.SetCursorScreenPos(savedX, savedY)
-
-    return measuredHeight
-end
-
---- Draw a section card with explicit height calculation.
---- @param id string Unique ID for the section
---- @param buildFn function Content builder
-local function SectionCard(id, buildFn)
-    resolveColors()
+--- Generic engine settings renderer using schema.
+---@param engineId string The engine mod ID (e.g., "0-Engine-UI")
+function drawEngineSettings(engineId)
     resolveLogger()
+    if log then log.info(string.format("drawEngineSettings: START for %s", engineId)) end
 
-    -- Step 1: Measure content height
-    local contentHeight = MeasureContentHeight(buildFn)
-
-    -- Step 2: Add padding (top: 10, bottom: 10)
-    local totalHeight = contentHeight + 20
-
-    -- Step 3: Clamp to available space (minimum 50px)
-    local availW, availH = ImGui.GetContentRegionAvail()
-    totalHeight = math.max(50, math.min(totalHeight, availH))
-
-    if log then log.info(string.format("SectionCard [%s]: measured=%.0f total=%.0f avail=%.0f", id, contentHeight, totalHeight, availH)) end
-
-    -- Step 4: Render with calculated height
-    ImGui.PushStyleColor(ImGuiCol.ChildBg, _panelBg.r, _panelBg.g, _panelBg.b, 0.6)
-    ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, 12, 10)
-    ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4)
-    ImGui.BeginChild(id, -1, totalHeight, true)
-
-    -- Step 5: Build content
-    buildFn()
-
-    ImGui.EndChild()
-    ImGui.PopStyleVar(2)
-    ImGui.PopStyleColor(1)
-end
-
---- Section title
-local function SectionTitle(text)
-    resolveColors()
-    ImGui.TextColored(_muted.r, _muted.g, _muted.b, 0.7, text)
-    ImGui.Spacing()
-end
-
--- ====================================================================
--- UI-Engine Settings (theme, appearance, interface)
--- ====================================================================
-function drawUIEngineSettings()
-    resolveLogger()
-    if log then log.info("drawUIEngineSettings: START") end
-    local mod = Core.getMod("0-Engine-UI")
+    local mod = Core.getMod(engineId)
     if not mod then
-        if log then log.warn("drawUIEngineSettings: mod NOT FOUND") end
+        if log then log.warn(string.format("drawEngineSettings: mod %s NOT FOUND", engineId)) end
         return
     end
-    local s = mod.settings or {}
-    if log then log.info(string.format("drawUIEngineSettings: renderMode=%s", tostring(mod.renderMode))) end
 
-    local preW, preH = ImGui.GetContentRegionAvail()
-    if log then log.info(string.format("drawUIEngineSettings: avail=%.0fx%.0f", preW, preH)) end
+    local spec = mod.spec or {}
+    local settings = mod.settings or {}
 
-    -- --- Theme Section ---
-    SectionCard("##uiengine_theme", function()
-        SectionTitle("THEME")
+    if log then log.info(string.format("drawEngineSettings: spec.settings=%s, settings keys=%s", tostring(spec.settings ~= nil), tostring(next(settings)))) end
 
-        -- Theme dropdown (full width)
-        local themes = {
-            "Dark", "Red", "Cyan", "Blue", "Green", "Amber",
-            "Purple", "Rose", "Teal", "Midnight", "Orange",
-            "Gold", "Pink", "White", "Arasaka", "Light",
-        }
-        local currentTheme = s.currentTheme or "Dark"
-        local currentIdx = 1
-        for i, t in ipairs(themes) do
-            if t == currentTheme then currentIdx = i; break end
-        end
-        ImGui.Text("Theme")
-        ImGui.SetNextItemWidth(-1)
-        local newIdx, _ = ImGui.Combo("##theme_combo", currentIdx - 1, themes, #themes)
-        if newIdx ~= currentIdx - 1 then
-            local newTheme = themes[newIdx + 1]
-            s.currentTheme = newTheme
-            applySettingLive("0-Engine-UI", "currentTheme", newTheme)
-            Core.markDirty()
-        end
-
-        ImGui.Spacing()
-
-        -- Accent color (full width)
-        ImGui.Text("Accent Color")
-        ImGui.SetNextItemWidth(-1)
-        local c = s.accentColor or { r = 0.4, g = 0.6, b = 1.0, a = 1.0 }
-        local arr = { c.r or 0.4, c.g or 0.6, c.b or 1.0, c.a or 1.0 }
-        local colorChanged
-        colorChanged, arr[1], arr[2], arr[3], arr[4] = ImGui.ColorEdit4("##accent_color", arr, ImGuiColorEditFlags.NoInputs + ImGuiColorEditFlags.NoLabel)
-        if colorChanged then
-            local newColor = { r = arr[1], g = arr[2], b = arr[3], a = arr[4] }
-            s.accentColor = newColor
-            applySettingLive("0-Engine-UI", "accentColor", newColor)
-            Core.markDirty()
-        end
-
-        ImGui.Spacing()
-
-        -- Contrast level slider
-        local contrast = s.contrastLevel or 1
-        ImGui.Text("Contrast Level")
-        ImGui.SetNextItemWidth(-1)
-        local newContrast, contrastChanged = ImGui.SliderInt("##contrast", contrast, 1, 3, "%d")
-        if contrastChanged then
-            s.contrastLevel = newContrast
-            applySettingLive("0-Engine-UI", "contrastLevel", newContrast)
-            Core.markDirty()
-        end
-        -- Labels for contrast levels
-        local labels = { [1] = "Normal", [2] = "High", [3] = "Very High" }
-        ImGui.SameLine()
-        ImGui.TextDisabled(labels[newContrast] or "")
-    end)
-
-    if log then log.debug("drawUIEngineSettings: after first SectionCard") end
-    ImGui.Spacing()
-    if log then log.debug("drawUIEngineSettings: after ImGui.Spacing") end
-
-    -- --- Interface Section ---
-    SectionCard("##uiengine_interface", function()
-        SectionTitle("INTERFACE")
-
-        -- Show Sidebar toggle
-        local showSidebar = s.showSidebar
-        if showSidebar == nil then showSidebar = true end
-        local newSidebar, sidebarChanged = ImGui.Checkbox("Show Sidebar", showSidebar)
-        if sidebarChanged then
-            s.showSidebar = newSidebar
-            applySettingLive("0-Engine-UI", "showSidebar", newSidebar)
-            Core.markDirty()
-        end
-
-        ImGui.Spacing()
-
-        -- Auto-Save toggle
-        local autoSave = s.autoSave
-        if autoSave == nil then autoSave = true end
-        local newAutoSave, autoSaveChanged = ImGui.Checkbox("Auto-Save Settings", autoSave)
-        if autoSaveChanged then
-            s.autoSave = newAutoSave
-            applySettingLive("0-Engine-UI", "autoSave", newAutoSave)
-            Core.markDirty()
-        end
-    end)
-    if log then log.debug("drawUIEngineSettings: END - both SectionCards complete") end
-end
-function drawLogEngineSettings()
-    resolveLogger()
-    if log then log.info("drawLogEngineSettings: START") end
-    local mod = Core.getMod("0-Engine-Log")
-    if not mod then
-        if log then log.warn("drawLogEngineSettings: mod NOT FOUND") end
-        return
-    end
-    local s = mod.settings or {}
-    if log then log.info(string.format("drawLogEngineSettings: renderMode=%s", tostring(mod.renderMode))) end
-
-    -- --- Global Section ---
-    SectionCard("##logengine_global", function()
-        SectionTitle("GLOBAL")
-
-        -- Min Level
-        local levels = { "debug", "info", "warn", "error" }
-        local currentLevel = s.globalMinLevel or "debug"
-        local levelIdx = 1
-        for i, l in ipairs(levels) do
-            if l == currentLevel then levelIdx = i; break end
-        end
-        ImGui.Text("Minimum Log Level")
-        ImGui.SetNextItemWidth(-1)
-        local newLevelIdx, _ = ImGui.Combo("##min_level", levelIdx - 1, levels, #levels)
-        if newLevelIdx ~= levelIdx - 1 then
-            local newLevel = levels[newLevelIdx + 1]
-            s.globalMinLevel = newLevel
-            applySettingLive("0-Engine-Log", "globalMinLevel", newLevel)
-            Core.markDirty()
-        end
-    end)
-
-    ImGui.Spacing()
-
-    -- --- Ring Buffer Section ---
-    SectionCard("##logengine_buffer", function()
-        SectionTitle("RING BUFFER")
-
-        -- Ring buffer size
-        local ringSize = s.ringSize or 1024
-        ImGui.Text("Buffer Size (entries)")
-        ImGui.SetNextItemWidth(-1)
-        local newRing, ringChanged = ImGui.SliderInt("##ring_size", ringSize, 256, 4096, "%d")
-        if ringChanged then
-            s.ringSize = newRing
-            applySettingLive("0-Engine-Log", "ringSize", newRing)
-            Core.markDirty()
-        end
-
-        ImGui.Spacing()
-
-        -- Max debug per frame
-        local maxDebug = s.maxDebugPerFrame or 1
-        ImGui.Text("Max Debug Messages / Frame")
-        ImGui.SetNextItemWidth(-1)
-        local newMaxDebug, maxDebugChanged = ImGui.SliderInt("##max_debug", maxDebug, 1, 20, "%d")
-        if maxDebugChanged then
-            s.maxDebugPerFrame = newMaxDebug
-            applySettingLive("0-Engine-Log", "maxDebugPerFrame", newMaxDebug)
-            Core.markDirty()
-        end
-    end)
-
-    ImGui.Spacing()
-
-    -- --- File Output Section ---
-    SectionCard("##logengine_file", function()
-        SectionTitle("FILE OUTPUT")
-
-        -- Log directory
-        local logDir = s.logDir or "logs"
-        ImGui.Text("Log Directory")
-        ImGui.SetNextItemWidth(-1)
-        local newDir, dirChanged = ImGui.InputText("##log_dir", logDir, 256)
-        if dirChanged then
-            s.logDir = newDir
-            applySettingLive("0-Engine-Log", "logDir", newDir)
-            Core.markDirty()
-        end
-
-        ImGui.Spacing()
-
-        -- Max file size
-        local fileSizes = { "512 KB", "1 MB", "2 MB", "4 MB" }
-        local fileSizeValues = { 512 * 1024, 1024 * 1024, 2 * 1024 * 1024, 4 * 1024 * 1024 }
-        local currentSize = s.maxFileSize or (2 * 1024 * 1024)
-        local sizeIdx = 3
-        for i, v in ipairs(fileSizeValues) do
-            if v == currentSize then sizeIdx = i; break end
-        end
-        ImGui.Text("Max File Size")
-        ImGui.SetNextItemWidth(-1)
-        local newSizeIdx, _ = ImGui.Combo("##file_size", sizeIdx - 1, fileSizes, #fileSizes)
-        if newSizeIdx ~= sizeIdx - 1 then
-            local newSize = fileSizeValues[newSizeIdx + 1]
-            s.maxFileSize = newSize
-            applySettingLive("0-Engine-Log", "maxFileSize", newSize)
-            Core.markDirty()
-        end
-
-        ImGui.Spacing()
-
-        -- Max rotated files
-        local maxFiles = s.maxFiles or 5
-        ImGui.Text("Max Rotated Files")
-        ImGui.SetNextItemWidth(-1)
-        local newMaxFiles, maxFilesChanged = ImGui.SliderInt("##max_files", maxFiles, 1, 20, "%d")
-        if maxFilesChanged then
-            s.maxFiles = newMaxFiles
-            applySettingLive("0-Engine-Log", "maxFiles", newMaxFiles)
-            Core.markDirty()
-        end
-    end)
-
-    ImGui.Spacing()
-
-    -- --- Deduplication Section ---
-    SectionCard("##logengine_dedup", function()
-        SectionTitle("DEDUPLICATION")
-
-        -- Enable dedup
-        local dedupEnabled = s.dedupEnabled
-        if dedupEnabled == nil then dedupEnabled = true end
-        local newDedup, dedupChanged = ImGui.Checkbox("Enable Deduplication", dedupEnabled)
-        if dedupChanged then
-            s.dedupEnabled = newDedup
-            applySettingLive("0-Engine-Log", "dedupEnabled", newDedup)
-            Core.markDirty()
-        end
-
-        -- Max dedup entries (only show when dedup enabled)
-        if s.dedupEnabled then
-            ImGui.Spacing()
-            local dedupMax = s.dedupMaxEntries or 256
-            ImGui.Text("Max Tracked Entries")
-            ImGui.SetNextItemWidth(-1)
-            local newDedupMax, dedupMaxChanged = ImGui.SliderInt("##dedup_max", dedupMax, 64, 1024, "%d")
-            if dedupMaxChanged then
-                s.dedupMaxEntries = newDedupMax
-                applySettingLive("0-Engine-Log", "dedupMaxEntries", newDedupMax)
+    -- Use SettingsRenderer to render from schema
+    if SettingsRenderer and SettingsRenderer.renderSettings and spec.settings then
+        local changed = SettingsRenderer.renderSettings(engineId, spec, settings)
+        if changed then
+            -- Recursively apply live settings changes (handles nested sections)
+            local function applySettingsRecursive(settingsDef, settingsTable)
+                for key, setting in pairs(settingsDef) do
+                    if setting.type == "section" and setting.settings then
+                        -- Recurse into section's nested settings with the same settings table
+                        applySettingsRecursive(setting.settings, settingsTable)
+                    elseif settingsTable[key] ~= nil then
+                        applySettingLive(engineId, key, settingsTable[key])
+                    end
+                end
+            end
+            applySettingsRecursive(spec.settings, settings)
+            if Core and Core.markDirty then
                 Core.markDirty()
             end
         end
-    end)
-end
-
--- ====================================================================
--- Config-Engine Settings (behavior, window)
--- ====================================================================
-function drawConfigEngineSettings()
-    resolveLogger()
-    if log then log.info("drawConfigEngineSettings: START") end
-    local mod = Core.getMod("0-Engine-Config")
-    if not mod then
-        if log then log.warn("drawConfigEngineSettings: mod NOT FOUND") end
-        return
+    else
+        if log then log.warn(string.format("drawEngineSettings: SettingsRenderer or spec.settings not available for %s", engineId)) end
+        ImGui.TextDisabled("Settings not available")
     end
-    local s = mod.settings or {}
-    if log then log.info(string.format("drawConfigEngineSettings: renderMode=%s", tostring(mod.renderMode))) end
-
-    -- --- Behavior Section ---
-    SectionCard("##cfgengine_behavior", function()
-        SectionTitle("BEHAVIOR")
-
-        -- Auto-save delay
-        local saveDelay = s.autoSaveDelay or 5.0
-        ImGui.Text("Auto-Save Delay (seconds)")
-        ImGui.SetNextItemWidth(-1)
-        local newDelay, delayChanged = ImGui.SliderFloat("##save_delay", saveDelay, 0.5, 15.0, "%.1f s")
-        if delayChanged then
-            s.autoSaveDelay = newDelay
-            applySettingLive("0-Engine-Config", "autoSaveDelay", newDelay)
-            Core.markDirty()
-        end
-    end)
-
-    ImGui.Spacing()
-
-    -- --- Window Section ---
-    SectionCard("##cfgengine_window", function()
-        SectionTitle("WINDOW")
-
-        -- Sidebar width
-        local sidebarWidth = s.sidebarWidth or 280
-        ImGui.Text("Sidebar Width (px)")
-        ImGui.SetNextItemWidth(-1)
-        local newWidth, widthChanged = ImGui.SliderInt("##sidebar_w", sidebarWidth, 200, 500, "%d px")
-        if widthChanged then
-            s.sidebarWidth = newWidth
-            applySettingLive("0-Engine-Config", "sidebarWidth", newWidth)
-            Core.markDirty()
-        end
-
-        ImGui.Spacing()
-
-        -- Default window dimensions (side by side)
-        local winW = s.defaultWindowWidth or 900
-        local winH = s.defaultWindowHeight or 600
-        ImGui.Text("Default Window Size")
-        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail() / 2 - 4)
-        local newWinW, winWChanged = ImGui.SliderInt("##win_w", winW, 600, 1920, "%d")
-        ImGui.SameLine()
-        ImGui.SetNextItemWidth(-1)
-        local newWinH, winHChanged = ImGui.SliderInt("##win_h", winH, 400, 1080, "%d")
-        if winWChanged then
-            s.defaultWindowWidth = newWinW
-            Core.markDirty()
-        end
-        if winHChanged then
-            s.defaultWindowHeight = newWinH
-            Core.markDirty()
-        end
-    end)
 end
 
 -- ====================================================================

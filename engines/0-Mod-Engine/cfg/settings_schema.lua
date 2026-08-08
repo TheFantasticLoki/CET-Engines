@@ -10,6 +10,7 @@ local log = nil
 
 -- Valid setting types
 local VALID_TYPES = {
+    -- Basic types
     toggle = true,
     slider = true,
     int_slider = true,
@@ -24,6 +25,11 @@ local VALID_TYPES = {
     info = true,
     button = true,
     custom = true,
+    -- Layout types
+    section = true,      -- Wraps settings in a styled SectionCard
+    divider = true,      -- Visual separator
+    spacer = true,       -- Vertical space
+    custom_section = true, -- Section with custom render function
 }
 
 -- Types that don't need a default value
@@ -33,6 +39,10 @@ local NO_DEFAULT_TYPES = {
     group = true,
     button = true,
     custom = true,
+    section = true,
+    divider = true,
+    spacer = true,
+    custom_section = true,
 }
 
 --- Resolve Log-Engine for logging.

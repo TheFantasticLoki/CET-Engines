@@ -298,7 +298,7 @@ end
 --- Get the version string
 ---@return string Version string
 local function GetVersion()
-    return "v1.0.0-unified"
+    return "v0.3.0-unified"
 end
 
 --- Enable a mod
@@ -717,6 +717,7 @@ local function initModules()
             components = Components,
             undoRedo = CfgUndoRedo,
             resolver = CfgResolver,
+            storage = Storage,
         })
         if log then log.info("CfgRenderer initialized") end
     end

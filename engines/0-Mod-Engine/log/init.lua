@@ -153,7 +153,7 @@ end
 --- Get Log-Engine version
 ---@return string Version string
 local function GetVersion()
-    return "v1.1.0"
+    return "v0.2.0"
 end
 
 --- Set global minimum level for all loggers
