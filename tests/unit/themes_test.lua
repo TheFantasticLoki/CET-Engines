@@ -5,7 +5,7 @@
 ]]
 
 local assert = require("tests.assert")
-local Themes = require("engines.UI-Engine.config.themes")
+local Themes = require("engines.0-Mod-Engine.config.themes")
 
 local M = {}
 

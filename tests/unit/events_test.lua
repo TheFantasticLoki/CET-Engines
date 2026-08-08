@@ -5,7 +5,7 @@
 ]]
 
 local assert = require("tests.assert")
-local Events = require("engines.UI-Engine.api.events")
+local Events = require("engines.0-Mod-Engine.api.events")
 
 local M = {}
 

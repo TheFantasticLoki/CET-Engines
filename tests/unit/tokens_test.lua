@@ -5,7 +5,7 @@
 ]]
 
 local assert = require("tests.assert")
-local Tokens = require("engines.UI-Engine.ui.tokens")
+local Tokens = require("engines.0-Mod-Engine.ui.tokens")
 
 local M = {}
 

@@ -5,7 +5,7 @@
 ]]
 
 local assert = require("tests.assert")
-local Schema = require("engines.Config-Engine.modules.settings_schema")
+local Schema = require("engines.0-Mod-Engine.cfg.settings_schema")
 
 local M = {}
 

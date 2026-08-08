@@ -12,16 +12,16 @@ local M = {}
 
 function M.testSafeRequire()
     -- Test that SafeRequire works for existing modules
-    local Core = require("engines.UI-Engine.core")
+    local Core = require("engines.0-Mod-Engine.core")
     assert.assert_not_nil(Core, "Core should be loadable")
 
-    local Logger = require("engines.UI-Engine.modules.logger")
+    local Logger = require("engines.0-Mod-Engine.modules.logger")
     assert.assert_not_nil(Logger, "Logger should be loadable")
 
-    local Events = require("engines.UI-Engine.api.events")
+    local Events = require("engines.0-Mod-Engine.api.events")
     assert.assert_not_nil(Events, "Events should be loadable")
 
-    local Utils = require("engines.UI-Engine.ui.utils")
+    local Utils = require("engines.0-Mod-Engine.ui.utils")
     assert.assert_not_nil(Utils, "Utils should be loadable")
 end
 
@@ -30,11 +30,11 @@ end
 function M.testModuleLoadingOrder()
     -- Verify that modules can be loaded in the correct order
     -- This is a basic check that the require paths work
-    local Core = require("engines.UI-Engine.core")
-    local Logger = require("engines.UI-Engine.modules.logger")
-    local Storage = require("engines.UI-Engine.modules.storage")
-    local Events = require("engines.UI-Engine.api.events")
-    local Utils = require("engines.UI-Engine.ui.utils")
+    local Core = require("engines.0-Mod-Engine.core")
+    local Logger = require("engines.0-Mod-Engine.modules.logger")
+    local Storage = require("engines.0-Mod-Engine.modules.storage")
+    local Events = require("engines.0-Mod-Engine.api.events")
+    local Utils = require("engines.0-Mod-Engine.ui.utils")
 
     assert.assert_not_nil(Core, "Core should be loadable")
     assert.assert_not_nil(Logger, "Logger should be loadable")
@@ -47,7 +47,7 @@ end
 
 function M.testIdempotentInit()
     -- Load init.lua
-    local Init = require("engines.UI-Engine.init")
+    local Init = require("engines.0-Mod-Engine.init")
 
     -- Call onInit multiple times
     if onInit then
@@ -64,7 +64,7 @@ end
 
 function M.testPublicAPI()
     -- Load init.lua to set up _G.UIEngine
-    local Init = require("engines.UI-Engine.init")
+    local Init = require("engines.0-Mod-Engine.init")
 
     -- Verify UIEngine global exists (CET uses direct assignment, not _G)
     assert.assert_not_nil(UIEngine, "UIEngine global should exist")
@@ -92,7 +92,7 @@ end
 
 function M.testOnShutdown()
     -- Load init.lua
-    local Init = require("engines.UI-Engine.init")
+    local Init = require("engines.0-Mod-Engine.init")
 
     -- Call onShutdown
     if onShutdown then

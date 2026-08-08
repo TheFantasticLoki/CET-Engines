@@ -5,9 +5,9 @@
 ]]
 
 local assert = require("tests.assert")
-local Core = require("engines.UI-Engine.core")
-local Events = require("engines.UI-Engine.api.events")
-local Windows = require("engines.UI-Engine.api.windows")
+local Core = require("engines.0-Mod-Engine.core")
+local Events = require("engines.0-Mod-Engine.api.events")
+local Windows = require("engines.0-Mod-Engine.api.windows")
 
 local M = {}
 

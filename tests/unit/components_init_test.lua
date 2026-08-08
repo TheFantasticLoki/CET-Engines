@@ -5,7 +5,7 @@
 ]]
 
 local assert = require("tests.assert")
-local Components = require("engines.UI-Engine.ui.components")
+local Components = require("engines.0-Mod-Engine.ui.components")
 
 local M = {}
 

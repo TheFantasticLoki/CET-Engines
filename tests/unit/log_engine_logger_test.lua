@@ -5,7 +5,7 @@
 ]]
 
 local assert = require("tests.assert")
-local LoggerModule = require("engines.Log-Engine.logger")
+local LoggerModule = require("engines.0-Mod-Engine.log.logger")
 
 local M = {}
 

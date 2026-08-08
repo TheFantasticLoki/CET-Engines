@@ -5,7 +5,7 @@
 ]]
 
 local assert = require("tests.assert")
-local RenderMode = require("engines.Config-Engine.modules.render_mode")
+local RenderMode = require("engines.0-Mod-Engine.cfg.render_mode")
 
 local M = {}
 

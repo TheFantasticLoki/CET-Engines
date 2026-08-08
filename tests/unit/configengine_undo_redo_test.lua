@@ -5,7 +5,7 @@
 ]]
 
 local assert = require("tests.assert")
-local UndoRedo = require("engines.Config-Engine.modules.undo_redo")
+local UndoRedo = require("engines.0-Mod-Engine.cfg.undo_redo")
 
 local M = {}
 

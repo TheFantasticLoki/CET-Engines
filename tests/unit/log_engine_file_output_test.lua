@@ -90,7 +90,7 @@ local M = {}
 
 function M.testInit()
     installMock()
-    FileOutput = require("engines.Log-Engine.file_output")
+    FileOutput = require("engines.0-Mod-Engine.log.file_output")
     -- Reset initialization state by re-requiring
     -- (In real code, init is idempotent)
     FileOutput.init()
@@ -102,8 +102,8 @@ end
 function M.testWriteCreatesFile()
     installMock()
     -- Re-require to get fresh module with mock
-    package.loaded["engines.Log-Engine.file_output"] = nil
-    FileOutput = require("engines.Log-Engine.file_output")
+    package.loaded["engines.0-Mod-Engine.log.file_output"] = nil
+    FileOutput = require("engines.0-Mod-Engine.log.file_output")
     FileOutput.init()
     FileOutput.setSessionId("test1234")
 
@@ -130,8 +130,8 @@ end
 
 function M.testSetFilePath()
     installMock()
-    package.loaded["engines.Log-Engine.file_output"] = nil
-    FileOutput = require("engines.Log-Engine.file_output")
+    package.loaded["engines.0-Mod-Engine.log.file_output"] = nil
+    FileOutput = require("engines.0-Mod-Engine.log.file_output")
     FileOutput.init()
     FileOutput.setSessionId("test1234")
 
@@ -158,8 +158,8 @@ end
 
 function M.testFormatLine()
     installMock()
-    package.loaded["engines.Log-Engine.file_output"] = nil
-    FileOutput = require("engines.Log-Engine.file_output")
+    package.loaded["engines.0-Mod-Engine.log.file_output"] = nil
+    FileOutput = require("engines.0-Mod-Engine.log.file_output")
     FileOutput.init()
     FileOutput.setSessionId("test1234")
 
@@ -186,8 +186,8 @@ end
 
 function M.testGetFilePath()
     installMock()
-    package.loaded["engines.Log-Engine.file_output"] = nil
-    FileOutput = require("engines.Log-Engine.file_output")
+    package.loaded["engines.0-Mod-Engine.log.file_output"] = nil
+    FileOutput = require("engines.0-Mod-Engine.log.file_output")
     FileOutput.init()
 
     local path = FileOutput.getFilePath("some-mod")
@@ -200,8 +200,8 @@ end
 
 function M.testFlushAll()
     installMock()
-    package.loaded["engines.Log-Engine.file_output"] = nil
-    FileOutput = require("engines.Log-Engine.file_output")
+    package.loaded["engines.0-Mod-Engine.log.file_output"] = nil
+    FileOutput = require("engines.0-Mod-Engine.log.file_output")
     FileOutput.init()
 
     -- Should not error
@@ -212,8 +212,8 @@ end
 
 function M.testCloseAll()
     installMock()
-    package.loaded["engines.Log-Engine.file_output"] = nil
-    FileOutput = require("engines.Log-Engine.file_output")
+    package.loaded["engines.0-Mod-Engine.log.file_output"] = nil
+    FileOutput = require("engines.0-Mod-Engine.log.file_output")
     FileOutput.init()
     FileOutput.setSessionId("test1234")
 
@@ -233,8 +233,8 @@ end
 
 function M.testIsEnabled()
     installMock()
-    package.loaded["engines.Log-Engine.file_output"] = nil
-    FileOutput = require("engines.Log-Engine.file_output")
+    package.loaded["engines.0-Mod-Engine.log.file_output"] = nil
+    FileOutput = require("engines.0-Mod-Engine.log.file_output")
     FileOutput.init()
 
     assert.assert_true(FileOutput.isEnabled(), "File output should be enabled by default")
@@ -245,8 +245,8 @@ end
 
 function M.testSessionHeader()
     installMock()
-    package.loaded["engines.Log-Engine.file_output"] = nil
-    FileOutput = require("engines.Log-Engine.file_output")
+    package.loaded["engines.0-Mod-Engine.log.file_output"] = nil
+    FileOutput = require("engines.0-Mod-Engine.log.file_output")
     FileOutput.init()
     FileOutput.setSessionId("abc12345")
 
@@ -275,8 +275,8 @@ end
 
 function M.testSessionId()
     installMock()
-    package.loaded["engines.Log-Engine.file_output"] = nil
-    FileOutput = require("engines.Log-Engine.file_output")
+    package.loaded["engines.0-Mod-Engine.log.file_output"] = nil
+    FileOutput = require("engines.0-Mod-Engine.log.file_output")
     FileOutput.init()
 
     FileOutput.setSessionId("test1234")
@@ -291,8 +291,8 @@ end
 
 function M.testWriteDedupSummary()
     installMock()
-    package.loaded["engines.Log-Engine.file_output"] = nil
-    FileOutput = require("engines.Log-Engine.file_output")
+    package.loaded["engines.0-Mod-Engine.log.file_output"] = nil
+    FileOutput = require("engines.0-Mod-Engine.log.file_output")
     FileOutput.init()
     FileOutput.setSessionId("test1234")
 
