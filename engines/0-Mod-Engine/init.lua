@@ -644,6 +644,11 @@ local function initModules()
         if log then log.info("Log-Engine initialized") end
     end
 
+    -- Initialize legacy logger adapter (delegates to Log-Engine)
+    if Logger and Logger.init then
+        Logger.init()
+    end
+
     -- Initialize core
     if Core then
         Core.init()
@@ -682,7 +687,7 @@ local function initModules()
 
     -- Initialize context
     if Context and Context.init then
-        Context.init({ Core = Core, Events = Events, Components = Components, Tokens = Tokens, Utils = Utils })
+        Context.init({ Core = Core, Events = Events, Components = Components, Tokens = Tokens, Utils = Utils, CfgCore = CfgCore })
         if log then log.info("Context initialized") end
     end
 

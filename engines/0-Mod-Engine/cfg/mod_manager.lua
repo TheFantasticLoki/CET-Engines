@@ -98,8 +98,6 @@ function M.register(modId, spec)
         Core.setMod(modId, updateData)
         if Logger then
             Logger.info("Mod updated: " .. modId)
-        elseif log then
-            log.info("Mod updated: " .. modId)
         end
         Events.emit("configengine:modRegistered", modId, spec)
         return true, nil

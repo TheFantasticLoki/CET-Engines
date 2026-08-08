@@ -127,12 +127,22 @@ function M.color4n(role)
     -- Resolve color
     local color = nil
 
+    -- Map phantom roles to existing theme roles (C1 fix)
+    local resolvedRole = role
+    if role == "textPrimary" then
+        resolvedRole = "text"
+    elseif role == "textSecondary" then
+        resolvedRole = "muted"
+    elseif role == "border" then
+        resolvedRole = "panel"
+    end
+
     if _themes and _core then
         local themeName = _core.getCurrentTheme() or "Dark"
         local themeDef = _themes.getTheme(themeName)
 
-        if themeDef and themeDef.roles[role] then
-            color = themeDef.roles[role]
+        if themeDef and themeDef.roles[resolvedRole] then
+            color = themeDef.roles[resolvedRole]
         end
     end
 

@@ -30,6 +30,8 @@ local Components = nil
 local Tokens = nil
 ---@type table|nil
 local Utils = nil
+---@type table|nil
+local CfgCore = nil
 ---@type Logger?
 local log = nil  -- Log-Engine fallback
 
@@ -52,6 +54,7 @@ function M.init(deps)
     Components = deps and deps.Components
     Tokens = deps and deps.Tokens
     Utils = deps and deps.Utils
+    CfgCore = deps and deps.CfgCore
 
     -- Resolve Log-Engine as fallback
     if deps and deps.log then
@@ -117,9 +120,9 @@ function M.create(id, spec)
             modStates[id] = {}
         end
         modStates[id][key] = value
-        -- Mark dirty for auto-save via Core
-        if Core and Core.markDirty then
-            Core.markDirty()
+        -- Mark dirty for auto-save via CfgCore
+        if CfgCore and CfgCore.markDirty then
+            CfgCore.markDirty()
         end
         -- Emit state changed event
         if Events then
