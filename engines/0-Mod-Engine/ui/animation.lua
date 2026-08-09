@@ -22,6 +22,51 @@
 local M = {}
 
 -- ============================================================================
+-- Global Animation Configuration
+-- ============================================================================
+
+---@class AnimationConfig
+---@field enabled boolean Master switch: disable all animations
+---@field speedScale number Speed multiplier (0.25-2.0, default 1.0)
+---@field fadeEnabled boolean Can disable just fade transitions
+local _config = {
+    enabled = true,
+    speedScale = 1.0,
+    fadeEnabled = true,
+}
+
+--- Set global animation configuration (called from engine settings).
+---@param opts table { enabled?, speedScale?, fadeEnabled? }
+function M.setConfig(opts)
+    if not opts then return end
+    if opts.enabled ~= nil then _config.enabled = opts.enabled end
+    if opts.speedScale ~= nil then
+        _config.speedScale = math.max(0.25, math.min(2.0, opts.speedScale))
+    end
+    if opts.fadeEnabled ~= nil then _config.fadeEnabled = opts.fadeEnabled end
+end
+
+--- Get current global animation configuration.
+---@return AnimationConfig config
+function M.getConfig()
+    return _config
+end
+
+--- Check if animations are enabled globally.
+---@return boolean enabled
+function M.isEnabled()
+    return _config.enabled
+end
+
+--- Get effective duration accounting for global speed scale.
+---@param duration Base duration in seconds
+---@return number Effective duration (duration / speedScale)
+function M.effectiveDuration(duration)
+    if not _config.enabled then return 0 end
+    return duration / math.max(0.01, _config.speedScale)
+end
+
+-- ============================================================================
 -- Easing Functions (t: 0..1 → 0..1)
 -- ============================================================================
 
@@ -139,9 +184,6 @@ function M.LerpColor(c1, c2, t)
     return result
 end
 
---- Nil-value diagnostic counter (module scope, not global)
-local _clampNilCount = 0
-
 --- Clamp a value between min and max
 ---@param val Value to clamp (nil treated as min)
 ---@param min Minimum
@@ -149,11 +191,6 @@ local _clampNilCount = 0
 ---@return number Clamped value
 function M.Clamp(val, min, max)
     if val == nil then
-        _clampNilCount = _clampNilCount + 1
-        if _clampNilCount <= 5 then
-            print(string.format("[Animation] Clamp received nil val (min=%s, max=%s) — stack: %s",
-                tostring(min), tostring(max), debug and debug.traceback() or "no debug"))
-        end
         return min or 0
     end
     if min == nil then min = 0 end
@@ -178,13 +215,14 @@ end
 -- Timer — Reusable animation timer
 -- ============================================================================
 
---- Create a new timer for time-based animations
----@param duration Duration in seconds
+--- Create a new timer for time-based animations.
+--- Respects global animation config (enabled, speedScale).
+---@param duration Duration in seconds (before speed scaling)
 ---@param easingFn Optional easing function (default: EaseOutCubic)
 ---@return table Timer instance
 function M.Timer(duration, easingFn)
     local timer = {
-        _duration = math.max(0.001, duration or 0.2),
+        _baseDuration = math.max(0.001, duration or 0.2),
         _easing = easingFn or M.EaseOutCubic,
         _startTime = 0,
         _elapsed = 0,
@@ -192,8 +230,21 @@ function M.Timer(duration, easingFn)
         _finished = false,
     }
 
+    --- Get effective duration accounting for global speed scale
+    ---@return number Effective duration in seconds
+    function timer:_effectiveDuration()
+        return M.effectiveDuration(self._baseDuration)
+    end
+
     --- Start or restart the timer
     function timer:start()
+        -- If animations disabled, jump to end immediately
+        if not _config.enabled then
+            self._elapsed = 0
+            self._running = false
+            self._finished = true
+            return
+        end
         self._startTime = os.clock()
         self._elapsed = 0
         self._running = true
@@ -205,18 +256,27 @@ function M.Timer(duration, easingFn)
         self._running = false
     end
 
-    --- Update the timer (call once per frame)
+    --- Update the timer (call once per frame).
+    --- Respects global speed scale.
     function timer:update()
         if not self._running then return end
+        -- If animations disabled mid-run, jump to end
+        if not _config.enabled then
+            self._elapsed = self:_effectiveDuration()
+            self._running = false
+            self._finished = true
+            return
+        end
         self._elapsed = os.clock() - self._startTime
-        if self._elapsed >= self._duration then
-            self._elapsed = self._duration
+        local effDur = self:_effectiveDuration()
+        if self._elapsed >= effDur then
+            self._elapsed = effDur
             self._running = false
             self._finished = true
         end
     end
 
-    --- Get raw elapsed time (0..duration)
+    --- Get raw elapsed time (0..effectiveDuration)
     ---@return number Elapsed seconds
     function timer:elapsed()
         return self._elapsed
@@ -225,14 +285,16 @@ function M.Timer(duration, easingFn)
     --- Get normalized progress with easing (0..1)
     ---@return number Eased fraction
     function timer:fraction()
-        local raw = math.max(0, math.min(1, self._elapsed / self._duration))
+        local effDur = self:_effectiveDuration()
+        local raw = math.max(0, math.min(1, self._elapsed / effDur))
         return self._easing(raw)
     end
 
     --- Get raw (un-eased) progress (0..1)
     ---@return number Raw fraction
     function timer:fractionRaw()
-        return math.max(0, math.min(1, self._elapsed / self._duration))
+        local effDur = self:_effectiveDuration()
+        return math.max(0, math.min(1, self._elapsed / effDur))
     end
 
     --- Check if timer has finished
@@ -250,7 +312,7 @@ function M.Timer(duration, easingFn)
     --- Get remaining time in seconds
     ---@return number Seconds remaining
     function timer:remaining()
-        return math.max(0, self._duration - self._elapsed)
+        return math.max(0, self:_effectiveDuration() - self._elapsed)
     end
 
     --- Reset timer to zero (keeps running state)
@@ -260,10 +322,16 @@ function M.Timer(duration, easingFn)
         self._finished = false
     end
 
-    --- Set a new duration
-    ---@param d New duration in seconds
+    --- Set a new base duration (before speed scaling)
+    ---@param d New base duration in seconds
     function timer:setDuration(d)
-        self._duration = math.max(0.001, d or 0.2)
+        self._baseDuration = math.max(0.001, d or 0.2)
+    end
+
+    --- Get the base duration (before speed scaling)
+    ---@return number Base duration in seconds
+    function timer:getBaseDuration()
+        return self._baseDuration
     end
 
     return timer

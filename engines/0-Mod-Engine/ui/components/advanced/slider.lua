@@ -327,6 +327,226 @@ local function posToValue(pos, min, max)
 end
 
 -- ============================================================================
+-- Extracted Drawing Functions
+-- ============================================================================
+
+--- Draw a slider button (minus or plus) with hover/active states and symbol.
+---@param dl DrawList userdata
+---@param x number Button X position
+---@param y number Button Y position
+---@param w number Button width
+---@param h number Button height
+---@param rounding number Corner rounding
+---@param isPlus boolean true for plus, false for minus
+---@param normalColor number Packed color for normal state
+---@param hoverColor number Packed color for hover state
+---@param activeColor number Packed color for active state
+---@param symbolColor number Packed color for the +/- symbol
+---@param symbolHoverColor number Packed color for symbol on hover
+local function drawSliderButton(dl, x, y, w, h, rounding, isPlus, normalColor, hoverColor, activeColor, symbolColor, symbolHoverColor)
+    local hov = ImGui.IsItemHovered()
+    local act = ImGui.IsItemActive()
+    local col = act and activeColor or (hov and hoverColor or normalColor)
+    drawRoundRect(dl, x, y, x + w, y + h, col, rounding, 0)
+    local sCol = hov and symbolHoverColor or symbolColor
+    local cx = x + w / 2
+    local cy = y + h / 2
+    if isPlus then
+        drawLine(dl, cx - 4, cy, cx + 4, cy, sCol, 1.5)
+        drawLine(dl, cx, cy - 4, cx, cy + 4, sCol, 1.5)
+    else
+        drawLine(dl, cx - 4, cy, cx + 4, cy, sCol, 1.5)
+    end
+end
+
+--- Draw position indicator ticks above the track.
+---@param dl DrawList userdata
+---@param trackX1 number Track left X
+---@param trackX2 number Track right X
+---@param trackY number Track top Y
+---@param trackWidth number Track width
+---@param showTicks boolean Whether to show ticks
+---@param majorTicks number Number of major ticks
+---@param minorTicks number Number of minor ticks between majors
+---@param majorTickHeight number Height of major ticks
+---@param majorTickThickness number Thickness of major ticks
+---@param centerTickHeight number Height of center tick
+---@param centerTickThickness number Thickness of center tick
+---@param minorTickHeight number Height of minor ticks
+---@param minorTickThickness number Thickness of minor ticks
+---@param majorTickColor number Packed color for major ticks
+---@param centerTickColor number Packed color for center tick
+---@param minorTickColor number Packed color for minor ticks
+local function drawTrackTicks(dl, trackX1, trackX2, trackY, trackWidth,
+    showTicks, majorTicks, minorTicks,
+    majorTickHeight, majorTickThickness, centerTickHeight, centerTickThickness,
+    minorTickHeight, minorTickThickness, majorTickColor, centerTickColor, minorTickColor)
+
+    if not showTicks or majorTicks <= 0 then return end
+
+    local totalSegments = majorTicks
+    local majorSpacing = trackWidth / totalSegments
+
+    -- Draw minor ticks first (behind majors)
+    if minorTicks > 0 then
+        local minorSpacing = majorSpacing / (minorTicks + 1)
+        for maj = 0, totalSegments do
+            for mino = 1, minorTicks do
+                local tx = trackX1 + maj * majorSpacing + mino * minorSpacing
+                if tx > trackX1 and tx < trackX2 then
+                    drawLine(dl, tx, trackY - 1, tx, trackY - 1 - minorTickHeight, minorTickColor, minorTickThickness)
+                end
+            end
+        end
+    end
+
+    -- Draw major ticks (skip edge ticks, enlarge center)
+    for i = 0, totalSegments do
+        local tx = trackX1 + i * majorSpacing
+        if tx > trackX1 and tx < trackX2 then
+            local isCenter = (i == math.floor(totalSegments / 2))
+            local tickH = isCenter and centerTickHeight or majorTickHeight
+            local tickCol = isCenter and centerTickColor or majorTickColor
+            local tickThick = isCenter and centerTickThickness or majorTickThickness
+            drawLine(dl, tx, trackY - 1, tx, trackY - 1 - tickH, tickCol, tickThick)
+        end
+    end
+end
+
+--- Draw the default position indicator line inside the track.
+---@param dl DrawList userdata
+---@param trackX1 number Track left X
+---@param trackX2 number Track right X
+---@param trackY number Track top Y
+---@param trackHeight number Track height
+---@param trackWidth number Track width
+---@param value number Current value
+---@param default number Default value
+---@param min number Range minimum
+---@param max number Range maximum
+---@param indicatorLen number Current animated indicator length
+---@param indicatorColor number Packed color
+---@param indicatorThickness number Line thickness
+local function drawDefaultIndicator(dl, trackX1, trackX2, trackY, trackHeight, trackWidth,
+    value, default, min, max, indicatorLen, indicatorColor, indicatorThickness)
+
+    if (max - min) <= 0 then return end
+    local defaultPos = valueToPos(default, min, max)
+    local defaultX = trackX1 + defaultPos * trackWidth
+    local indCenterY = trackY + trackHeight / 2
+    drawLine(dl, defaultX, indCenterY - indicatorLen / 2, defaultX, indCenterY + indicatorLen / 2, indicatorColor, indicatorThickness)
+end
+
+--- Draw the slider value tooltip using DrawList (foreground layer, bounds-aware).
+---@param dl DrawList userdata (window draw list, used as fallback)
+---@param lines table Array of { text = string, color = string }
+---@param bg number Packed background color
+---@param border number Packed border color
+---@param colorMap table<string, number> Maps color role strings to packed colors
+local function drawSliderTooltip(dl, lines, bg, border, colorMap)
+    if #lines == 0 then return end
+
+    -- Calculate tooltip dimensions
+    local lineHeight = select(2, ImGui.CalcTextSize("X"))
+    local lineSpacing = 3
+    local padding = 6
+    local tooltipH = #lines * (lineHeight + lineSpacing) - lineSpacing + padding * 2
+    local maxW = 0
+    for _, entry in ipairs(lines) do
+        local w = select(1, ImGui.CalcTextSize(entry.text))
+        if w > maxW then maxW = w end
+    end
+    local tooltipW = maxW + padding * 2
+
+    -- Position at cursor with offset
+    local mouseX, mouseY = ImGui.GetMousePos()
+    local tooltipX = mouseX + 12
+    local tooltipY = mouseY - tooltipH - 4
+
+    -- Clamp to window bounds
+    local winX, winY = ImGui.GetWindowPos()
+    local winW, winH = ImGui.GetWindowSize()
+    local screenMaxX = winX + winW
+    local screenMaxY = winY + winH
+
+    if tooltipX + tooltipW > screenMaxX then
+        tooltipX = mouseX - tooltipW - 12
+    end
+    if tooltipY < winY then
+        tooltipY = mouseY + 16
+    end
+    if tooltipX < winX then tooltipX = winX + 2 end
+    if tooltipY + tooltipH > screenMaxY then
+        tooltipY = screenMaxY - tooltipH - 2
+    end
+
+    -- Use foreground draw list to render over everything
+    local fgDrawList = ImGui.GetForegroundDrawList()
+    if fgDrawList then
+        ImGui.ImDrawListAddRectFilled(fgDrawList, tooltipX, tooltipY, tooltipX + tooltipW, tooltipY + tooltipH, bg, 4, 0)
+        ImGui.ImDrawListAddRect(fgDrawList, tooltipX, tooltipY, tooltipX + tooltipW, tooltipY + tooltipH, border, 4, 0, 1)
+        local ty = tooltipY + padding
+        for _, entry in ipairs(lines) do
+            local lineColor = colorMap[entry.color] or colorMap["text"]
+            ImGui.ImDrawListAddText(fgDrawList, tooltipX + padding, ty, lineColor, entry.text)
+            ty = ty + lineHeight + lineSpacing
+        end
+    else
+        drawRoundRect(dl, tooltipX, tooltipY, tooltipX + tooltipW, tooltipY + tooltipH, bg, 4, 0)
+        drawRoundRect(dl, tooltipX, tooltipY, tooltipX + tooltipW, tooltipY + tooltipH, border, 4, 1)
+        local ty = tooltipY + padding
+        for _, entry in ipairs(lines) do
+            local lineColor = colorMap[entry.color] or colorMap["text"]
+            drawText(dl, tooltipX + padding, ty, lineColor, entry.text)
+            ty = ty + lineHeight + lineSpacing
+        end
+    end
+end
+
+--- Draw the handle (rectangle or circle style).
+---@param dl DrawList userdata
+---@param handleX number Handle center X
+---@param handleCenterY number Handle center Y
+---@param handleStyle string "rect" or "circle"
+---@param state table Slider state (hovered, dragging)
+---@param handleW number Rect handle width
+---@param handleHoverW number Rect handle width on hover
+---@param handleR number Circle handle radius
+---@param handleHoverR number Circle handle radius on hover
+---@param trackHeight number Track height (for rect handle height calculation)
+---@param bodyColor number Packed handle body color
+---@param bodyHoverColor number Packed handle body hover color
+---@param bodyActiveColor number Packed handle body active color
+---@param borderColor number Packed handle border color
+---@param dotColor number Packed handle center dot color
+---@param handleRounding number Corner rounding for rect handle
+local function drawHandle(dl, handleX, handleCenterY, handleStyle, state,
+    handleW, handleHoverW, handleR, handleHoverR, trackHeight,
+    bodyColor, bodyHoverColor, bodyActiveColor, borderColor, dotColor, handleRounding)
+
+    local bodyCol = state.dragging and bodyActiveColor or (state.hovered and bodyHoverColor or bodyColor)
+
+    if handleStyle == "circle" then
+        local hr = state.hovered and handleHoverR or handleR
+        if state.dragging then
+            drawCircle(dl, handleX, handleCenterY, hr + 3, roleColor("primary", 0.2), 0)
+        end
+        drawCircle(dl, handleX, handleCenterY, hr, bodyCol, 0)
+        drawCircle(dl, handleX, handleCenterY, hr, borderColor, 1.5)
+        drawCircle(dl, handleX, handleCenterY, 2, dotColor, 0)
+    else
+        local hw = state.hovered and handleHoverW or handleW
+        local hh = trackHeight + 6
+        local hhalf = hh / 2
+        if state.dragging then
+            drawRoundRect(dl, handleX - hw/2 - 2, handleCenterY - hhalf - 2, handleX + hw/2 + 2, handleCenterY + hhalf + 2, roleColor("primary", 0.2), handleRounding, 0)
+        end
+        drawRoundRect(dl, handleX - hw/2, handleCenterY - hhalf, handleX + hw/2, handleCenterY + hhalf, bodyCol, handleRounding, 0)
+        drawRoundRect(dl, handleX - hw/2, handleCenterY - hhalf, handleX + hw/2, handleCenterY + hhalf, borderColor, handleRounding, 1)
+    end
+end
+
+-- ============================================================================
 -- AdvancedSlider Component
 -- ============================================================================
 
@@ -551,13 +771,17 @@ function M.AdvancedSlider(label_or_spec, value, options)
     local tooltipDefaultColor = resolveColor(opts.tooltipDefaultColor, "muted", 0.7)
     local tooltipDescColor = resolveColor(opts.tooltipDescColor, "text", opts.tooltipDescAlpha or 0.6)
 
-    -- Behavior options
+    -- Behavior options (auto-calculate from step when not explicitly set)
+    -- Drag multipliers scale the base delta-per-pixel (which is range/trackWidth).
+    -- Shift = 0.1x base → fine control (~10x more pixels per step)
+    -- Ctrl  = 0.01x base → precision control (~100x more pixels per step)
+    -- Alt   = scales with step size → coarse control (~10x fewer pixels per step)
+    local range = max - min
     local modifierShiftMult = opts.modifierShiftMult or 0.1
     local modifierCtrlMult = opts.modifierCtrlMult or 0.01
-    local modifierAltMult = opts.modifierAltMult or 10
-    local buttonShiftMult = opts.buttonShiftMult or 10
-    local buttonCtrlMult = opts.buttonCtrlMult or 0.5
-    local snapDistance = opts.snapDistance or ((max - min) * 0.02)
+    local modifierAltMult = opts.modifierAltMult or math.max(0.1, 10 * step / range)
+    local buttonShiftMult = opts.buttonShiftMult or 10    -- 10x step per click
+    local buttonCtrlMult = opts.buttonCtrlMult or 0.5     -- half step per click
     local animDuration = opts.animationDuration or ANIMATION_DURATION
     local indicatorAnimDuration = opts.indicatorAnimDuration or 0.2
 
@@ -641,8 +865,14 @@ function M.AdvancedSlider(label_or_spec, value, options)
         if ImGui.Button("##adv-" .. label .. "-minus", btnW, btnH) then
             local actualStep = step
             if isAltDown() then
-                newValue = default
-                changed = true
+                -- Alt: increment by 1 when buttons can't do fine adjustments
+                -- (step != 1 AND range > 10 for meaningful integer stepping)
+                if step ~= 1 and range > 10 then
+                    actualStep = 1
+                else
+                    newValue = default
+                    changed = true
+                end
             elseif isShiftDown() then
                 actualStep = step * buttonShiftMult
             elseif isCtrlDown() then
@@ -654,14 +884,28 @@ function M.AdvancedSlider(label_or_spec, value, options)
             end
         end
         -- Button visual
-        local mHov = ImGui.IsItemHovered()
-        local mAct = ImGui.IsItemActive()
-        local mCol = mAct and btnActiveColor or (mHov and btnHoverColor or btnNormalColor)
-        drawRoundRect(drawList, minusX, buttonY, minusX + btnW, buttonY + btnH, mCol, btnRounding, 0)
-        local sCol = mHov and btnSymbolHoverColor or btnSymbolColor
-        local mcx = minusX + btnW / 2
-        local mcy = buttonY + btnH / 2
-        drawLine(drawList, mcx - 4, mcy, mcx + 4, mcy, sCol, 1.5)
+        drawSliderButton(drawList, minusX, buttonY, btnW, btnH, btnRounding, false,
+            btnNormalColor, btnHoverColor, btnActiveColor, btnSymbolColor, btnSymbolHoverColor)
+        -- Button tooltip
+        if ImGui.IsItemHovered() then
+            local altStep = step
+            if step ~= 1 and range > 10 then altStep = 1 end
+            local minusLines = {
+                { text = string.format("Decrement (%s)", string.format(format, step)), color = "text" },
+                { text = "---", color = "separator" },
+                { text = string.format("Shift=%s  Ctrl=%s  Alt=%s",
+                    string.format(format, step * buttonShiftMult),
+                    step * buttonCtrlMult < 0.001 and "fine" or string.format(format, step * buttonCtrlMult),
+                    step ~= 1 and range > 10 and string.format(format, 1) or "default"),
+                    color = "text_dim" },
+            }
+            local minusColorMap = {
+                text = tooltipValueColor,
+                text_dim = tooltipDescColor,
+                separator = tooltipBorderColor,
+            }
+            drawSliderTooltip(drawList, minusLines, tooltipBgColor, tooltipBorderColor, minusColorMap)
+        end
     end
 
     -- ====================================================================
@@ -672,6 +916,9 @@ function M.AdvancedSlider(label_or_spec, value, options)
     state.hovered = ImGui.IsItemHovered()
     state.active = ImGui.IsItemActive()
 
+    -- Click tracking: detect deliberate clicks vs drags
+    local CLICK_THRESHOLD = 3  -- pixels of movement before considered a drag
+
     -- Live drag: update every frame while mouse is down
     if state.active then
         if not state.dragging then
@@ -680,38 +927,109 @@ function M.AdvancedSlider(label_or_spec, value, options)
             state.dragStartMouseX = select(1, ImGui.GetMousePos())
             state.dragTrackWidth = trackWidth
             state.dragStartValue = value
+            state._clickStartX = state.dragStartMouseX
+            state._clickStartY = select(2, ImGui.GetMousePos())
+            state._clickModifiers = {
+                shift = isShiftDown(),
+                ctrl = isCtrlDown(),
+                alt = isAltDown(),
+            }
             state._lastShift = isShiftDown()
             state._lastCtrl = isCtrlDown()
             state._lastAlt = isAltDown()
+            state._wasDrag = false
+        end
+        -- Track if user moved enough to count as a drag
+        if not state._wasDrag then
+            local mx, my = ImGui.GetMousePos()
+            local dx = mx - state._clickStartX
+            local dy = my - state._clickStartY
+            if math.abs(dx) > CLICK_THRESHOLD or math.abs(dy) > CLICK_THRESHOLD then
+                state._wasDrag = true
+            end
         end
     elseif state.dragging then
         state.dragging = false
     end
 
-    -- Click-to-position (Ctrl+click snaps, normal click starts drag)
-    if trackClicked then
+    -- Click handling: only trigger click modifiers on deliberate clicks (not drag releases)
+    if trackClicked and not state._wasDrag then
         local mouseX = select(1, ImGui.GetMousePos())
         local clickPos = Animation.Clamp((mouseX - trackX1) / trackWidth, 0, 1)
         local clickValue = posToValue(clickPos, min, max)
 
-        if isCtrlDown() then
-            -- Ctrl+click: snap to clicked position
-            if math.abs(clickValue - default) < snapDistance then clickValue = default end
+        local mods = state._clickModifiers or {}
+
+        if mods.alt then
+            -- Alt+click: reset to default
+            newValue = default
+            changed = true
+            state.handleAnim:start()
+        elseif mods.shift then
+            -- Shift+click: jump to cursor position (snap)
+            if math.abs(clickValue - default) < (range * 0.02) then
+                clickValue = default  -- Snap to default if close
+            end
             newValue = clickValue
             changed = true
             state.dragging = false
             state.handleAnim:start()
+        elseif mods.ctrl then
+            -- Ctrl+click: manual value input
+            -- Store pending input state; the input dialog will be drawn below
+            state._pendingInput = true
+            state._inputValue = tostring(math.floor(value + 0.5))
         else
             -- Normal click: start delta-based drag from current handle position
             state.dragging = true
             state.dragStartMouseX = mouseX
             state.dragTrackWidth = trackWidth
             state.dragStartValue = value
-            state._lastShift = isShiftDown()
-            state._lastCtrl = isCtrlDown()
-            state._lastAlt = isAltDown()
+            state._lastShift = false
+            state._lastCtrl = false
+            state._lastAlt = false
             state.handleAnim:start()
         end
+    elseif trackClicked and state._wasDrag then
+        -- Drag released — just clean up, don't trigger click modifiers
+        state.dragging = false
+    end
+
+    -- ====================================================================
+    -- Draw: Ctrl+click input dialog (manual value entry)
+    -- ====================================================================
+    if state._pendingInput then
+        ImGui.OpenPopup("##slider_input_" .. label)
+        state._pendingInput = false
+    end
+    if ImGui.BeginPopup("##slider_input_" .. label) then
+        ImGui.Text("Enter value:")
+        ImGui.SetNextItemWidth(120)
+        local inputChanged, inputText = ImGui.InputText("##input", state._inputValue or "", 64, ImGuiInputTextFlags.EnterReturnsTrue)
+        if inputChanged then
+            local parsed = tonumber(inputText)
+            if parsed then
+                parsed = Animation.Clamp(parsed, min, max)
+                newValue = parsed
+                changed = true
+            end
+            ImGui.CloseCurrentPopup()
+        end
+        ImGui.SameLine()
+        if ImGui.Button("OK", 50, 0) then
+            local parsed = tonumber(state._inputValue or "")
+            if parsed then
+                parsed = Animation.Clamp(parsed, min, max)
+                newValue = parsed
+                changed = true
+            end
+            ImGui.CloseCurrentPopup()
+        end
+        ImGui.SameLine()
+        if ImGui.Button("Cancel", 50, 0) then
+            ImGui.CloseCurrentPopup()
+        end
+        ImGui.EndPopup()
     end
 
     -- Live drag update (every frame while dragging)
@@ -757,8 +1075,14 @@ function M.AdvancedSlider(label_or_spec, value, options)
         if ImGui.Button("##adv-" .. label .. "-plus", btnW, btnH) then
             local actualStep = step
             if isAltDown() then
-                newValue = default
-                changed = true
+                -- Alt: increment by 1 when buttons can't do fine adjustments
+                -- (step != 1 AND range > 10 for meaningful integer stepping)
+                if step ~= 1 and range > 10 then
+                    actualStep = 1
+                else
+                    newValue = default
+                    changed = true
+                end
             elseif isShiftDown() then
                 actualStep = step * buttonShiftMult
             elseif isCtrlDown() then
@@ -769,15 +1093,27 @@ function M.AdvancedSlider(label_or_spec, value, options)
                 if newValue ~= value then changed = true end
             end
         end
-        local pHov = ImGui.IsItemHovered()
-        local pAct = ImGui.IsItemActive()
-        local pCol = pAct and btnActiveColor or (pHov and btnHoverColor or btnNormalColor)
-        drawRoundRect(drawList, plusX, buttonY, plusX + btnW, buttonY + btnH, pCol, btnRounding, 0)
-        local psCol = pHov and btnSymbolHoverColor or btnSymbolColor
-        local pcx = plusX + btnW / 2
-        local pcy = buttonY + btnH / 2
-        drawLine(drawList, pcx - 4, pcy, pcx + 4, pcy, psCol, 1.5)
-        drawLine(drawList, pcx, pcy - 4, pcx, pcy + 4, psCol, 1.5)
+        -- Button visual
+        drawSliderButton(drawList, plusX, buttonY, btnW, btnH, btnRounding, true,
+            btnNormalColor, btnHoverColor, btnActiveColor, btnSymbolColor, btnSymbolHoverColor)
+        -- Button tooltip
+        if ImGui.IsItemHovered() then
+            local plusLines = {
+                { text = string.format("Increment (%s)", string.format(format, step)), color = "text" },
+                { text = "---", color = "separator" },
+                { text = string.format("Shift=%s  Ctrl=%s  Alt=%s",
+                    string.format(format, step * buttonShiftMult),
+                    step * buttonCtrlMult < 0.001 and "fine" or string.format(format, step * buttonCtrlMult),
+                    step ~= 1 and range > 10 and string.format(format, 1) or "default"),
+                    color = "text_dim" },
+            }
+            local plusColorMap = {
+                text = tooltipValueColor,
+                text_dim = tooltipDescColor,
+                separator = tooltipBorderColor,
+            }
+            drawSliderTooltip(drawList, plusLines, tooltipBgColor, tooltipBorderColor, plusColorMap)
+        end
     end
 
     -- ====================================================================
@@ -789,35 +1125,10 @@ function M.AdvancedSlider(label_or_spec, value, options)
     -- ====================================================================
     -- Draw: Position indicator ticks (configurable major/minor above track)
     -- ====================================================================
-    if showTicks and majorTicks > 0 then
-        local totalSegments = majorTicks
-        local majorSpacing = trackWidth / totalSegments
-
-        -- Draw minor ticks first (behind majors)
-        if minorTicks > 0 then
-            local minorSpacing = majorSpacing / (minorTicks + 1)
-            for maj = 0, totalSegments do
-                for mino = 1, minorTicks do
-                    local tx = trackX1 + maj * majorSpacing + mino * minorSpacing
-                    if tx > trackX1 and tx < trackX2 then
-                        drawLine(drawList, tx, trackY - 1, tx, trackY - 1 - minorTickHeight, tickColorVal, minorTickThickness)
-                    end
-                end
-            end
-        end
-
-        -- Draw major ticks (skip edge ticks, enlarge center)
-        for i = 0, totalSegments do
-            local tx = trackX1 + i * majorSpacing
-            if tx > trackX1 and tx < trackX2 then  -- Skip edge ticks
-                local isCenter = (i == math.floor(totalSegments / 2))
-                local tickH = isCenter and centerTickHeight or majorTickHeight
-                local tickCol = isCenter and centerTickColorVal or majorTickColorVal
-                local tickThick = isCenter and centerTickThickness or majorTickThickness
-                drawLine(drawList, tx, trackY - 1, tx, trackY - 1 - tickH, tickCol, tickThick)
-            end
-        end
-    end
+    drawTrackTicks(drawList, trackX1, trackX2, trackY, trackWidth,
+        showTicks, majorTicks, minorTicks,
+        majorTickHeight, majorTickThickness, centerTickHeight, centerTickThickness,
+        minorTickHeight, minorTickThickness, majorTickColorVal, centerTickColorVal, tickColorVal)
 
     -- ====================================================================
     -- Draw: Track fill (from left to handle position — only left corners rounded)
@@ -833,146 +1144,101 @@ function M.AdvancedSlider(label_or_spec, value, options)
     -- ====================================================================
     -- Draw: Handle (rectangle by default, circle as option)
     -- ====================================================================
-    local handleBodyCol = state.dragging and handleBodyActiveColor or (state.hovered and handleBodyHoverColor or handleBodyColor)
-
-    if handleStyle == "circle" then
-        -- Circle handle
-        local hr = state.hovered and handleHoverR or handleR
-        if state.dragging then
-            drawCircle(drawList, handleX, handleCenterY, hr + 3, roleColor("primary", 0.2), 0)
-        end
-        drawCircle(drawList, handleX, handleCenterY, hr, handleBodyCol, 0)
-        drawCircle(drawList, handleX, handleCenterY, hr, handleBorderColor, 1.5)
-        drawCircle(drawList, handleX, handleCenterY, 2, handleDotColor, 0)
-    else
-        -- Rectangle handle (default)
-        local hw = state.hovered and handleHoverW or handleW
-        local hh = trackHeight + 6
-        local hhalf = hh / 2
-        if state.dragging then
-            drawRoundRect(drawList, handleX - hw/2 - 2, handleCenterY - hhalf - 2, handleX + hw/2 + 2, handleCenterY + hhalf + 2, roleColor("primary", 0.2), handleRounding, 0)
-        end
-        drawRoundRect(drawList, handleX - hw/2, handleCenterY - hhalf, handleX + hw/2, handleCenterY + hhalf, handleBodyCol, handleRounding, 0)
-        drawRoundRect(drawList, handleX - hw/2, handleCenterY - hhalf, handleX + hw/2, handleCenterY + hhalf, handleBorderColor, handleRounding, 1)
-    end
+    drawHandle(drawList, handleX, handleCenterY, handleStyle, state,
+        handleW, handleHoverW, handleR, handleHoverR, trackHeight,
+        handleBodyColor, handleBodyHoverColor, handleBodyActiveColor, handleBorderColor, handleDotColor, handleRounding)
 
     -- ====================================================================
     -- Draw: Default position indicator (INSIDE track, AFTER handle for z-order)
     -- ====================================================================
     if showDefaultLine and (max - min) > 0 then
-        local defaultPos = valueToPos(default, min, max)
-        local defaultX = trackX1 + defaultPos * trackWidth
         local distFromDefault = math.abs(value - default) / (max - min)
         local indicatorFrac = state.defaultIndicatorAnim:fraction()
-
-        -- Dynamic length: short when at default, long when away
         local indicatorLen
         if distFromDefault < 0.005 then
             indicatorLen = Animation.Lerp(indicatorLong, indicatorShort, indicatorFrac)
         else
             indicatorLen = Animation.Lerp(indicatorShort, indicatorLong, indicatorFrac)
         end
-
-        local indCenterY = trackY + trackHeight / 2
-        drawLine(drawList, defaultX, indCenterY - indicatorLen / 2, defaultX, indCenterY + indicatorLen / 2, indicatorColor, indicatorThickness)
+        drawDefaultIndicator(drawList, trackX1, trackX2, trackY, trackHeight, trackWidth,
+            value, default, min, max, indicatorLen, indicatorColor, indicatorThickness)
     end
 
     -- ====================================================================
     -- Draw: Rich tooltip (on hover or drag — anchored to cursor, bounds-aware)
-    -- Uses foreground draw list to render over everything
+    -- Auto-generated from component state, overridable via opts.tooltipLines
     -- ====================================================================
     if showTooltip and (state.hovered or state.dragging) then
         local lines = {}
-        -- Label
-        if valueLabel and valueLabel ~= "" then
-            table.insert(lines, { text = valueLabel, color = "primary" })
-        end
-        -- Current value
-        table.insert(lines, { text = "Current: " .. string.format(format, value), color = "text" })
-        -- Default value (if different from current)
-        if default ~= value then
-            table.insert(lines, { text = "Default: " .. string.format(format, default), color = "muted" })
-        end
-        -- Description
-        if valueDescription and valueDescription ~= "" then
-            table.insert(lines, { text = valueDescription, color = "text_dim" })
-        end
-        -- Additional tooltip
-        if tooltip and tooltip ~= "" then
-            table.insert(lines, { text = tooltip, color = "text_dim" })
-        end
 
-        -- Calculate tooltip dimensions
-        local lineHeight = select(2, ImGui.CalcTextSize("X"))
-        local lineSpacing = 3
-        local padding = 6
-        local tooltipH = #lines * (lineHeight + lineSpacing) - lineSpacing + padding * 2
-        local maxW = 0
-        for _, entry in ipairs(lines) do
-            local w = select(1, ImGui.CalcTextSize(entry.text))
-            if w > maxW then maxW = w end
-        end
-        local tooltipW = maxW + padding * 2
-
-        -- Position at cursor with offset
-        local mouseX, mouseY = ImGui.GetMousePos()
-        local tooltipX = mouseX + 12
-        local tooltipY = mouseY - tooltipH - 4
-
-        -- Clamp to window bounds
-        local winX, winY = ImGui.GetWindowPos()
-        local winW, winH = ImGui.GetWindowSize()
-        local screenMaxX = winX + winW
-        local screenMaxY = winY + winH
-
-        if tooltipX + tooltipW > screenMaxX then
-            tooltipX = mouseX - tooltipW - 12  -- Flip to left side
-        end
-        if tooltipY < winY then
-            tooltipY = mouseY + 16  -- Below cursor if no room above
-        end
-        if tooltipX < winX then tooltipX = winX + 2 end
-        if tooltipY + tooltipH > screenMaxY then
-            tooltipY = screenMaxY - tooltipH - 2
-        end
-
-        -- Use foreground draw list to render tooltip over everything
-        local fgDrawList = ImGui.GetForegroundDrawList()
-        if fgDrawList then
-            -- Draw background and border on foreground layer
-            ImGui.ImDrawListAddRectFilled(fgDrawList, tooltipX, tooltipY, tooltipX + tooltipW, tooltipY + tooltipH, tooltipBgColor, 4, 0)
-            ImGui.ImDrawListAddRect(fgDrawList, tooltipX, tooltipY, tooltipX + tooltipW, tooltipY + tooltipH, tooltipBorderColor, 4, 0, 1)
-
-            -- Draw each line on foreground layer
-            local ty = tooltipY + padding
-            local colorMap = {
-                primary = tooltipLabelColor,
-                text = tooltipValueColor,
-                muted = tooltipDefaultColor,
-                text_dim = tooltipDescColor,
-            }
-            for _, entry in ipairs(lines) do
-                local lineColor = colorMap[entry.color] or tooltipValueColor
-                ImGui.ImDrawListAddText(fgDrawList, tooltipX + padding, ty, lineColor, entry.text)
-                ty = ty + lineHeight + lineSpacing
-            end
+        -- Use custom tooltip lines if provided, otherwise auto-generate
+        if opts.tooltipLines and type(opts.tooltipLines) == "function" then
+            lines = opts.tooltipLines({
+                label = valueLabel,
+                value = value,
+                default = default,
+                format = format,
+                description = valueDescription,
+                tooltip = tooltip,
+                step = step,
+                range = max - min,
+                min = min,
+                max = max,
+            }) or {}
         else
-            -- Fallback: draw on window draw list
-            drawRoundRect(drawList, tooltipX, tooltipY, tooltipX + tooltipW, tooltipY + tooltipH, tooltipBgColor, 4, 0)
-            drawRoundRect(drawList, tooltipX, tooltipY, tooltipX + tooltipW, tooltipY + tooltipH, tooltipBorderColor, 4, 1)
-            local ty = tooltipY + padding
-            local colorMap = {
-                primary = tooltipLabelColor,
-                text = tooltipValueColor,
-                muted = tooltipDefaultColor,
-                text_dim = tooltipDescColor,
-            }
-            for _, entry in ipairs(lines) do
-                local lineColor = colorMap[entry.color] or tooltipValueColor
-                drawText(drawList, tooltipX + padding, ty, lineColor, entry.text)
-                ty = ty + lineHeight + lineSpacing
+            -- Auto-generate tooltip content
+            if valueLabel and valueLabel ~= "" then
+                table.insert(lines, { text = valueLabel, color = "primary" })
             end
+            table.insert(lines, { text = "Current: " .. string.format(format, value), color = "text" })
+            if default ~= value then
+                table.insert(lines, { text = "Default: " .. string.format(format, default), color = "muted" })
+            end
+            if valueDescription and valueDescription ~= "" then
+                table.insert(lines, { text = valueDescription, color = "text_dim" })
+            end
+            if tooltip and tooltip ~= "" then
+                table.insert(lines, { text = tooltip, color = "text_dim" })
+            end
+
+            -- Separator + dynamic modifier hints with actual values
+            table.insert(lines, { text = "---", color = "separator" })
+            table.insert(lines, {
+                text = string.format("Step: %s", string.format(format, step)),
+                color = "text_dim",
+            })
+            -- Show drag modifier hints (use descriptive names when values are too small to be meaningful)
+            local fineStep = step * modifierShiftMult
+            local preciseStep = step * modifierCtrlMult
+            local coarseStep = step * modifierAltMult
+            local function formatStep(val)
+                if val == 0 then return "fine" end
+                if val < 0.001 then return "fine" end
+                if val < 0.01 then return "precision" end
+                return string.format(format, val)
+            end
+            table.insert(lines, {
+                text = string.format("Drag: Shift=%s  Ctrl=%s  Alt=%s",
+                    formatStep(fineStep),
+                    formatStep(preciseStep),
+                    formatStep(coarseStep)),
+                color = "text_dim",
+            })
+            -- Show click modifiers
+            table.insert(lines, {
+                text = "Click: Shift=snap  Ctrl=input  Alt=default",
+                color = "text_dim",
+            })
         end
+
+        local tooltipColorMap = {
+            primary = tooltipLabelColor,
+            text = tooltipValueColor,
+            muted = tooltipDefaultColor,
+            text_dim = tooltipDescColor,
+            separator = tooltipBorderColor,
+        }
+        drawSliderTooltip(drawList, lines, tooltipBgColor, tooltipBorderColor, tooltipColorMap)
     end
 
     -- ====================================================================

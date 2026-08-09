@@ -697,6 +697,7 @@ local function initModules()
             theme = Theme,
             logEngine = _LogEngine,
             stateSync = CfgStateSync,
+            animation = Animation,
             log = log,
         })
         if log then log.info("SettingApplier initialized") end

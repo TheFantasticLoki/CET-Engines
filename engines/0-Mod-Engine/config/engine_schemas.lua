@@ -55,6 +55,28 @@ M["0-Engine-UI"] = {
                 },
             },
         },
+        animation_section = {
+            type = "section",
+            label = "ANIMATION",
+            settings = {
+                animationsEnabled = {
+                    type = "toggle",
+                    label = "Enable Animations",
+                    tooltip = "Master switch for all UI animations (accessibility)",
+                    default = true,
+                },
+                animationSpeedScale = {
+                    type = "slider",
+                    label = "Animation Speed",
+                    tooltip = "Scale factor for animation speed (0.25x to 2x)",
+                    min = 0.25,
+                    max = 2.0,
+                    step = 0.25,
+                    default = 1.0,
+                    format = "%.2fx",
+                },
+            },
+        },
     },
 }
 

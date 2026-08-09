@@ -16,11 +16,13 @@ local _theme = nil
 local _logEngine = nil
 ---@type table|nil CfgStateSync module reference
 local _stateSync = nil
+---@type table|nil Animation module reference
+local _animation = nil
 ---@type table|nil Logger instance
 local _log = nil
 
 --- Initialize the setting applier module.
----@param deps table { cfgCore, core, theme, logEngine, stateSync, log }
+---@param deps table { cfgCore, core, theme, logEngine, stateSync, animation, log }
 ---@return nil
 function M.init(deps)
     _cfgCore = deps.cfgCore
@@ -28,6 +30,7 @@ function M.init(deps)
     _theme = deps.theme
     _logEngine = deps.logEngine
     _stateSync = deps.stateSync
+    _animation = deps.animation
     _log = deps.log
 end
 
@@ -55,6 +58,13 @@ function M.bridgeEngineSettings()
         end
         if s.showSidebar ~= nil and _core and _core.setSidebarOpen then
             _core.setSidebarOpen(s.showSidebar)
+        end
+        -- Animation settings
+        if s.animationsEnabled ~= nil and _animation and _animation.setConfig then
+            _animation.setConfig({ enabled = s.animationsEnabled })
+        end
+        if s.animationSpeedScale and _animation and _animation.setConfig then
+            _animation.setConfig({ speedScale = s.animationSpeedScale })
         end
     end
 
@@ -102,6 +112,11 @@ function M.applySettingLive(modId, key, value)
             if _cfgCore and _cfgCore.setAutoSave then _cfgCore.setAutoSave(value) end
         elseif key == "showSidebar" and _core and _core.setSidebarOpen then
             _core.setSidebarOpen(value)
+        -- Animation settings
+        elseif key == "animationsEnabled" and _animation and _animation.setConfig then
+            _animation.setConfig({ enabled = value })
+        elseif key == "animationSpeedScale" and _animation and _animation.setConfig then
+            _animation.setConfig({ speedScale = value })
         end
     end
 
