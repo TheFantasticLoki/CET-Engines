@@ -20,6 +20,10 @@ local Storage = nil
 local Logger = nil
 local Config = nil
 
+-- Cached ImGui function reference (set once during init)
+---@type function|nil Cached reference to ImGui.IsAnyItemActive
+local _isAnyItemActive = nil
+
 -- Auto-save state
 local AUTO_SAVE_DELAY = 0.5 -- seconds
 local lastSaveTime = 0     -- os.clock() timestamp of last save
@@ -34,6 +38,10 @@ function M.init(deps)
     Config = deps.config or {}
     AUTO_SAVE_DELAY = Config.AUTO_SAVE_DELAY_SECS or 0.5
     lastSaveTime = os.clock()
+    -- Cache ImGui function reference once (avoids pcall overhead every frame)
+    if ImGui and type(ImGui.IsAnyItemActive) == "function" then
+        _isAnyItemActive = ImGui.IsAnyItemActive
+    end
 end
 
 --- Update auto-save delay at runtime (called when user changes the setting).
@@ -167,12 +175,7 @@ function M.autoSave(currentFrame)
     -- (slider drag, checkbox click, text input, etc.).
     -- This prevents mid-interaction writes to disk. The dirty flag stays
     -- true, so saving resumes once the interaction ends.
-    local active = false
-    if ImGui and ImGui.IsAnyItemActive then
-        local ok, isActive = pcall(ImGui.IsAnyItemActive)
-        if ok then active = isActive end
-    end
-    if active then
+    if _isAnyItemActive and _isAnyItemActive() then
         return
     end
 

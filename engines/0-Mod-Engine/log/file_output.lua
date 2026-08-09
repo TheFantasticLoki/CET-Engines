@@ -24,7 +24,6 @@ end
 
 -- Config values inlined with fallbacks (CET require may not resolve siblings)
 local Config = SafeRequire("log/config") or {}
-print("[FileOutput] file_output.lua loaded: Config.LOG_DIR=" .. tostring(Config.LOG_DIR))
 
 ---@class FileOutput
 --- Handles all file I/O for Log-Engine.
@@ -100,20 +99,6 @@ local function getLogEngineDir()
     return ""
 end
 
---- Ensure the log directory exists
----@param dirPath Directory to create
-local function ensureDir(dirPath)
-    if dirPath == "" then return end
-    pcall(function()
-        -- Try creating directory via os.execute (works on most platforms)
-        -- CET may not have os.execute; fall back gracefully
-        if os.execute then
-            -- mkdir -p pattern (cross-platform attempt)
-            os.execute('mkdir -p "' .. dirPath .. '"')
-        end
-    end)
-end
-
 --- Resolve the file path for a mod
 ---@param modName Mod identifier
 ---@return string Resolved file path
@@ -156,6 +141,7 @@ local function getFileSize(modName)
 end
 
 --- Rotate log files for a mod (CET-compatible, read-modify-write)
+--- Uses chunked I/O to avoid loading entire files into memory.
 ---@param modName Mod identifier
 local function rotateFile(modName)
     local path = resolvePath(modName)
@@ -165,16 +151,19 @@ local function rotateFile(modName)
         local src = path .. "." .. i
         local dst = path .. "." .. (i + 1)
         pcall(function()
-            -- Read source, write to destination
             local sf = io.open(src, "r")
             if sf then
-                local content = sf:read("*a")
-                sf:close()
                 local df = io.open(dst, "w")
                 if df then
-                    df:write(content)
+                    -- Stream in chunks to avoid loading entire file
+                    while true do
+                        local chunk = sf:read(8192)
+                        if not chunk then break end
+                        df:write(chunk)
+                    end
                     df:close()
                 end
+                sf:close()
             end
         end)
     end
@@ -183,13 +172,17 @@ local function rotateFile(modName)
     pcall(function()
         local cf = io.open(path, "r")
         if cf then
-            local content = cf:read("*a")
-            cf:close()
             local nf = io.open(path .. ".1", "w")
             if nf then
-                nf:write(content)
+                -- Stream in chunks
+                while true do
+                    local chunk = cf:read(8192)
+                    if not chunk then break end
+                    nf:write(chunk)
+                end
                 nf:close()
             end
+            cf:close()
             -- Truncate current file
             local tf = io.open(path, "w")
             if tf then

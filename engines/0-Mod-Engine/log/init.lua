@@ -19,9 +19,6 @@
 --- Unified entry point for Log-Engine logging system.
 --- Manages logger instances, statistics, and file output.
 
--- PROVE THIS FILE IS BEING EXECUTED (first line of executable code)
-print("[LogEngine] log/init.lua executing")
-
 -- --- SafeRequire Pattern ---
 
 --- Safely require a module with pcall

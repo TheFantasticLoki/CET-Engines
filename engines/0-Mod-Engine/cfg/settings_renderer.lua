@@ -121,6 +121,242 @@ function M.clearHeightCache()
     _sectionHeights = {}
 end
 
+-- ============================================================================
+-- Setting Type Renderers (dispatch table)
+-- ============================================================================
+
+--- Render a toggle setting.
+---@param key string Setting key
+---@param setting table Setting definition
+---@param value any Current value
+---@return any newValue, boolean changed
+local function renderToggle(key, setting, value)
+    local label = setting.label or key
+    local newValue, clicked = ImGui.Checkbox(label, value)
+    return newValue, (newValue ~= value)
+end
+
+--- Render a slider setting.
+---@param key string Setting key
+---@param setting table Setting definition
+---@param value any Current value
+---@return any newValue, boolean changed
+local function renderSlider(key, setting, value)
+    local label = setting.label or key
+    local min = setting.min or 0
+    local max = setting.max or 1
+    local step = setting.step or 0.1
+    local format = setting.format or "%.3f"
+    local v = value or setting.default or min
+    ImGui.Text(label)
+    ImGui.SetNextItemWidth(280)
+    local newValue, changed = Components.AdvancedSlider("##" .. key, v, {
+        min = min, max = max, default = setting.default,
+        step = step, format = format, label = label,
+        tooltip = setting.tooltip, description = setting.description,
+        showTicks = false, showButtons = true, showDefaultLine = true,
+        showTooltip = true, width = 280, trackHeight = 16,
+    })
+    ImGui.Spacing()
+    return newValue, changed
+end
+
+--- Render an integer slider setting.
+---@param key string Setting key
+---@param setting table Setting definition
+---@param value any Current value
+---@return any newValue, boolean changed
+local function renderIntSlider(key, setting, value)
+    local label = setting.label or key
+    local min = setting.min or 0
+    local max = setting.max or 100
+    local step = setting.step or 1
+    local v = math.floor(value or setting.default or min)
+    ImGui.Text(label)
+    ImGui.SetNextItemWidth(280)
+    local rawVal, changed = Components.AdvancedSlider("##" .. key, v, {
+        min = min, max = max, default = setting.default,
+        step = step, format = "%d", label = label,
+        tooltip = setting.tooltip, description = setting.description,
+        showTicks = false, showButtons = true, showDefaultLine = true,
+        showTooltip = true, width = 280, trackHeight = 16,
+    })
+    ImGui.Spacing()
+    return math.floor(rawVal + 0.5), changed
+end
+
+--- Render a combo box setting.
+---@param key string Setting key
+---@param setting table Setting definition
+---@param value any Current value
+---@return any newValue, boolean changed
+local function renderCombo(key, setting, value)
+    local label = setting.label or key
+    local options = setting.options or {}
+    local currentIdx = 1
+    for i, opt in ipairs(options) do
+        local optVal = type(opt) == "table" and opt.value or opt
+        if optVal == value then currentIdx = i; break end
+    end
+    local newIdx, newItem = ImGui.Combo(label, currentIdx - 1, options, #options)
+    if newItem and newIdx ~= currentIdx - 1 then
+        local selected = options[newIdx + 1]
+        return type(selected) == "table" and selected.value or selected, true
+    end
+    return value, false
+end
+
+--- Render a multi-combo setting (placeholder).
+---@param key string Setting key
+---@param setting table Setting definition
+---@param value any Current value
+---@return any newValue, boolean changed
+local function renderMultiCombo(key, setting, value)
+    ImGui.TextDisabled(setting.label or key .. " (multi-select)")
+    return value, false
+end
+
+--- Render a text input setting.
+---@param key string Setting key
+---@param setting table Setting definition
+---@param value any Current value
+---@return any newValue, boolean changed
+local function renderText(key, setting, value)
+    local label = setting.label or key
+    local v = value or ""
+    return ImGui.InputText(label, v, 256)
+end
+
+--- Render a number input setting.
+---@param key string Setting key
+---@param setting table Setting definition
+---@param value any Current value
+---@return any newValue, boolean changed
+local function renderNumber(key, setting, value)
+    local label = setting.label or key
+    local v = value or setting.default or 0
+    return ImGui.InputFloat(label, v, setting.step or 0.1, 1.0, setting.format or "%.3f")
+end
+
+--- Render a color picker setting.
+---@param key string Setting key
+---@param setting table Setting definition
+---@param value any Current value
+---@return any newValue, boolean changed
+local function renderColor(key, setting, value)
+    local label = setting.label or key
+    local c = value or { r = 1, g = 1, b = 1, a = 1 }
+    local arr = { c.r or 1, c.g or 1, c.b or 1, c.a or 1 }
+    local colorChanged
+    colorChanged, arr[1], arr[2], arr[3], arr[4] = ImGui.ColorEdit4(label, arr)
+    if colorChanged then
+        return { r = arr[1], g = arr[2], b = arr[3], a = arr[4] }, true
+    end
+    return value, false
+end
+
+--- Render a keybind setting (placeholder).
+---@param key string Setting key
+---@param setting table Setting definition
+---@param value any Current value
+---@return any newValue, boolean changed
+local function renderKeybind(key, setting, value)
+    local label = setting.label or key
+    local v = value or ""
+    ImGui.Text(label .. ": " .. v)
+    return value, false
+end
+
+--- Render a header setting.
+---@param key string Setting key
+---@param setting table Setting definition
+---@param value any Current value
+---@return any newValue, boolean changed
+local function renderHeader(key, setting, value)
+    ImGui.Separator()
+    return value, false
+end
+
+--- Render a group setting (collapsible header with nested settings).
+---@param modId string Mod identifier
+---@param key string Setting key
+---@param setting table Setting definition
+---@param value any Current value
+---@return any newValue, boolean changed
+local function renderGroup(modId, key, setting, value, settings)
+    local label = setting.label or key
+    local open = not setting.collapsed
+    if ImGui.CollapsingHeader(label, open and ImGuiTreeNodeFlags.DefaultOpen or 0) then
+        M.renderSettings(modId, { settings = setting.settings }, value or {})
+    end
+    return value, false
+end
+
+--- Render an info setting.
+---@param key string Setting key
+---@param setting table Setting definition
+---@param value any Current value
+---@return any newValue, boolean changed
+local function renderInfo(key, setting, value)
+    ImGui.TextWrapped(setting.text or "")
+    return value, false
+end
+
+--- Render a button setting.
+---@param key string Setting key
+---@param setting table Setting definition
+---@param value any Current value
+---@return any newValue, boolean changed
+local function renderButton(key, setting, value, settings)
+    local clicked = ImGui.Button(setting.label or key)
+    if clicked and setting.action and type(setting.action) == "function" then
+        setting.action(settings)
+    end
+    return value, false
+end
+
+--- Render a custom setting (user-provided render function).
+---@param key string Setting key
+---@param setting table Setting definition
+---@param value any Current value
+---@param settings table All settings
+---@return any newValue, boolean changed
+local function renderCustom(key, setting, value, settings)
+    if setting.render and type(setting.render) == "function" then
+        local result = setting.render(settings, key)
+        if result ~= nil then
+            return result, true
+        end
+    end
+    return value, false
+end
+
+-- Dispatch table mapping setting types to renderer functions
+local renderers = {
+    toggle = renderToggle,
+    slider = renderSlider,
+    int_slider = renderIntSlider,
+    combo = renderCombo,
+    multi_combo = renderMultiCombo,
+    text = renderText,
+    number = renderNumber,
+    color = renderColor,
+    keybind = renderKeybind,
+    header = renderHeader,
+    info = renderInfo,
+    button = renderButton,
+    custom = renderCustom,
+}
+
+-- Types that don't have a simple value change (handled separately)
+local structuralTypes = {
+    section = true,
+    divider = true,
+    spacer = true,
+    custom_section = true,
+    group = true,
+}
+
 --- Render settings for a mod.
 ---@param modId string The mod identifier
 ---@param spec table The mod's registration spec
@@ -145,7 +381,7 @@ function M.renderSettings(modId, spec, settings)
         end
 
         if visible then
-            -- Handle section type (wraps settings in a SectionCard)
+            -- Handle structural types (section, divider, spacer, custom_section)
             if setting.type == "section" then
                 local sectionLabel = setting.label or key
                 local sectionId = "##section_" .. key
@@ -154,19 +390,14 @@ function M.renderSettings(modId, spec, settings)
                     SectionTitle(sectionLabel)
                     -- Render nested settings
                     if setting.settings then
-                        -- Create a temporary spec with nested settings
                         local nestedSpec = { settings = setting.settings }
-                        -- Create a settings container for nested values
                         local nestedSettings = settings[key] or {}
-                        -- Merge settings into nested container
                         for k, _ in pairs(setting.settings) do
                             if settings[k] ~= nil then
                                 nestedSettings[k] = settings[k]
                             end
                         end
-                        -- Render nested settings
                         if M.renderSettings(modId, nestedSpec, nestedSettings) then
-                            -- Copy changed values back to main settings
                             for k, v in pairs(nestedSettings) do
                                 if settings[k] ~= v then
                                     settings[k] = v
@@ -177,17 +408,14 @@ function M.renderSettings(modId, spec, settings)
                     end
                 end)
 
-            -- Handle divider type
             elseif setting.type == "divider" then
                 ImGui.Separator()
                 ImGui.Spacing()
 
-            -- Handle spacer type
             elseif setting.type == "spacer" then
                 local height = setting.height or 8
                 ImGui.Dummy(0, height)
 
-            -- Handle custom section with render function
             elseif setting.type == "custom_section" then
                 local sectionLabel = setting.label or key
                 local sectionId = "##custom_section_" .. key
@@ -203,122 +431,14 @@ function M.renderSettings(modId, spec, settings)
                     end)
                 end
 
-            -- Handle existing types (backward compatible)
-            elseif setting.type == "toggle" then
-                local label = setting.label or key
-                local clicked
-                newValue, clicked = ImGui.Checkbox(label, value)
-                settingChanged = (newValue ~= value)
-
-            elseif setting.type == "slider" then
-                local label = setting.label or key
-                local min = setting.min or 0
-                local max = setting.max or 1
-                local step = setting.step or 0.1
-                local format = setting.format or "%.3f"
-                local v = value or setting.default or min
-                ImGui.Text(label)
-                ImGui.SetNextItemWidth(280)
-                newValue, settingChanged = Components.AdvancedSlider("##" .. key, v, {
-                    min = min, max = max, default = setting.default,
-                    step = step, format = format, label = label,
-                    tooltip = setting.tooltip, description = setting.description,
-                    showTicks = false, showButtons = true, showDefaultLine = true,
-                    showTooltip = true, width = 280, trackHeight = 16,
-                })
-                ImGui.Spacing()
-
-            elseif setting.type == "int_slider" then
-                local label = setting.label or key
-                local min = setting.min or 0
-                local max = setting.max or 100
-                local step = setting.step or 1
-                local v = math.floor(value or setting.default or min)
-                ImGui.Text(label)
-                ImGui.SetNextItemWidth(280)
-                local rawVal
-                rawVal, settingChanged = Components.AdvancedSlider("##" .. key, v, {
-                    min = min, max = max, default = setting.default,
-                    step = step, format = "%d", label = label,
-                    tooltip = setting.tooltip, description = setting.description,
-                    showTicks = false, showButtons = true, showDefaultLine = true,
-                    showTooltip = true, width = 280, trackHeight = 16,
-                })
-                newValue = math.floor(rawVal + 0.5)
-                ImGui.Spacing()
-
-            elseif setting.type == "combo" then
-                local label = setting.label or key
-                local options = setting.options or {}
-                local currentIdx = 1
-                for i, opt in ipairs(options) do
-                    local optVal = type(opt) == "table" and opt.value or opt
-                    if optVal == value then currentIdx = i; break end
-                end
-                local newIdx, newItem = ImGui.Combo(label, currentIdx - 1, options, #options)
-                if newItem and newIdx ~= currentIdx - 1 then
-                    local selected = options[newIdx + 1]
-                    newValue = type(selected) == "table" and selected.value or selected
-                    settingChanged = true
-                end
-
-            elseif setting.type == "multi_combo" then
-                ImGui.TextDisabled(setting.label or key .. " (multi-select)")
-                settingChanged = false
-
-            elseif setting.type == "text" then
-                local label = setting.label or key
-                local v = value or ""
-                newValue, settingChanged = ImGui.InputText(label, v, 256)
-
-            elseif setting.type == "number" then
-                local label = setting.label or key
-                local v = value or setting.default or 0
-                newValue, settingChanged = ImGui.InputFloat(label, v, setting.step or 0.1, 1.0, setting.format or "%.3f")
-
-            elseif setting.type == "color" then
-                local label = setting.label or key
-                local c = value or { r = 1, g = 1, b = 1, a = 1 }
-                local arr = { c.r or 1, c.g or 1, c.b or 1, c.a or 1 }
-                local colorChanged
-                colorChanged, arr[1], arr[2], arr[3], arr[4] = ImGui.ColorEdit4(label, arr)
-                if colorChanged then
-                    newValue = { r = arr[1], g = arr[2], b = arr[3], a = arr[4] }
-                    settingChanged = true
-                end
-
-            elseif setting.type == "keybind" then
-                local label = setting.label or key
-                local v = value or ""
-                ImGui.Text(label .. ": " .. v)
-                settingChanged = false
-
-            elseif setting.type == "header" then
-                ImGui.Separator()
-
             elseif setting.type == "group" then
-                local label = setting.label or key
-                local open = not setting.collapsed
-                if ImGui.CollapsingHeader(label, open and ImGuiTreeNodeFlags.DefaultOpen or 0) then
-                    M.renderSettings(modId, { settings = setting.settings }, settings[key] or {})
-                end
+                newValue, settingChanged = renderGroup(modId, key, setting, value, settings)
 
-            elseif setting.type == "info" then
-                ImGui.TextWrapped(setting.text or "")
-
-            elseif setting.type == "button" then
-                local clicked = ImGui.Button(setting.label or key)
-                if clicked and setting.action and type(setting.action) == "function" then
-                    setting.action(settings)
-                end
-
-            elseif setting.type == "custom" then
-                if setting.render and type(setting.render) == "function" then
-                    local result = setting.render(settings, key)
-                    if result ~= nil then
-                        newValue = result
-                        settingChanged = true
-                    end
+            else
+                -- Use dispatch table for simple setting types
+                local renderer = renderers[setting.type]
+                if renderer then
+                    newValue, settingChanged = renderer(key, setting, value, settings)
                 end
             end
 

@@ -91,6 +91,7 @@ local CfgWindow = SafeRequire("cfg/ui/window")
 local CfgSidebar = SafeRequire("cfg/ui/sidebar")
 local CfgContentArea = SafeRequire("cfg/ui/content_area")
 local EngineSchemas = SafeRequire("config/engine_schemas")
+local SettingApplier = SafeRequire("cfg/setting_applier")
 
 -- New modules for features
 local SearchParser = SafeRequire("cfg/search_parser")
@@ -428,56 +429,6 @@ local function ConfigResetSettings(modId)
     return CfgModManager.resetSettings(modId)
 end
 
---- Apply a single command in the given direction ("undo" or "redo").
---- Used by both ConfigUndo and ConfigRedo to avoid duplicating the dispatch logic.
----@param cmd table The command to apply
----@param direction string "undo" or "redo"
----@return boolean success
-local function applyCommand(cmd, direction)
-    if cmd.type == "setting" then
-        local mod = CfgCore.getMod(cmd.modId)
-        if mod and mod.settings then
-            local value = (direction == "undo") and cmd.oldValue or cmd.newValue
-            CfgResolver.setValue(mod.settings, cmd.key, value)
-            CfgCore.markDirty()
-            return true
-        end
-        return false
-    elseif cmd.type == "preset" then
-        local mod = CfgCore.getMod(cmd.modId)
-        if mod then
-            mod.settings = (direction == "undo") and cmd.oldSettings or cmd.newSettings
-            CfgCore.markDirty()
-            return true
-        end
-        return false
-    elseif cmd.type == "batch" and cmd.commands then
-        -- Undo iterates reverse, redo iterates forward
-        local start, stop, step = 1, #cmd.commands, 1
-        if direction == "undo" then
-            start, stop, step = #cmd.commands, 1, -1
-        end
-        for i = start, stop, step do
-            local sub = cmd.commands[i].command or cmd.commands[i]
-            if sub.type == "setting" then
-                local mod = CfgCore.getMod(sub.modId)
-                if mod and mod.settings then
-                    local value = (direction == "undo") and sub.oldValue or sub.newValue
-                    CfgResolver.setValue(mod.settings, sub.key, value)
-                end
-            elseif sub.type == "preset" then
-                local mod = CfgCore.getMod(sub.modId)
-                if mod then
-                    mod.settings = (direction == "undo") and sub.oldSettings or sub.newSettings
-                end
-            end
-        end
-        CfgCore.markDirty()
-        return true
-    end
-    return false
-end
-
 --- Undo the last Config-Engine setting change
 ---@return boolean success
 local function ConfigUndo()
@@ -485,7 +436,7 @@ local function ConfigUndo()
         return false
     end
     return CfgUndoRedo.undo(function(cmd)
-        return applyCommand(cmd, "undo")
+        return CfgUndoRedo.applyCommand(cmd, "undo")
     end) ~= nil
 end
 
@@ -496,7 +447,7 @@ local function ConfigRedo()
         return false
     end
     return CfgUndoRedo.redo(function(cmd)
-        return applyCommand(cmd, "redo")
+        return CfgUndoRedo.applyCommand(cmd, "redo")
     end) ~= nil
 end
 
@@ -551,54 +502,6 @@ end
 
 --- Bridge saved engine settings to actual engine subsystems at startup.
 --- Called after registerEngines() so saved settings override hardcoded defaults.
-local function bridgeEngineSettings()
-    if not CfgCore then return end
-
-    -- UI-Engine settings
-    local uiMod = CfgCore.getMod("0-Engine-UI")
-    if uiMod and uiMod.settings then
-        local s = uiMod.settings
-        if s.currentTheme and Theme and Theme.SetTheme then
-            Theme.SetTheme(s.currentTheme)
-        end
-        if s.contrastLevel and Theme and Theme.SetHighContrast then
-            Theme.SetHighContrast(s.contrastLevel)
-        end
-        if s.accentColor and Core and Core.setAccentColor then
-            Core.setAccentColor(s.accentColor)
-        end
-        if s.autoSave ~= nil and Core and Core.setAutoSave then
-            Core.setAutoSave(s.autoSave)
-        end
-        if s.showSidebar ~= nil and Core and Core.setSidebarOpen then
-            Core.setSidebarOpen(s.showSidebar)
-        end
-    end
-
-    -- Log-Engine settings
-    local logMod = CfgCore.getMod("0-Engine-Log")
-    if logMod and logMod.settings and _LogEngine then
-        local s = logMod.settings
-        if s.globalMinLevel then _LogEngine.SetGlobalLevel(s.globalMinLevel) end
-        if s.logDir then _LogEngine.setLogDir(s.logDir) end
-        if s.maxFileSize then _LogEngine.setMaxFileSize(s.maxFileSize) end
-        if s.maxFiles then _LogEngine.setMaxFiles(s.maxFiles) end
-        if s.maxDebugPerFrame then _LogEngine.setMaxDebugPerFrame(s.maxDebugPerFrame) end
-        if s.dedupEnabled ~= nil then _LogEngine.setDedupEnabled(s.dedupEnabled) end
-        if s.dedupMaxEntries then _LogEngine.setDedupMaxEntries(s.dedupMaxEntries) end
-        if s.ringSize then _LogEngine.setRingSize(s.ringSize) end
-    end
-
-    -- Config-Engine settings
-    local cfgMod = CfgCore.getMod("0-Engine-Config")
-    if cfgMod and cfgMod.settings then
-        local s = cfgMod.settings
-        if s.sidebarWidth and Core and Core.setSidebarWidth then
-            CfgCore.setSidebarWidth(s.sidebarWidth)
-        end
-    end
-end
-
 -- ============================================================================
 -- Module Initialization
 -- ============================================================================
@@ -701,7 +604,12 @@ local function initModules()
     end
 
     if CfgUndoRedo then
-        CfgUndoRedo.init({ maxSteps = 50, maxRedoSteps = 50 })
+        CfgUndoRedo.init({
+            maxSteps = 50,
+            maxRedoSteps = 50,
+            cfgCore = CfgCore,
+            cfgResolver = CfgResolver,
+        })
         if log then log.info("CfgUndoRedo initialized") end
     end
 
@@ -782,6 +690,18 @@ local function initModules()
         if log then log.info("CfgContentArea initialized") end
     end
 
+    if SettingApplier then
+        SettingApplier.init({
+            cfgCore = CfgCore,
+            core = Core,
+            theme = Theme,
+            logEngine = _LogEngine,
+            stateSync = CfgStateSync,
+            log = log,
+        })
+        if log then log.info("SettingApplier initialized") end
+    end
+
     -- Register engines
     registerEngines()
 
@@ -792,7 +712,9 @@ local function initModules()
     end
 
     -- Bridge saved settings to engine subsystems
-    bridgeEngineSettings()
+    if SettingApplier then
+        SettingApplier.bridgeEngineSettings()
+    end
 
     -- Emit init complete event
     if Events then
@@ -1015,72 +937,8 @@ registerForEvent("onDraw", function()
         end
 
         -- Draw detached mod windows (right-click → "Open in Window")
-        if CfgCore then
-            local detached = CfgCore.getDetachedMods()
-            if detached then
-                for modId, winState in pairs(detached) do
-                    local mod = CfgCore.getMod(modId)
-                    if mod then
-                        local spec = mod.spec or {}
-                        local title = (spec.name or modId) .. "##detached_" .. modId
-                        ImGui.SetNextWindowPos(winState.x, winState.y, ImGuiCond.FirstUseEver)
-                        ImGui.SetNextWindowSize(winState.width, winState.height, ImGuiCond.FirstUseEver)
-                        local visible = ImGui.Begin(title, true)
-                        if visible then
-                            -- Render mod settings inline (same as content_area drawModPanel)
-                            ImGui.Text(spec.name or modId)
-                            ImGui.Separator()
-                            if spec.version then ImGui.Text("Version: " .. spec.version) end
-                            if spec.author then ImGui.Text("Author: " .. spec.author) end
-                            if spec.description then ImGui.TextWrapped(spec.description) end
-                            ImGui.Spacing()
-                            ImGui.Separator()
-                            ImGui.Spacing()
-
-                            -- Render settings if schema-based
-                            if (mod.renderMode == "schema" or mod.renderMode == "hybrid") and CfgRenderer and CfgRenderer.renderSettings then
-                                local changed = CfgRenderer.renderSettings(modId, spec, mod.settings)
-                                if changed and spec.settings then
-                                    for key, _ in pairs(spec.settings) do
-                                        if mod.settings[key] ~= nil then
-                                            -- Apply live (same logic as content_area)
-                                            if ModEngine and modId == "0-Engine-UI" then
-                                                if key == "currentTheme" and ModEngine.SetTheme then ModEngine.SetTheme(mod.settings[key])
-                                                elseif key == "contrastLevel" and ModEngine.SetContrastLevel then ModEngine.SetContrastLevel(mod.settings[key])
-                                                end
-                                            end
-                                        end
-                                    end
-                                    if CfgCore.markDirty then CfgCore.markDirty() end
-                                end
-                            end
-
-                            -- Custom draw
-                            if (mod.renderMode == "custom" or mod.renderMode == "hybrid") and spec.draw then
-                                local modCtx = { modId = modId, spec = spec }
-                                setmetatable(modCtx, {
-                                    __index = function(_, k)
-                                        if ImGui[k] then return ImGui[k] end
-                                        return nil
-                                    end
-                                })
-                                local drawOk2, drawErr2 = pcall(spec.draw, modCtx)
-                                if not drawOk2 then
-                                    ImGui.TextColored(1, 0.3, 0.3, 1, "Draw error: " .. tostring(drawErr2))
-                                end
-                            end
-                        end
-                        -- Handle close button (visibility becomes false when X is clicked)
-                        if not visible then
-                            CfgCore.reattachMod(modId)
-                        end
-                        ImGui.End()
-                    else
-                        -- Mod no longer exists, clean up
-                        CfgCore.reattachMod(modId)
-                    end
-                end
-            end
+        if CfgContentArea and CfgContentArea.drawDetachedWindows then
+            CfgContentArea.drawDetachedWindows()
         end
 
         -- Pop theme

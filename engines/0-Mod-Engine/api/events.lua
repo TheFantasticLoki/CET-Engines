@@ -33,6 +33,10 @@ local M = {}
 
 ---@type table<string, {handler: EventHandler, source: string}[]> Event listeners keyed by event name
 local listeners = {}
+---@type table<string, boolean> Tracks which events are currently being emitted
+local _processing = {}
+---@type table<string, string[]> Handlers pending removal during emit
+local _pendingRemoval = {}
 ---@type boolean Initialization guard
 local initialized = false
 ---@type any|nil Lazy-loaded Logger module reference
@@ -91,6 +95,7 @@ function M.on(event, handler, source)
 end
 
 --- Emit an event to all subscribers
+--- Uses a processing flag instead of snapshot allocation to avoid per-emit table creation.
 ---@param event string Event name
 ---@param ... any Event arguments
 function M.emit(event, ...)
@@ -102,26 +107,35 @@ function M.emit(event, ...)
         log.trace("Emitting '" .. event .. "' to " .. #listeners[event] .. " handler(s)")
     end
 
-    -- Copy list to avoid issues if handlers modify listeners
-    local snapshot = {}
-    for _, entry in ipairs(listeners[event]) do
-        table.insert(snapshot, entry)
-    end
-
-    for _, entry in ipairs(snapshot) do
-        local ok, err = pcall(entry.handler, ...)
-        if not ok then
-            local msg = "Handler error for '" .. event .. "': " .. tostring(err)
-            if Logger then
-                Logger.Log("Events", msg, "error")
-            elseif log then
-                log.error(msg)
+    _processing[event] = true
+    for id, entry in pairs(listeners[event]) do
+        if entry then
+            local ok, err = pcall(entry.handler, ...)
+            if not ok then
+                local msg = "Handler error for '" .. event .. "': " .. tostring(err)
+                if Logger then
+                    Logger.Log("Events", msg, "error")
+                elseif log then
+                    log.error(msg)
+                end
             end
         end
+    end
+    _processing[event] = nil
+
+    -- Apply any pending removals
+    if _pendingRemoval[event] then
+        for _, id in ipairs(_pendingRemoval[event]) do
+            if listeners[event] then
+                listeners[event][id] = nil
+            end
+        end
+        _pendingRemoval[event] = nil
     end
 end
 
 --- Unsubscribe from an event
+--- Defers removal if the event is currently being emitted (safe during iteration).
 ---@param event string Event name
 ---@param handler fun(...: any) Handler function to remove
 function M.off(event, handler)
@@ -131,7 +145,13 @@ function M.off(event, handler)
 
     for i = #listeners[event], 1, -1 do
         if listeners[event][i].handler == handler then
-            table.remove(listeners[event], i)
+            if _processing[event] then
+                -- Defer removal to after emit completes
+                _pendingRemoval[event] = _pendingRemoval[event] or {}
+                table.insert(_pendingRemoval[event], i)
+            else
+                table.remove(listeners[event], i)
+            end
         end
     end
 

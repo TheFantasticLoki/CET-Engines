@@ -104,9 +104,34 @@ function M.init(core, colorEngine, themes)
 end
 
 --- Generate cache key from current theme state
+--- Cached at frame level to avoid recomputing on every color4n call
 ---@return string Cache key
+local _cachedFrameKey = nil
+local _cachedFrameTheme = nil
+local _cachedFrameAccent = nil
+local _cachedFrameContrast = nil
+
 local function getCacheKey()
-    return Utils.GetThemeCacheKey(_core)
+    local theme = _core and _core.getCurrentTheme() or nil
+    local accent = _core and _core.getAccentColor() or nil
+    local contrast = _core and _core.getContrastLevel() or nil
+
+    -- Fast path: if nothing changed, return cached key
+    if theme == _cachedFrameTheme and contrast == _cachedFrameContrast then
+        -- For accent, compare the table reference (fast) then values if needed
+        if accent == _cachedFrameAccent or (accent and _cachedFrameAccent and
+            accent.r == _cachedFrameAccent.r and accent.g == _cachedFrameAccent.g and
+            accent.b == _cachedFrameAccent.b) then
+            if _cachedFrameKey then return _cachedFrameKey end
+        end
+    end
+
+    -- Slow path: recompute
+    _cachedFrameTheme = theme
+    _cachedFrameAccent = accent and { r = accent.r, g = accent.g, b = accent.b } or nil
+    _cachedFrameContrast = contrast
+    _cachedFrameKey = Utils.GetThemeCacheKey(_core)
+    return _cachedFrameKey
 end
 
 --- Get resolved color for a semantic role

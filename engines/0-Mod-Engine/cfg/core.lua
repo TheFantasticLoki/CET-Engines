@@ -229,6 +229,14 @@ function M.getModCategory(modId)
     return state.modAssignments[modId]
 end
 
+--- Get tags for a mod.
+---@param modId string The mod identifier
+---@return string[] Array of tag strings (empty if no tags)
+function M.getModTags(modId)
+    local mod = state.mods[modId]
+    return mod and mod.tags or {}
+end
+
 --- Set a mod's category assignment.
 ---@param modId string The mod identifier
 ---@param category string The category name

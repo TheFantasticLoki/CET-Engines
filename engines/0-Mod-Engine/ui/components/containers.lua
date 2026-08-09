@@ -119,6 +119,9 @@ end
 -- --- Card ---
 
 --- Card container with header, body, footer
+--- NOTE: Card uses raw ImGui calls intentionally. Push/Pop style calls are NOT
+--- wrapped per CET FFI rule (pcall on ImGui calls breaks LuaJIT FFI binding).
+--- BeginChild/EndChild pairs are safe across CET versions.
 ---@param spec Table: { title, subtitle, icon, headerRight, body, footer, onClick, selected }
 ---@return boolean clicked
 function M.Card(spec)
@@ -179,11 +182,14 @@ function M.Card(spec)
             displayTitle = icon .. " " .. title
         end
 
-        ImGui.TextColored(Tokens.color4n("textPrimary").r, Tokens.color4n("textPrimary").g, Tokens.color4n("textPrimary").b, Tokens.color4n("textPrimary").a, displayTitle)
+        -- Cache token colors to avoid repeated resolution
+        local tp = Tokens.color4n("textPrimary")
+        ImGui.TextColored(tp.r, tp.g, tp.b, tp.a, displayTitle)
 
         -- Subtitle
         if subtitle then
-            ImGui.TextColored(Tokens.color4n("textSecondary").r, Tokens.color4n("textSecondary").g, Tokens.color4n("textSecondary").b, Tokens.color4n("textSecondary").a, subtitle)
+            local ts = Tokens.color4n("textSecondary")
+            ImGui.TextColored(ts.r, ts.g, ts.b, ts.a, subtitle)
         end
 
         -- Header right content

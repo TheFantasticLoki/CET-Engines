@@ -176,33 +176,79 @@ function M.clearHeightCache()
     if log then log.info("Height cache cleared - will re-measure on next frame") end
 end
 
---- Draw the content area (dispatches based on contentMode).
----@return nil
-function M.draw()
-    resolveLogger()
-    if log then log.info("M.draw: START") end
-
-    if not Core then
-        if log then log.warn("M.draw: Core is nil, returning") end
-        return
-    end
-
-    local mode = Core.getContentMode()
-    if log then log.info(string.format("M.draw: mode='%s'", tostring(mode))) end
-
-    if mode == "settings" then
-        drawSettingsPanel()
-    elseif mode == "tests" then
-        drawTestPanel()
-    else
-        drawModPanel()
-    end
-end
 
 -- ====================================================================
 -- Mod Panel (default — shows selected mod's settings)
 -- ====================================================================
-function drawModPanel()
+
+--- Draw mod info popup (version, author, description, test status).
+---@param selectedMod string The selected mod ID
+---@param mod table The mod state
+---@param spec table The mod spec
+---@return nil
+local function drawModInfoPopup(selectedMod, mod, spec)
+    if ImGui.BeginPopup("##info_popup_" .. selectedMod) then
+        ImGui.Text(spec.name or selectedMod)
+        ImGui.Separator()
+        if spec.version then ImGui.TextDisabled("Version:  v" .. spec.version) end
+        if spec.author then ImGui.TextDisabled("Author:   " .. spec.author) end
+        ImGui.TextDisabled("Mod ID:   " .. selectedMod)
+        if mod.renderMode then ImGui.TextDisabled("Mode:     " .. mod.renderMode) end
+        local assignment = Core.getModCategory(selectedMod)
+        if assignment and assignment.category then
+            local catText = assignment.category
+            if assignment.subcategory then catText = catText .. " › " .. assignment.subcategory end
+            ImGui.TextDisabled("Category: " .. catText)
+        end
+        if spec.description and spec.description ~= "" then
+            ImGui.Separator()
+            ImGui.TextWrapped(spec.description)
+        end
+        -- Test status
+        if TestResults then
+            local r = TestResults.get(selectedMod)
+            if r then
+                ImGui.Separator()
+                if r.status == "pass" then
+                    local c = Tokens and Tokens.color4n("success") or {r=0.3, g=0.9, b=0.3}
+                    ImGui.TextColored(c.r, c.g, c.b, 1, string.format("Tests: %d/%d passing", r.passed, r.passed + r.failed))
+                elseif r.status == "fail" then
+                    local c = Tokens and Tokens.color4n("warning") or {r=0.9, g=0.9, b=0.2}
+                    ImGui.TextColored(c.r, c.g, c.b, 1, string.format("Tests: %d/%d passing", r.passed, r.passed + r.failed))
+                else
+                    local c = Tokens and Tokens.color4n("error") or {r=0.9, g=0.3, b=0.3}
+                    ImGui.TextColored(c.r, c.g, c.b, 1, "Tests: Error")
+                end
+            end
+        end
+        ImGui.EndPopup()
+    end
+end
+
+--- Draw reset settings button.
+---@param selectedMod string The selected mod ID
+---@param mod table The mod state
+---@param spec table The mod spec
+---@return nil
+local function drawResetButton(selectedMod, mod, spec)
+    ImGui.Spacing()
+    ImGui.Separator()
+    if ImGui.Button("Reset to Defaults") then
+        if CfgResolver and CfgResolver.resolveSettings and CfgUndoRedo and CfgUndoRedo.makePresetCommand then
+            local oldSettings = {}
+            for k, v in pairs(mod.settings or {}) do oldSettings[k] = v end
+            local newSettings = CfgResolver.resolveSettings(spec, nil)
+            local cmd = CfgUndoRedo.makePresetCommand(selectedMod, oldSettings, newSettings, "Reset to Defaults")
+            CfgUndoRedo.execute(cmd, function(c)
+                Core.setMod(c.modId, { settings = c.newSettings })
+                Core.markDirty()
+                return true
+            end)
+        end
+    end
+end
+
+local function drawModPanel()
     resolveLogger()
     if log then log.info("drawModPanel: START") end
 
@@ -382,9 +428,56 @@ function drawModPanel()
 end
 
 -- ====================================================================
+-- Engine Settings (schema-driven rendering)
+-- ====================================================================
+
+--- Generic engine settings renderer using schema.
+---@param engineId string The engine mod ID (e.g., "0-Engine-UI")
+local function drawEngineSettings(engineId)
+    resolveLogger()
+    if log then log.info(string.format("drawEngineSettings: START for %s", engineId)) end
+
+    local mod = Core.getMod(engineId)
+    if not mod then
+        if log then log.warn(string.format("drawEngineSettings: mod %s NOT FOUND", engineId)) end
+        return
+    end
+
+    local spec = mod.spec or {}
+    local settings = mod.settings or {}
+
+    if log then log.info(string.format("drawEngineSettings: spec.settings=%s, settings keys=%s", tostring(spec.settings ~= nil), tostring(next(settings)))) end
+
+    -- Use SettingsRenderer to render from schema
+    if SettingsRenderer and SettingsRenderer.renderSettings and spec.settings then
+        local changed = SettingsRenderer.renderSettings(engineId, spec, settings)
+        if changed then
+            -- Recursively apply live settings changes (handles nested sections)
+            local function applySettingsRecursive(settingsDef, settingsTable)
+                for key, setting in pairs(settingsDef) do
+                    if setting.type == "section" and setting.settings then
+                        -- Recurse into section's nested settings with the same settings table
+                        applySettingsRecursive(setting.settings, settingsTable)
+                    elseif settingsTable[key] ~= nil then
+                        applySettingLive(engineId, key, settingsTable[key])
+                    end
+                end
+            end
+            applySettingsRecursive(spec.settings, settings)
+            if Core and Core.markDirty then
+                Core.markDirty()
+            end
+        end
+    else
+        if log then log.warn(string.format("drawEngineSettings: SettingsRenderer or spec.settings not available for %s", engineId)) end
+        ImGui.TextDisabled("Settings not available")
+    end
+end
+
+-- ====================================================================
 -- Settings Panel (engine settings — tabbed)
 -- ====================================================================
-function drawSettingsPanel()
+local function drawSettingsPanel()
     resolveTokens()
     resolveComponents()
     resolveLogger()
@@ -538,56 +631,9 @@ function drawSettingsPanel()
 end
 
 -- ====================================================================
--- Engine Settings (schema-driven rendering)
--- ====================================================================
-
---- Generic engine settings renderer using schema.
----@param engineId string The engine mod ID (e.g., "0-Engine-UI")
-function drawEngineSettings(engineId)
-    resolveLogger()
-    if log then log.info(string.format("drawEngineSettings: START for %s", engineId)) end
-
-    local mod = Core.getMod(engineId)
-    if not mod then
-        if log then log.warn(string.format("drawEngineSettings: mod %s NOT FOUND", engineId)) end
-        return
-    end
-
-    local spec = mod.spec or {}
-    local settings = mod.settings or {}
-
-    if log then log.info(string.format("drawEngineSettings: spec.settings=%s, settings keys=%s", tostring(spec.settings ~= nil), tostring(next(settings)))) end
-
-    -- Use SettingsRenderer to render from schema
-    if SettingsRenderer and SettingsRenderer.renderSettings and spec.settings then
-        local changed = SettingsRenderer.renderSettings(engineId, spec, settings)
-        if changed then
-            -- Recursively apply live settings changes (handles nested sections)
-            local function applySettingsRecursive(settingsDef, settingsTable)
-                for key, setting in pairs(settingsDef) do
-                    if setting.type == "section" and setting.settings then
-                        -- Recurse into section's nested settings with the same settings table
-                        applySettingsRecursive(setting.settings, settingsTable)
-                    elseif settingsTable[key] ~= nil then
-                        applySettingLive(engineId, key, settingsTable[key])
-                    end
-                end
-            end
-            applySettingsRecursive(spec.settings, settings)
-            if Core and Core.markDirty then
-                Core.markDirty()
-            end
-        end
-    else
-        if log then log.warn(string.format("drawEngineSettings: SettingsRenderer or spec.settings not available for %s", engineId)) end
-        ImGui.TextDisabled("Settings not available")
-    end
-end
-
--- ====================================================================
 -- Test Panel (central test management)
 -- ====================================================================
-function drawTestPanel()
+local function drawTestPanel()
     resolveLogger()
     if log then log.info("drawTestPanel: START") end
 
@@ -687,6 +733,97 @@ function drawTestPanel()
     ImGui.Spacing()
     if ImGui.Button("Back to Mods") then
         Core.setContentMode("mod")
+    end
+end
+
+--- Draw detached mod windows (right-click → "Open in Window").
+--- Called from init.lua onDraw to render floating mod windows.
+---@return nil
+function M.drawDetachedWindows()
+    if not Core then return end
+
+    local detached = Core.getDetachedMods()
+    if not detached then return end
+
+    for modId, winState in pairs(detached) do
+        local mod = Core.getMod(modId)
+        if mod then
+            local spec = mod.spec or {}
+            local title = (spec.name or modId) .. "##detached_" .. modId
+            ImGui.SetNextWindowPos(winState.x, winState.y, ImGuiCond.FirstUseEver)
+            ImGui.SetNextWindowSize(winState.width, winState.height, ImGuiCond.FirstUseEver)
+            local visible = ImGui.Begin(title, true)
+            if visible then
+                -- Render mod info header
+                ImGui.Text(spec.name or modId)
+                ImGui.Separator()
+                if spec.version then ImGui.Text("Version: " .. spec.version) end
+                if spec.author then ImGui.Text("Author: " .. spec.author) end
+                if spec.description then ImGui.TextWrapped(spec.description) end
+                ImGui.Spacing()
+                ImGui.Separator()
+                ImGui.Spacing()
+
+                -- Render settings if schema-based
+                if (mod.renderMode == "schema" or mod.renderMode == "hybrid") and SettingsRenderer and SettingsRenderer.renderSettings then
+                    local changed = SettingsRenderer.renderSettings(modId, spec, mod.settings)
+                    if changed and spec.settings then
+                        for key, _ in pairs(spec.settings) do
+                            if mod.settings[key] ~= nil then
+                                applySettingLive(modId, key, mod.settings[key])
+                            end
+                        end
+                        if Core.markDirty then Core.markDirty() end
+                    end
+                end
+
+                -- Custom draw
+                if (mod.renderMode == "custom" or mod.renderMode == "hybrid") and spec.draw then
+                    local modCtx = { modId = modId, spec = spec }
+                    setmetatable(modCtx, {
+                        __index = function(_, k)
+                            if ImGui[k] then return ImGui[k] end
+                            return nil
+                        end
+                    })
+                    local drawOk, drawErr = pcall(spec.draw, modCtx)
+                    if not drawOk then
+                        ImGui.TextColored(1, 0.3, 0.3, 1, "Draw error: " .. tostring(drawErr))
+                    end
+                end
+            end
+            -- Handle close button (visibility becomes false when X is clicked)
+            if not visible then
+                Core.reattachMod(modId)
+            end
+            ImGui.End()
+        else
+            -- Mod no longer exists, clean up
+            Core.reattachMod(modId)
+        end
+    end
+end
+
+--- Draw the content area (dispatches based on contentMode).
+---@return nil
+function M.draw()
+    resolveLogger()
+    if log then log.info("M.draw: START") end
+
+    if not Core then
+        if log then log.warn("M.draw: Core is nil, returning") end
+        return
+    end
+
+    local mode = Core.getContentMode()
+    if log then log.info(string.format("M.draw: mode='%s'", tostring(mode))) end
+
+    if mode == "settings" then
+        drawSettingsPanel()
+    elseif mode == "tests" then
+        drawTestPanel()
+    else
+        drawModPanel()
     end
 end
 

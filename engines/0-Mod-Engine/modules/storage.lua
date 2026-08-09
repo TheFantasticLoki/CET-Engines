@@ -28,6 +28,8 @@ local data = {}
 local dirty = false
 ---@type boolean Whether storage has been initialized
 local initialized = false
+---@type boolean Whether non-serializable types have been stored (skips sanitizeForJson when false)
+local _hasNonSerializable = false
 ---@type table|nil Legacy Logger module reference (lazy-loaded dependency)
 local Logger = nil
 ---@type Logger? Log-Engine logger instance
@@ -167,10 +169,15 @@ function M.init(logger)
 end
 
 --- Save all data to disk (atomic write pattern: temp → backup → primary).
+--- Skips deep sanitization scan when all values are JSON-safe (common case).
 ---@return boolean success True on success, false on failure
 function M.Save()
     local ok, err = pcall(function()
-        local sanitized = sanitizeForJson(data, "root")
+        -- Skip sanitizeForJson if no non-serializable types have been stored
+        local sanitized = data
+        if _hasNonSerializable then
+            sanitized = sanitizeForJson(data, "root")
+        end
         local encoded = json.encode(sanitized)
         if not writeFile(TEMP_FILE, encoded) then
             error("Failed to write temp file: " .. TEMP_FILE)
@@ -211,6 +218,11 @@ function M.Set(modName, key, value)
     end
     data[modName][key] = value
     dirty = true
+    -- Track non-serializable types to skip deep scan on save
+    local vt = type(value)
+    if vt == "function" or vt == "userdata" or vt == "thread" then
+        _hasNonSerializable = true
+    end
 end
 
 --- Get a value for a mod.

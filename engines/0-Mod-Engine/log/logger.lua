@@ -62,7 +62,6 @@ end
 -- Config values inlined with fallbacks (CET require may not resolve siblings)
 local Config = SafeRequire("log/config") or {}
 local FileOutput = SafeRequire("log/file_output")
-print("[Logger] logger.lua loaded: Config=" .. tostring(Config ~= nil) .. " FileOutput=" .. tostring(FileOutput ~= nil))
 
 -- --- Level Names (with fallback) ---
 local LEVEL_NAMES = Config.LEVEL_NAMES or {

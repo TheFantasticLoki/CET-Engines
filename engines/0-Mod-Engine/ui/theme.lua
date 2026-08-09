@@ -123,23 +123,9 @@ function M.InvalidateCache()
     end
 end
 
---- Get cached style colors for current theme
----@return table Array of {ImGuiCol, r, g, b, a} entries
-local function getCachedStyleColors()
-    local key = getCacheKey()
-    if _cache[key] then
-        return _cache[key]
-    end
-
-    -- Resolve colors from theme
-    local colors = resolveThemeColors()
-    _cache[key] = colors
-    return colors
-end
-
 --- Resolve theme colors to ImGui style color entries
 ---@return table Array of {ImGuiCol, r, g, b, a} entries
-function resolveThemeColors()
+local function resolveThemeColors()
     local colors = {}
 
     if not _core or not _themes then
@@ -226,6 +212,20 @@ function resolveThemeColors()
     table.insert(colors, { ImGuiCol.ResizeGripHovered, primary.r * 0.75, primary.g * 0.75, primary.b * 0.75, 0.90 })
     table.insert(colors, { ImGuiCol.ResizeGripActive, primary.r, primary.g, primary.b, 1.0 })
 
+    return colors
+end
+
+--- Get cached style colors for current theme
+---@return table Array of {ImGuiCol, r, g, b, a} entries
+local function getCachedStyleColors()
+    local key = getCacheKey()
+    if _cache[key] then
+        return _cache[key]
+    end
+
+    -- Resolve colors from theme
+    local colors = resolveThemeColors()
+    _cache[key] = colors
     return colors
 end
 

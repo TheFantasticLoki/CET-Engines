@@ -132,6 +132,7 @@ function M.setSelectedMod(value)
     local old = ui.selectedMod
     ui.selectedMod = value
     if old ~= value then
+        _settingsDirty = true
         emitEvent("core:selectedModChanged", value, old)
     end
 end
@@ -146,6 +147,7 @@ function M.setSidebarOpen(value)
     local old = ui.sidebarOpen
     ui.sidebarOpen = value
     if old ~= value then
+        _settingsDirty = true
         emitEvent("core:sidebarOpenChanged", value, old)
     end
 end
@@ -160,6 +162,7 @@ function M.setSettingsOpen(value)
     local old = ui.settingsOpen
     ui.settingsOpen = value
     if old ~= value then
+        _settingsDirty = true
         emitEvent("core:settingsOpenChanged", value, old)
     end
 end
@@ -174,6 +177,7 @@ function M.setCurrentTheme(value)
     local old = theme.currentTheme
     theme.currentTheme = value
     if old ~= value then
+        _settingsDirty = true
         if log then log.trace("Theme changed: " .. tostring(old) .. " -> " .. tostring(value)) end
         emitEvent("core:themeChanged", value, old)
     end
@@ -188,7 +192,10 @@ end
 function M.setAccentColor(value)
     local old = theme.accentColor
     theme.accentColor = value
-    emitEvent("core:accentColorChanged", value, old)
+    if old ~= value then
+        _settingsDirty = true
+        emitEvent("core:accentColorChanged", value, old)
+    end
 end
 
 ---@return number
@@ -201,6 +208,7 @@ function M.setContrastLevel(value)
     local old = theme.contrastLevel
     theme.contrastLevel = value
     if old ~= value then
+        _settingsDirty = true
         emitEvent("core:contrastLevelChanged", value, old)
     end
 end
@@ -214,6 +222,7 @@ function M.setSearchQuery(value)
     local old = sidebar.searchQuery
     sidebar.searchQuery = value
     if old ~= value then
+        _settingsDirty = true
         emitEvent("core:searchQueryChanged", value, old)
     end
 end
@@ -232,6 +241,7 @@ function M.setSectionState(id, value)
     local old = features.sectionStates[id]
     features.sectionStates[id] = value
     if old ~= value then
+        _settingsDirty = true
         emitEvent("core:sectionStateChanged", id, value, old)
     end
 end
@@ -248,6 +258,7 @@ function M.setSettingsVersion(value)
     local old = settings.settingsVersion
     settings.settingsVersion = value
     if old ~= value then
+        _settingsDirty = true
         emitEvent("core:settingsVersionChanged", value, old)
     end
 end
@@ -262,6 +273,7 @@ function M.setAutoSave(value)
     local old = settings.autoSave
     settings.autoSave = value
     if old ~= value then
+        _settingsDirty = true
         emitEvent("core:autoSaveChanged", value, old)
     end
 end
@@ -340,8 +352,17 @@ end
 
 --- Get all serializable settings as a table
 ---@return table All settings for serialization
+--- Cached settings table (rebuilt only when state changes)
+---@type table|nil
+local _settingsCache = nil
+---@type boolean
+local _settingsDirty = true
+
 function M.getAllSettings()
-    return {
+    if not _settingsDirty and _settingsCache then
+        return _settingsCache
+    end
+    _settingsCache = {
         ui = {
             selectedMod = ui.selectedMod,
             sidebarOpen = ui.sidebarOpen,
@@ -365,6 +386,8 @@ function M.getAllSettings()
             autoSave = settings.autoSave,
         },
     }
+    _settingsDirty = false
+    return _settingsCache
 end
 
 --- Apply a table of settings (bulk update)

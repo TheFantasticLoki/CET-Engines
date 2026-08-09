@@ -22,12 +22,11 @@ local maxSteps = 50
 ---@type number
 local maxRedoSteps = 50
 
---- Clear undo/redo stacks.
----@return nil
-function M.clear()
-    undoStack = {}
-    redoStack = {}
-end
+-- Dependencies (late-bound)
+---@type table|nil CfgCore module reference
+local _cfgCore = nil
+---@type table|nil CfgResolver module reference
+local _cfgResolver = nil
 
 --- Clear undo/redo entries for a specific mod.
 ---@param modId string The mod identifier
@@ -59,13 +58,78 @@ function M.clearForMod(modId)
     redoStack = filterByMod(redoStack)
 end
 
+--- Clear all undo/redo history.
+---@return nil
+function M.clear()
+    undoStack = {}
+    redoStack = {}
+    batchCommands = {}
+    inBatch = false
+end
+
+--- Apply a single command in the given direction ("undo" or "redo").
+--- Requires CfgCore and CfgResolver to be set via M.init().
+---@param cmd table The command to apply
+---@param direction string "undo" or "redo"
+---@return boolean success
+function M.applyCommand(cmd, direction)
+    if not _cfgCore or not _cfgResolver then
+        return false
+    end
+
+    if cmd.type == "setting" then
+        local mod = _cfgCore.getMod(cmd.modId)
+        if mod and mod.settings then
+            local value = (direction == "undo") and cmd.oldValue or cmd.newValue
+            _cfgResolver.setValue(mod.settings, cmd.key, value)
+            _cfgCore.markDirty()
+            return true
+        end
+        return false
+    elseif cmd.type == "preset" then
+        local mod = _cfgCore.getMod(cmd.modId)
+        if mod then
+            mod.settings = (direction == "undo") and cmd.oldSettings or cmd.newSettings
+            _cfgCore.markDirty()
+            return true
+        end
+        return false
+    elseif cmd.type == "batch" and cmd.commands then
+        -- Undo iterates reverse, redo iterates forward
+        local start, stop, step = 1, #cmd.commands, 1
+        if direction == "undo" then
+            start, stop, step = #cmd.commands, 1, -1
+        end
+        for i = start, stop, step do
+            local sub = cmd.commands[i].command or cmd.commands[i]
+            if sub.type == "setting" then
+                local mod = _cfgCore.getMod(sub.modId)
+                if mod and mod.settings then
+                    local value = (direction == "undo") and sub.oldValue or sub.newValue
+                    _cfgResolver.setValue(mod.settings, sub.key, value)
+                end
+            elseif sub.type == "preset" then
+                local mod = _cfgCore.getMod(sub.modId)
+                if mod then
+                    mod.settings = (direction == "undo") and sub.oldSettings or sub.newSettings
+                end
+            end
+        end
+        _cfgCore.markDirty()
+        return true
+    end
+    return false
+end
+
 --- Initialize the undo/redo system.
----@param options table|nil Optional: { maxSteps, maxRedoSteps }
+---@param options table|nil Optional: { maxSteps, maxRedoSteps, cfgCore, cfgResolver }
 ---@return nil
 function M.init(options)
     options = options or {}
     maxSteps = options.maxSteps or 50
     maxRedoSteps = options.maxRedoSteps or 50
+    _cfgCore = options.cfgCore or nil
+    _cfgResolver = options.cfgResolver or nil
     undoStack = {}
     redoStack = {}
     batchStack = {}
@@ -298,15 +362,6 @@ end
 ---@return number
 function M.getRedoCount()
     return #redoStack
-end
-
---- Clear all undo/redo history.
----@return nil
-function M.clear()
-    undoStack = {}
-    redoStack = {}
-    batchCommands = {}
-    inBatch = false
 end
 
 --- Reverse a command for undo.

@@ -114,45 +114,68 @@ end
 -- State Management (per-slider instance)
 -- ============================================================================
 
--- Track per-slider state by label ID
+-- Track per-slider state by label ID with LRU eviction
 local _states = {}
+local _stateOrder = {}  -- insertion order for LRU eviction
+local MAX_STATES = 100  -- Maximum number of cached slider states
 
 --- Get or create state for a slider instance
 ---@param id Unique slider ID
 ---@return table State table
 local function getState(id)
-    if not _states[id] then
-        _states[id] = {
-            -- Animation state
-            handleAnim = Animation.Timer(ANIMATION_DURATION, Animation.EaseOutCubic),
-            defaultIndicatorAnim = Animation.Timer(0.2, Animation.EaseOutCubic),
-
-            -- Visual state (updated each frame)
-            hovered = false,
-            active = false,
-            hoveringHandle = false,
-
-            -- Drag state
-            dragging = false,
-            dragStartValue = 0,
-            dragStartMouseX = 0,
-            dragTrackMinX = 0,
-            dragTrackMaxX = 0,
-            dragTrackWidth = 0,
-
-            -- Previous frame values (for animation triggers)
-            prevValue = nil,
-            prevDefault = nil,
-
-            -- Tooltip state
-            showTooltip = false,
-            tooltipValue = 0,
-
-            -- Init flag
-            initialized = false,
-        }
+    if _states[id] then
+        -- Move to end (most recently used)
+        for i, sid in ipairs(_stateOrder) do
+            if sid == id then
+                table.remove(_stateOrder, i)
+                break
+            end
+        end
+        table.insert(_stateOrder, id)
+        return _states[id]
     end
-    return _states[id]
+
+    -- Create new state
+    local state = {
+        -- Animation state
+        handleAnim = Animation.Timer(ANIMATION_DURATION, Animation.EaseOutCubic),
+        defaultIndicatorAnim = Animation.Timer(0.2, Animation.EaseOutCubic),
+
+        -- Visual state (updated each frame)
+        hovered = false,
+        active = false,
+        hoveringHandle = false,
+
+        -- Drag state
+        dragging = false,
+        dragStartValue = 0,
+        dragStartMouseX = 0,
+        dragTrackMinX = 0,
+        dragTrackMaxX = 0,
+        dragTrackWidth = 0,
+
+        -- Previous frame values (for animation triggers)
+        prevValue = nil,
+        prevDefault = nil,
+
+        -- Tooltip state
+        showTooltip = false,
+        tooltipValue = 0,
+
+        -- Init flag
+        initialized = false,
+    }
+
+    _states[id] = state
+    table.insert(_stateOrder, id)
+
+    -- Evict oldest if over limit
+    if #_stateOrder > MAX_STATES then
+        local oldId = table.remove(_stateOrder, 1)
+        _states[oldId] = nil
+    end
+
+    return state
 end
 
 -- ============================================================================
