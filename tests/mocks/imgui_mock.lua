@@ -493,7 +493,7 @@ function ImGui.ImDrawListAddRect(drawList, p_minX, p_minY, p_maxX, p_maxY, color
 function ImGui.ImDrawListAddRectFilled(drawList, p_minX, p_minY, p_maxX, p_maxY, color, rounding, flags) end
 function ImGui.ImDrawListAddCircle(drawList, centerX, centerY, radius, color, num_segments, thickness) end
 function ImGui.ImDrawListAddCircleFilled(drawList, centerX, centerY, radius, color, num_segments) end
-function ImGui.ImDrawListAddText(drawList, posX, posY, color, text) end
+function ImGui.ImDrawListAddText(drawList, posX, posY, color, text, wrap_width) end
 function ImGui.ImDrawListAddTextWrapped(drawList, pos, color, text, wrap_width) end
 function ImGui.ImDrawListAddImage(drawList, texture_id, p_min, p_max, uv_min, uv_max, tint_col) end
 function ImGui.ImDrawListAddBezierCubic(drawList, p1, p2, p3, p4, color, thickness, num_segments) end

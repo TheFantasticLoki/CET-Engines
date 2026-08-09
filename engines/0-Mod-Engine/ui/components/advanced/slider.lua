@@ -28,6 +28,16 @@ local Tokens = require("ui/tokens")
 local Animation = require("ui/animation")
 local ColorEngine = require("ui/color_engine")
 
+-- Lazy-loaded AdvancedTooltip (late-bound to avoid circular deps)
+local AdvancedTooltip = nil
+local function getTooltip()
+    if not AdvancedTooltip then
+        local ok, mod = pcall(require, "ui/components/advanced/tooltip")
+        if ok then AdvancedTooltip = mod end
+    end
+    return AdvancedTooltip
+end
+
 -- Lazy-loaded Theme and LogEngine references
 local _theme = nil
 local _log = nil
@@ -451,7 +461,7 @@ local function drawSliderTooltip(dl, lines, bg, border, colorMap, anchor)
     local lineHeight = select(2, ImGui.CalcTextSize("X"))
     local lineSpacing = 3
     local padding = 6
-    local separatorHeight = 4 -- Extra height for separator lines
+    local separatorHeight = 5 -- Extra height for separator lines
     local tooltipH = 0
     for _, entry in ipairs(lines) do
         if entry.text == "---" then
@@ -512,9 +522,9 @@ local function drawSliderTooltip(dl, lines, bg, border, colorMap, anchor)
         local ty = tooltipY + padding
         for _, entry in ipairs(lines) do
             if entry.text == "---" then
-                -- Draw separator line using tooltip border color
-                local sepPacked = colorMap["separator"] or border
-                ImGui.ImDrawListAddLine(fgDrawList, tooltipX + padding, ty + lineHeight / 2, tooltipX + tooltipW - padding, ty + lineHeight / 2, sepPacked, 1)
+                -- Draw separator line using tooltip border color (accent color, centered)
+                local sepPacked = border
+                ImGui.ImDrawListAddLine(fgDrawList, tooltipX + padding, ty + separatorHeight / 2, tooltipX + tooltipW - padding, ty + separatorHeight / 2, sepPacked, 1)
                 ty = ty + separatorHeight + lineSpacing
             else
                 local lineColor = colorMap[entry.color] or colorMap["text"]
@@ -528,9 +538,9 @@ local function drawSliderTooltip(dl, lines, bg, border, colorMap, anchor)
         local ty = tooltipY + padding
         for _, entry in ipairs(lines) do
             if entry.text == "---" then
-                -- Draw separator line using tooltip border color
-                local sepPacked = colorMap["separator"] or border
-                ImGui.ImDrawListAddLine(dl, tooltipX + padding, ty + lineHeight / 2, tooltipX + tooltipW - padding, ty + lineHeight / 2, sepPacked, 1)
+                -- Draw separator line using tooltip border color (accent color, centered)
+                local sepPacked = border
+                ImGui.ImDrawListAddLine(dl, tooltipX + padding, ty + separatorHeight / 2, tooltipX + tooltipW - padding, ty + separatorHeight / 2, sepPacked, 1)
                 ty = ty + separatorHeight + lineSpacing
             else
                 local lineColor = colorMap[entry.color] or colorMap["text"]
@@ -944,7 +954,12 @@ function M.AdvancedSlider(label_or_spec, value, options)
                 text_dim = tooltipDescColor,
                 separator = tooltipBorderColor,
             }
-            drawSliderTooltip(drawList, minusLines, tooltipBgColor, tooltipBorderColor, minusColorMap, tooltipAnchor)
+            local tt = getTooltip()
+            if tt then
+                tt.render("slider_minus_" .. label, minusLines, minusColorMap, { anchor = tooltipAnchor })
+            else
+                drawSliderTooltip(drawList, minusLines, tooltipBgColor, tooltipBorderColor, minusColorMap, tooltipAnchor)
+            end
         end
     end
 
@@ -1152,7 +1167,12 @@ function M.AdvancedSlider(label_or_spec, value, options)
                 text_dim = tooltipDescColor,
                 separator = tooltipBorderColor,
             }
-            drawSliderTooltip(drawList, plusLines, tooltipBgColor, tooltipBorderColor, plusColorMap, tooltipAnchor)
+            local tt = getTooltip()
+            if tt then
+                tt.render("slider_plus_" .. label, plusLines, plusColorMap, { anchor = tooltipAnchor })
+            else
+                drawSliderTooltip(drawList, plusLines, tooltipBgColor, tooltipBorderColor, plusColorMap, tooltipAnchor)
+            end
         end
     end
 
@@ -1278,7 +1298,12 @@ function M.AdvancedSlider(label_or_spec, value, options)
             text_dim = tooltipDescColor,
             separator = tooltipBorderColor,
         }
-        drawSliderTooltip(drawList, lines, tooltipBgColor, tooltipBorderColor, tooltipColorMap, tooltipAnchor)
+        local tt = getTooltip()
+        if tt then
+            tt.render("slider_" .. label, lines, tooltipColorMap, { anchor = tooltipAnchor })
+        else
+            drawSliderTooltip(drawList, lines, tooltipBgColor, tooltipBorderColor, tooltipColorMap, tooltipAnchor)
+        end
     end
 
     -- ====================================================================

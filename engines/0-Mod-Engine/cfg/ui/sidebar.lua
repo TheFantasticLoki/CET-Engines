@@ -12,6 +12,16 @@ local TestResults = nil
 local Categories = nil
 local Tokens = nil
 
+-- Lazy-loaded AdvancedTooltip
+local AdvancedTooltip = nil
+local function getTooltip()
+    if not AdvancedTooltip then
+        local ok, mod = pcall(require, "ui/components/advanced/tooltip")
+        if ok then AdvancedTooltip = mod end
+    end
+    return AdvancedTooltip
+end
+
 local function resolveTokens()
     if Tokens then return end
     local ok, mod = pcall(require, "ui/tokens")
@@ -113,68 +123,75 @@ local function drawModEntry(modId, selectedMod)
         end)
     end
 
-    -- Tooltip
+    -- Tooltip (using AdvancedTooltip for consistent styling)
     if ImGui.IsItemHovered() then
-        ImGui.BeginTooltip()
-        ImGui.TextColored(0.9, 0.9, 1.0, 1.0, label)
-        if spec.version then
-            ImGui.SameLine()
-            ImGui.TextDisabled("v" .. spec.version)
-        end
-        if spec.author then ImGui.TextDisabled("by " .. spec.author) end
-        if spec.description and spec.description ~= "" then
-            ImGui.Spacing()
-            ImGui.TextWrapped(spec.description)
-        end
-        ImGui.Separator()
-        local assignment = Core.getModCategory(modId)
-        if assignment and assignment.category then
-            local catText = assignment.category
-            if assignment.subcategory then catText = catText .. " › " .. assignment.subcategory end
-            ImGui.TextDisabled("Category: ")
-            ImGui.SameLine()
-            ImGui.Text(catText)
-        end
-        if mod.renderMode then
-            ImGui.TextDisabled("Mode: ")
-            ImGui.SameLine()
-            ImGui.Text(mod.renderMode)
-        end
-        local tags = Core.getModTags(modId)
-        if tags and #tags > 0 then
-            ImGui.TextDisabled("Tags: ")
-            ImGui.SameLine()
-            ImGui.Text(table.concat(tags, ", "))
-        end
-        if TestResults then
-            local r = TestResults.get(modId)
-            if r then
-                ImGui.Separator()
-                local statusColor
-                if r.status == "pass" then
-                    statusColor = Tokens and Tokens.color4n("success") or {0.3, 0.9, 0.3}
-                elseif r.status == "fail" then
-                    statusColor = Tokens and Tokens.color4n("warning") or {0.9, 0.9, 0.2}
-                else
-                    statusColor = Tokens and Tokens.color4n("error") or {0.9, 0.3, 0.3}
+        local tt = getTooltip()
+        if tt then
+            local builder = tt.begin("mod_" .. modId)
+
+            -- Header: Mod Name (larger, themed)  ||  Test Status (right-aligned)
+            local testText = nil
+            if TestResults then
+                local r = TestResults.get(modId)
+                if r then
+                    testText = string.format("%d/%d", r.passed, r.passed + r.failed)
                 end
-                ImGui.TextColored(statusColor[1], statusColor[2], statusColor[3], 1.0,
-                    string.format("Tests: %d/%d passing", r.passed, r.passed + r.failed))
             end
-        end
-        if spec.tooltipFn and type(spec.tooltipFn) == "function" then
-            ImGui.Separator()
-            local ok, customLines = pcall(spec.tooltipFn, mod)
-            if ok and type(customLines) == "string" then
-                ImGui.TextWrapped(customLines)
-            elseif ok and type(customLines) == "table" then
-                for _, line in ipairs(customLines) do ImGui.TextWrapped(tostring(line)) end
+            builder.headerInline(label, testText)
+
+            -- Themed separator
+            builder.separator()
+
+            -- Metadata section: muted labels, normal values
+            builder.keyValue("Version", spec.version and ("v" .. spec.version))
+            builder.keyValue("Author", spec.author)
+            local assignment = Core.getModCategory(modId)
+            if assignment and assignment.category then
+                local catText = assignment.category
+                if assignment.subcategory then catText = catText .. " › " .. assignment.subcategory end
+                builder.keyValue("Category", catText)
             end
-        elseif spec.tooltip and type(spec.tooltip) == "string" then
-            ImGui.Separator()
-            ImGui.TextWrapped(spec.tooltip)
+            if mod.renderMode then
+                builder.keyValue("Mode", mod.renderMode)
+            end
+            local tags = Core.getModTags(modId)
+            if tags and #tags > 0 then
+                builder.keyValue("Tags", table.concat(tags, ", "))
+            end
+
+            -- Separator before description
+            if (spec.description and spec.description ~= "") or (spec.tooltipFn) or (spec.tooltip and spec.tooltip ~= "") then
+                builder.separator()
+            end
+
+            -- Description
+            if spec.description and spec.description ~= "" then
+                builder.description(spec.description)
+            end
+            if spec.tooltipFn and type(spec.tooltipFn) == "function" then
+                local ok, customLines = pcall(spec.tooltipFn, mod)
+                if ok and type(customLines) == "string" then
+                    builder.description(customLines)
+                elseif ok and type(customLines) == "table" then
+                    for _, line in ipairs(customLines) do
+                        builder.description(tostring(line))
+                    end
+                end
+            elseif spec.tooltip and type(spec.tooltip) == "string" then
+                builder.description(spec.tooltip)
+            end
+
+            builder.done()
+        else
+            -- Fallback to basic tooltip
+            ImGui.BeginTooltip()
+            ImGui.TextColored(0.9, 0.9, 1.0, 1.0, label)
+            if spec.version then
+                ImGui.SameLine()
+                ImGui.TextDisabled("v" .. spec.version)
+            end
+            ImGui.EndTooltip()
         end
-        ImGui.EndTooltip()
     end
 
     -- Context menu
