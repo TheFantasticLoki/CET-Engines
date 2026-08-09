@@ -255,7 +255,8 @@ function M.RenderNotifications()
             ImGui.PushStyleColor(ImGuiCol.Border, n.color.r, n.color.g, n.color.b, 0.80)
 
             -- Render notification
-            ImGui.SetNextWindowPos(ImGui.GetIO().DisplaySize.x - 320, 60 + (i - 1) * 40, ImGuiCond.Always)
+            local displayX = GetDisplayResolution()
+            ImGui.SetNextWindowPos(displayX - 320, 60 + (i - 1) * 40, ImGuiCond.Always)
             ImGui.SetNextWindowSize(300, 36, ImGuiCond.Always)
             if ImGui.Begin("##notification_" .. i, nil,
                 ImGui.WindowFlags.NoDecoration + ImGui.WindowFlags.NoFocusOnAppearing + ImGui.WindowFlags.NoNav) then

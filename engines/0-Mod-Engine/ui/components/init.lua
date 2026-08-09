@@ -65,11 +65,13 @@ M.tables = SafeRequire("ui/components/tables")
 M.glyphs = SafeRequire("ui/components/glyphs")
 ---@type IconBrowser|nil
 M.iconBrowser = SafeRequire("ui/components/icon_browser")
+---@type Separator|nil
+M.separator = SafeRequire("ui/components/separator")
 
 -- Flatten into single API (only functions, don't overwrite sub-module tables)
 local subModules = {
     "primitives", "buttons", "display", "layout", "inputs", "sliders",
-    "containers", "advanced", "compose", "console", "tables", "glyphs", "iconBrowser"
+    "containers", "advanced", "compose", "console", "tables", "glyphs", "iconBrowser", "separator"
 }
 
 for _, modName in ipairs(subModules) do

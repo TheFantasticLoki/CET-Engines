@@ -443,42 +443,66 @@ end
 ---@param bg number Packed background color
 ---@param border number Packed border color
 ---@param colorMap table<string, number> Maps color role strings to packed colors
-local function drawSliderTooltip(dl, lines, bg, border, colorMap)
+---@param anchor string|nil "cursor" (default) or "item" (anchor to triggering item rect)
+local function drawSliderTooltip(dl, lines, bg, border, colorMap, anchor)
     if #lines == 0 then return end
 
     -- Calculate tooltip dimensions
     local lineHeight = select(2, ImGui.CalcTextSize("X"))
     local lineSpacing = 3
     local padding = 6
-    local tooltipH = #lines * (lineHeight + lineSpacing) - lineSpacing + padding * 2
+    local separatorHeight = 4 -- Extra height for separator lines
+    local tooltipH = 0
+    for _, entry in ipairs(lines) do
+        if entry.text == "---" then
+            tooltipH = tooltipH + separatorHeight + lineSpacing
+        else
+            tooltipH = tooltipH + lineHeight + lineSpacing
+        end
+    end
+    tooltipH = tooltipH - lineSpacing + padding * 2 -- Remove last spacing, add padding
+
     local maxW = 0
     for _, entry in ipairs(lines) do
-        local w = select(1, ImGui.CalcTextSize(entry.text))
-        if w > maxW then maxW = w end
+        if entry.text ~= "---" then
+            local w = select(1, ImGui.CalcTextSize(entry.text))
+            if w > maxW then maxW = w end
+        end
     end
     local tooltipW = maxW + padding * 2
 
-    -- Position at cursor with offset
-    local mouseX, mouseY = ImGui.GetMousePos()
-    local tooltipX = mouseX + 12
-    local tooltipY = mouseY - tooltipH - 4
+    -- Position at cursor or item rect depending on anchor
+    local tooltipX, tooltipY
+    if anchor == "item" then
+        -- Anchor to the triggering item's bottom-right corner
+        local itemMinX, itemMinY = ImGui.GetItemRectMin()
+        local itemMaxX, itemMaxY = ImGui.GetItemRectMax()
+        tooltipX = itemMaxX + 8
+        tooltipY = itemMaxY + 4
+    else
+        -- Default: anchor to cursor (top-left corner near cursor)
+        local mouseX, mouseY = ImGui.GetMousePos()
+        tooltipX = mouseX + 16
+        tooltipY = mouseY + 20
+    end
 
-    -- Clamp to window bounds
-    local winX, winY = ImGui.GetWindowPos()
-    local winW, winH = ImGui.GetWindowSize()
-    local screenMaxX = winX + winW
-    local screenMaxY = winY + winH
+    -- Clamp to display bounds (game screen / CET window, not parent element)
+    local displayW, displayH = GetDisplayResolution()
+    local screenMaxX = displayW
+    local screenMaxY = displayH
 
+    -- Flip to left side if near right edge
     if tooltipX + tooltipW > screenMaxX then
-        tooltipX = mouseX - tooltipW - 12
+        tooltipX = mouseX - tooltipW - 16
     end
-    if tooltipY < winY then
-        tooltipY = mouseY + 16
-    end
-    if tooltipX < winX then tooltipX = winX + 2 end
+    -- Flip to above cursor if near bottom edge
     if tooltipY + tooltipH > screenMaxY then
-        tooltipY = screenMaxY - tooltipH - 2
+        tooltipY = mouseY - tooltipH - 8
     end
+    -- Clamp horizontal to screen bounds
+    if tooltipX < 0 then tooltipX = 2 end
+    -- Clamp vertical — if still off-screen, snap to top
+    if tooltipY < 0 then tooltipY = 2 end
 
     -- Use foreground draw list to render over everything
     local fgDrawList = ImGui.GetForegroundDrawList()
@@ -487,18 +511,32 @@ local function drawSliderTooltip(dl, lines, bg, border, colorMap)
         ImGui.ImDrawListAddRect(fgDrawList, tooltipX, tooltipY, tooltipX + tooltipW, tooltipY + tooltipH, border, 4, 0, 1)
         local ty = tooltipY + padding
         for _, entry in ipairs(lines) do
-            local lineColor = colorMap[entry.color] or colorMap["text"]
-            ImGui.ImDrawListAddText(fgDrawList, tooltipX + padding, ty, lineColor, entry.text)
-            ty = ty + lineHeight + lineSpacing
+            if entry.text == "---" then
+                -- Draw separator line using tooltip border color
+                local sepPacked = colorMap["separator"] or border
+                ImGui.ImDrawListAddLine(fgDrawList, tooltipX + padding, ty + lineHeight / 2, tooltipX + tooltipW - padding, ty + lineHeight / 2, sepPacked, 1)
+                ty = ty + separatorHeight + lineSpacing
+            else
+                local lineColor = colorMap[entry.color] or colorMap["text"]
+                ImGui.ImDrawListAddText(fgDrawList, tooltipX + padding, ty, lineColor, entry.text)
+                ty = ty + lineHeight + lineSpacing
+            end
         end
     else
         drawRoundRect(dl, tooltipX, tooltipY, tooltipX + tooltipW, tooltipY + tooltipH, bg, 4, 0)
         drawRoundRect(dl, tooltipX, tooltipY, tooltipX + tooltipW, tooltipY + tooltipH, border, 4, 1)
         local ty = tooltipY + padding
         for _, entry in ipairs(lines) do
-            local lineColor = colorMap[entry.color] or colorMap["text"]
-            drawText(dl, tooltipX + padding, ty, lineColor, entry.text)
-            ty = ty + lineHeight + lineSpacing
+            if entry.text == "---" then
+                -- Draw separator line using tooltip border color
+                local sepPacked = colorMap["separator"] or border
+                ImGui.ImDrawListAddLine(dl, tooltipX + padding, ty + lineHeight / 2, tooltipX + tooltipW - padding, ty + lineHeight / 2, sepPacked, 1)
+                ty = ty + separatorHeight + lineSpacing
+            else
+                local lineColor = colorMap[entry.color] or colorMap["text"]
+                drawText(dl, tooltipX + padding, ty, lineColor, entry.text)
+                ty = ty + lineHeight + lineSpacing
+            end
         end
     end
 end
@@ -648,6 +686,7 @@ end
 --     tooltipDefaultColor = string/table, -- Tooltip default value color (default: "muted")
 --     tooltipDescColor = string/table, -- Tooltip description color (default: "text")
 --     tooltipDescAlpha = number, -- Tooltip description alpha (default: 0.6)
+--     tooltipAnchor = string, -- "cursor" (default) or "item" (anchor to triggering item)
 --
 --     -- Behavior options
 --     modifierShiftMult = number, -- Shift drag multiplier (default: 0.1)
@@ -691,6 +730,7 @@ function M.AdvancedSlider(label_or_spec, value, options)
     local step = opts.step or (max - min) / 100
     local format = opts.format or "%.2f"
     local tooltip = opts.tooltip
+    local tooltipAnchor = opts.tooltipAnchor or "cursor"
     local compWidth = opts.width or 256
     local compHeight = opts.height or 36
     local showButtons = opts.showButtons ~= false
@@ -904,7 +944,7 @@ function M.AdvancedSlider(label_or_spec, value, options)
                 text_dim = tooltipDescColor,
                 separator = tooltipBorderColor,
             }
-            drawSliderTooltip(drawList, minusLines, tooltipBgColor, tooltipBorderColor, minusColorMap)
+            drawSliderTooltip(drawList, minusLines, tooltipBgColor, tooltipBorderColor, minusColorMap, tooltipAnchor)
         end
     end
 
@@ -1112,7 +1152,7 @@ function M.AdvancedSlider(label_or_spec, value, options)
                 text_dim = tooltipDescColor,
                 separator = tooltipBorderColor,
             }
-            drawSliderTooltip(drawList, plusLines, tooltipBgColor, tooltipBorderColor, plusColorMap)
+            drawSliderTooltip(drawList, plusLines, tooltipBgColor, tooltipBorderColor, plusColorMap, tooltipAnchor)
         end
     end
 
@@ -1238,7 +1278,7 @@ function M.AdvancedSlider(label_or_spec, value, options)
             text_dim = tooltipDescColor,
             separator = tooltipBorderColor,
         }
-        drawSliderTooltip(drawList, lines, tooltipBgColor, tooltipBorderColor, tooltipColorMap)
+        drawSliderTooltip(drawList, lines, tooltipBgColor, tooltipBorderColor, tooltipColorMap, tooltipAnchor)
     end
 
     -- ====================================================================
@@ -1335,9 +1375,9 @@ function M.AdvancedSlider(label_or_spec, value, options)
     end
 
     -- ====================================================================
-    -- Tooltip
+    -- Tooltip (only when hovering track, not buttons — buttons have their own)
     -- ====================================================================
-    if tooltip and tooltip ~= "" and not state.dragging then
+    if tooltip and tooltip ~= "" and not state.dragging and state.hovered then
         Utils.Tooltip(tooltip)
     end
 
