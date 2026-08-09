@@ -2,6 +2,17 @@
 
 > **This is the source of truth.** All agents working in this workspace must read this file first.
 
+## Required Reading
+
+Before writing any code, agents **must** also read:
+
+| File | What It Covers |
+|------|----------------|
+| [`docs/CET_API_REFERENCE.md`](docs/CET_API_REFERENCE.md) | **Complete CET Lua API** — event system, observer/override hooks, TweakDB, GameOptions, entity spawning, Game singleton, ImGui bindings, value types, bit32 library, icon glyphs, and common modding patterns. Sourced from `dependencies/lua-libs/` type definitions. |
+| [`docs/API.md`](docs/API.md) | **0-Engine public API** — `ModEngine.*` methods, `ctx` proxy, component catalog, theme API, events, config-Engine schema types |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Module map, data flow, rendering pipeline |
+| [`docs/CODESTYLE.md`](docs/CODESTYLE.md) | Lua 5.1 conventions, module pattern, naming |
+
 ---
 
 ## Workspace Overview
@@ -22,6 +33,7 @@ CET-Engines/                         # Root workspace
 ├── docs/                                   # Shared documentation
 │   ├── ARCHITECTURE.md                     # Module map, data flow, rendering pipeline
 │   ├── API.md                              # Full public API reference
+│   ├── CET_API_REFERENCE.md                # *** CET Lua API cheat sheet for AI agents ***
 │   ├── CODESTYLE.md                        # Lua coding conventions and patterns
 │   ├── CONTRIBUTING.md                     # How to contribute, PR checklist
 │   ├── FILEMAP.md                          # File-by-file breakdown
