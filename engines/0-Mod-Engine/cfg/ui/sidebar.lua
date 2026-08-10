@@ -384,7 +384,58 @@ function M.draw()
     local selectedMod = Core.getSelectedMod()
     local visibleCount = 0
 
-    -- Group by category (skip engine internal mods — they have a dedicated settings panel)
+    -- ====================================================================
+    -- Shared Panel entry (shown at top when mods are registered)
+    -- ====================================================================
+    local sharedPanelCount = Core.getSharedPanelModCount()
+    if sharedPanelCount > 0 then
+        local isSharedSelected = (selectedMod == "__shared_panel__")
+
+        -- Shared panel selectable entry
+        local label = "  ⚡ Shared Settings (" .. sharedPanelCount .. ")"
+        ImGui.Selectable(label, isSharedSelected)
+        if ImGui.IsItemClicked() then
+            Core.setSelectedMod("__shared_panel__")
+            Core.setContentMode("shared_panel")
+        end
+
+        -- Status dot (green when active)
+        pcall(function()
+            local minX, minY = ImGui.GetItemRectMin()
+            local drawList = ImGui.GetWindowDrawList()
+            if drawList and minX then
+                local dotR = 3
+                local dotX = minX + 6
+                local dotY = minY + (ImGui.GetItemRectHeight() / 2)
+                local c = Tokens and Tokens.color4n("success") or {r=0.3, g=0.9, b=0.3}
+                local packed = ImGui.GetColorU32(c.r, c.g, c.b, 1.0)
+                ImGui.ImDrawListAddCircleFilled(drawList, dotX, dotY, dotR, packed, 0)
+            end
+        end)
+
+        -- Tooltip
+        if ImGui.IsItemHovered() then
+            ImGui.BeginTooltip()
+            ImGui.TextColored(0.9, 0.9, 1.0, 1.0, "Shared Settings Panel")
+            ImGui.TextDisabled(sharedPanelCount .. " mod(s) registered")
+            ImGui.Separator()
+            local sharedMods = Core.getSharedPanelMods()
+            for _, modId in ipairs(sharedMods) do
+                local mod = Core.getMod(modId)
+                if mod then
+                    local spec = mod.spec or {}
+                    ImGui.Text("  • " .. (spec.name or modId))
+                end
+            end
+            ImGui.EndTooltip()
+        end
+
+        ImGui.Spacing()
+        ImGui.Separator()
+        ImGui.Spacing()
+    end
+
+    -- Group by category (skip engine internal mods and shared panel mods)
     local enginePrefixes = { ["0-Engine-"] = true }
     local grouped = {}
     local ungrouped = {}
@@ -394,7 +445,9 @@ function M.draw()
         for prefix, _ in pairs(enginePrefixes) do
             if modId:sub(1, #prefix) == prefix then isEngine = true; break end
         end
-        if not isEngine then
+        -- Skip shared panel mods (rendered in the shared panel entry)
+        local isShared = Core.isSharedPanelMod(modId)
+        if not isEngine and not isShared then
             local mod = Core.getMod(modId)
             if mod then
                 local assignment = Core.getModCategory(modId)

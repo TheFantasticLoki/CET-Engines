@@ -219,4 +219,119 @@ function M.testEventEmission()
     assert.assert_equal(events[1].event, "configengine:selectedModChanged", "event name should match")
 end
 
+-- ============================================================
+-- Shared Panel Tests
+-- ============================================================
+
+function M.testSharedPanelEmpty()
+    Core.reset()
+    Core.init()
+
+    local mods = Core.getSharedPanelMods()
+    assert.assert_not_nil(mods, "shared panel mods should not be nil")
+    assert.assert_equal(#mods, 0, "shared panel should start empty")
+    assert.assert_equal(Core.getSharedPanelModCount(), 0, "shared panel count should be 0")
+end
+
+function M.testSharedPanelAdd()
+    Core.reset()
+    Core.init()
+
+    Core.addSharedPanelMod("mod-a")
+    local mods = Core.getSharedPanelMods()
+    assert.assert_equal(#mods, 1, "should have 1 shared panel mod")
+    assert.assert_equal(mods[1], "mod-a", "should contain mod-a")
+    assert.assert_true(Core.isSharedPanelMod("mod-a"), "isSharedPanelMod should return true")
+    assert.assert_equal(Core.getSharedPanelModCount(), 1, "count should be 1")
+end
+
+function M.testSharedPanelAddIdempotent()
+    Core.reset()
+    Core.init()
+
+    Core.addSharedPanelMod("mod-a")
+    Core.addSharedPanelMod("mod-a")  -- duplicate
+    Core.addSharedPanelMod("mod-a")  -- duplicate
+    local mods = Core.getSharedPanelMods()
+    assert.assert_equal(#mods, 1, "should still have 1 shared panel mod (idempotent)")
+end
+
+function M.testSharedPanelRemove()
+    Core.reset()
+    Core.init()
+
+    Core.addSharedPanelMod("mod-a")
+    Core.addSharedPanelMod("mod-b")
+    assert.assert_equal(Core.getSharedPanelModCount(), 2, "should have 2 mods")
+
+    Core.removeSharedPanelMod("mod-a")
+    local mods = Core.getSharedPanelMods()
+    assert.assert_equal(#mods, 1, "should have 1 shared panel mod after removal")
+    assert.assert_equal(mods[1], "mod-b", "remaining mod should be mod-b")
+    assert.assert_false(Core.isSharedPanelMod("mod-a"), "mod-a should not be in shared panel")
+    assert.assert_true(Core.isSharedPanelMod("mod-b"), "mod-b should still be in shared panel")
+end
+
+function M.testSharedPanelRemoveIdempotent()
+    Core.reset()
+    Core.init()
+
+    Core.addSharedPanelMod("mod-a")
+    Core.removeSharedPanelMod("mod-a")
+    Core.removeSharedPanelMod("mod-a")  -- removing non-existent
+    assert.assert_equal(Core.getSharedPanelModCount(), 0, "should still be empty")
+end
+
+function M.testSharedPanelNotInNormalList()
+    Core.reset()
+    Core.init()
+
+    Core.setMod("mod-a", { spec = { name = "Mod A" } })
+    Core.setMod("mod-b", { spec = { name = "Mod B" } })
+    Core.setMod("mod-c", { spec = { name = "Mod C" } })
+    Core.addSharedPanelMod("mod-b")
+
+    -- getModIds should still include it (for data access)
+    local allIds = Core.getModIds()
+    assert.assert_equal(#allIds, 3, "getModIds should include all 3 mods")
+
+    -- isSharedPanelMod should distinguish
+    assert.assert_true(Core.isSharedPanelMod("mod-b"), "mod-b should be shared panel")
+    assert.assert_false(Core.isSharedPanelMod("mod-a"), "mod-a should not be shared panel")
+    assert.assert_false(Core.isSharedPanelMod("mod-c"), "mod-c should not be shared panel")
+end
+
+function M.testSharedPanelPersistence()
+    Core.reset()
+    Core.init()
+
+    Core.addSharedPanelMod("mod-a")
+    Core.addSharedPanelMod("mod-b")
+
+    -- Serialize
+    local state = Core.getAllState()
+    assert.assert_not_nil(state.sharedPanelMods, "serialized state should have sharedPanelMods")
+    assert.assert_equal(#state.sharedPanelMods, 2, "serialized should have 2 mods")
+
+    -- Restore into fresh state
+    Core.reset()
+    Core.init()
+    Core.applyState(state)
+
+    assert.assert_equal(Core.getSharedPanelModCount(), 2, "restored should have 2 mods")
+    assert.assert_true(Core.isSharedPanelMod("mod-a"), "mod-a should be restored")
+    assert.assert_true(Core.isSharedPanelMod("mod-b"), "mod-b should be restored")
+end
+
+function M.testSharedPanelClearOnReset()
+    Core.reset()
+    Core.init()
+
+    Core.addSharedPanelMod("mod-a")
+    assert.assert_equal(Core.getSharedPanelModCount(), 1, "should have 1 mod")
+
+    Core.reset()
+    assert.assert_equal(Core.getSharedPanelModCount(), 0, "should be empty after reset")
+end
+
 return M

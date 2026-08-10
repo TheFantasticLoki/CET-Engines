@@ -145,6 +145,14 @@ function M.register(modId, spec)
         end
     end
 
+    -- Shared panel: auto-register if spec.sharedPanel = true
+    if spec.sharedPanel == true then
+        Core.addSharedPanelMod(modId)
+        if Logger then
+            Logger.info("Mod added to shared panel: " .. modId)
+        end
+    end
+
     if Logger then
         Logger.info("Mod registered: " .. modId .. " (" .. renderMode .. ")")
     end
@@ -163,6 +171,8 @@ function M.unregister(modId)
     end
 
     Core.removeMod(modId)
+    -- Remove from shared panel if registered there
+    Core.removeSharedPanelMod(modId)
     -- Clear undo/redo entries for this mod to prevent stale references
     if CfgUndoRedo and CfgUndoRedo.clearForMod then
         CfgUndoRedo.clearForMod(modId)

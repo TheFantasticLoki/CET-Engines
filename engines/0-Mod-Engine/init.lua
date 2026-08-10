@@ -470,6 +470,46 @@ local function ConfigCanRedo()
 end
 
 -- ============================================================================
+-- Shared Panel API
+-- ============================================================================
+
+--- Add a registered mod to the shared settings panel.
+--- The mod must already be registered with RegisterMod().
+---@param modId string Mod identifier
+---@return boolean success
+local function AddToSharedPanel(modId)
+    if not CfgCore then return false end
+    if not CfgCore.getMod(modId) then return false end
+    CfgCore.addSharedPanelMod(modId)
+    return true
+end
+
+--- Remove a mod from the shared settings panel.
+---@param modId string Mod identifier
+---@return boolean success
+local function RemoveFromSharedPanel(modId)
+    if not CfgCore then return false end
+    local before = CfgCore.getSharedPanelModCount()
+    CfgCore.removeSharedPanelMod(modId)
+    return CfgCore.getSharedPanelModCount() < before
+end
+
+--- Get list of mod IDs in the shared panel.
+---@return string[] modIds Array of mod ID strings
+local function GetSharedPanelMods()
+    if not CfgCore then return {} end
+    return CfgCore.getSharedPanelMods()
+end
+
+--- Check if a mod is in the shared panel.
+---@param modId string Mod identifier
+---@return boolean
+local function IsSharedPanelMod(modId)
+    if not CfgCore then return false end
+    return CfgCore.isSharedPanelMod(modId)
+end
+
+-- ============================================================================
 -- Engine Registration with Config-Engine
 -- ============================================================================
 
@@ -811,6 +851,12 @@ ModEngine = {
     Redo = ConfigRedo,
     CanUndo = ConfigCanUndo,
     CanRedo = ConfigCanRedo,
+
+    -- Shared Panel
+    AddToSharedPanel = AddToSharedPanel,
+    RemoveFromSharedPanel = RemoveFromSharedPanel,
+    GetSharedPanelMods = GetSharedPanelMods,
+    IsSharedPanelMod = IsSharedPanelMod,
 
     -- Events
     On = On,

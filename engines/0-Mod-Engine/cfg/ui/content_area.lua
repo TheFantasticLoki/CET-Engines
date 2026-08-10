@@ -268,6 +268,12 @@ local function drawModPanel()
         return
     end
 
+    -- Redirect shared panel to shared panel content
+    if selectedMod == "__shared_panel__" then
+        Core.setContentMode("shared_panel")
+        return
+    end
+
     local mod = Core.getMod(selectedMod)
     if not mod then
         ImGui.Text("Mod not found: " .. selectedMod)
@@ -933,6 +939,111 @@ function M.drawDetachedWindows()
     end
 end
 
+--- Draw the shared panel (aggregated settings from all shared-panel mods).
+--- Each mod appears as a collapsible section card with its settings rendered below.
+---@return nil
+local function drawSharedPanel()
+    resolveLogger()
+    if log then log.info("drawSharedPanel: START") end
+
+    local sharedMods = Core.getSharedPanelMods()
+    if not sharedMods or #sharedMods == 0 then
+        ImGui.TextDisabled("No mods registered to the Shared Settings Panel")
+        ImGui.TextDisabled("Use sharedPanel = true in your mod spec to register.")
+        return
+    end
+
+    -- Header
+    resolveTokens()
+    local headerColor = Tokens and Tokens.color4n("primary") or { r = 0.4, g = 0.6, b = 1.0 }
+    ImGui.TextColored(headerColor.r, headerColor.g, headerColor.b, 1, "Shared Settings")
+    ImGui.SameLine()
+    ImGui.TextDisabled("(" .. #sharedMods .. " mod" .. (#sharedMods == 1 and "" or "s") .. ")")
+
+    ImGui.Separator()
+    ImGui.Spacing()
+
+    -- Render each mod as a collapsible section
+    for _, modId in ipairs(sharedMods) do
+        local mod = Core.getMod(modId)
+        if mod then
+            local spec = mod.spec or {}
+            spec._modId = modId
+
+            -- Section header (collapsible)
+            local sectionLabel = spec.name or modId
+            local headerFlags = ImGuiTreeNodeFlags.DefaultOpen
+            if ImGui.TreeNodeEx("##shared_" .. modId, headerFlags, sectionLabel) then
+                -- Mod version and description
+                if spec.version or spec.author then
+                    local meta = ""
+                    if spec.version then meta = meta .. "v" .. spec.version end
+                    if spec.author then meta = meta .. "  by " .. spec.author end
+                    ImGui.TextDisabled(meta)
+                end
+                if spec.description and spec.description ~= "" then
+                    ImGui.TextWrapped(spec.description)
+                    ImGui.Spacing()
+                end
+
+                ImGui.Separator()
+
+                -- Render settings based on mode
+                if mod.renderMode == "schema" or mod.renderMode == "hybrid" then
+                    if SettingsRenderer and SettingsRenderer.renderSettings then
+                        local changed = SettingsRenderer.renderSettings(modId, spec, mod.settings)
+                        if changed then
+                            if spec.settings then
+                                for key, _ in pairs(spec.settings) do
+                                    if mod.settings[key] ~= nil then
+                                        applySettingLive(modId, key, mod.settings[key])
+                                    end
+                                end
+                            end
+                            if Core and Core.markDirty then
+                                Core.markDirty()
+                            end
+                        end
+                    end
+                elseif mod.renderMode == "hybrid" and spec.draw then
+                    -- Custom draw portion for hybrid mods
+                    local modCtx = { modId = modId, spec = spec }
+                    setmetatable(modCtx, {
+                        __index = function(_, k)
+                            if ImGui[k] then return ImGui[k] end
+                            return nil
+                        end
+                    })
+                    local ok, err = pcall(spec.draw, modCtx)
+                    if not ok then
+                        ImGui.TextColored(1, 0.3, 0.3, 1, "Draw error: " .. tostring(err))
+                    end
+                elseif mod.renderMode == "custom" and spec.draw then
+                    local modCtx = { modId = modId, spec = spec }
+                    setmetatable(modCtx, {
+                        __index = function(_, k)
+                            if ImGui[k] then return ImGui[k] end
+                            return nil
+                        end
+                    })
+                    local ok, err = pcall(spec.draw, modCtx)
+                    if not ok then
+                        ImGui.TextColored(1, 0.3, 0.3, 1, "Draw error: " .. tostring(err))
+                    end
+                elseif mod.renderMode == "external" then
+                    ImGui.TextDisabled("No settings exposed to Config-Engine")
+                else
+                    ImGui.TextDisabled("No settings available")
+                end
+
+                ImGui.TreePop()
+            end
+
+            ImGui.Spacing()
+        end
+    end
+end
+
 --- Draw the content area (dispatches based on contentMode).
 ---@return nil
 function M.draw()
@@ -949,6 +1060,8 @@ function M.draw()
 
     if mode == "settings" then
         drawSettingsPanel()
+    elseif mode == "shared_panel" then
+        drawSharedPanel()
     elseif mode == "tests" or mode == "diagnostics" then
         drawTestPanel()
     else

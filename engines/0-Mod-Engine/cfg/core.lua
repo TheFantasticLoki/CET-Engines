@@ -15,6 +15,9 @@ local state = {
     categoryOrder = {},
     modAssignments = {},    -- { [modId] = { category, subcategory } }
 
+    -- Shared panel state
+    sharedPanelMods = {},   -- ordered array of modIds opted into the shared panel
+
     -- UI state (persisted)
     sidebarWidth = 280,
     selectedMod = nil,
@@ -80,6 +83,7 @@ function M.reset()
         categories = {},
         categoryOrder = {},
         modAssignments = {},
+        sharedPanelMods = {},
         sidebarWidth = 280,
         selectedMod = nil,
         settingsPanelOpen = false,
@@ -297,6 +301,58 @@ function M.toggleCategory(category)
 end
 
 -- ============================================================
+-- Shared Panel State
+-- ============================================================
+
+--- Get all mod IDs registered to the shared panel (ordered).
+---@return string[] Array of modId strings
+function M.getSharedPanelMods()
+    return state.sharedPanelMods
+end
+
+--- Check if a mod is in the shared panel.
+---@param modId string The mod identifier
+---@return boolean
+function M.isSharedPanelMod(modId)
+    for _, id in ipairs(state.sharedPanelMods) do
+        if id == modId then return true end
+    end
+    return false
+end
+
+--- Add a mod to the shared panel (idempotent).
+---@param modId string The mod identifier
+---@return nil
+function M.addSharedPanelMod(modId)
+    for _, id in ipairs(state.sharedPanelMods) do
+        if id == modId then return end  -- already registered
+    end
+    table.insert(state.sharedPanelMods, modId)
+    state.dirty = true
+    emit("configengine:sharedPanelChanged", modId, true)
+end
+
+--- Remove a mod from the shared panel (idempotent).
+---@param modId string The mod identifier
+---@return nil
+function M.removeSharedPanelMod(modId)
+    for i, id in ipairs(state.sharedPanelMods) do
+        if id == modId then
+            table.remove(state.sharedPanelMods, i)
+            state.dirty = true
+            emit("configengine:sharedPanelChanged", modId, false)
+            return
+        end
+    end
+end
+
+--- Get the count of mods in the shared panel.
+---@return number
+function M.getSharedPanelModCount()
+    return #state.sharedPanelMods
+end
+
+-- ============================================================
 -- UI State
 -- ============================================================
 
@@ -474,6 +530,7 @@ end
 function M.getAllState()
     return {
         modAssignments = state.modAssignments,
+        sharedPanelMods = state.sharedPanelMods,
         sidebarWidth = state.sidebarWidth,
         selectedMod = state.selectedMod,
         expandedCategories = state.expandedCategories,
@@ -496,6 +553,7 @@ function M.applyState(data)
 
     -- NOTE: data.mods is intentionally ignored (specs come from source)
     if data.modAssignments then state.modAssignments = data.modAssignments end
+    if data.sharedPanelMods then state.sharedPanelMods = data.sharedPanelMods end
     if data.sidebarWidth then state.sidebarWidth = data.sidebarWidth end
     if data.selectedMod then state.selectedMod = data.selectedMod end
     if data.expandedCategories then state.expandedCategories = data.expandedCategories end
