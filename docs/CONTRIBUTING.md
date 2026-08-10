@@ -34,7 +34,7 @@ Before submitting a pull request, verify:
 ### Code Quality
 - [ ] All code follows `docs/CODESTYLE.md` conventions
 - [ ] No `goto`, `__gc`, `table.pack`, or `table.unpack` (Lua 5.1 only)
-- [ ] All variables and functions are `local` (except `_G.UIEngine`)
+- [ ] All variables and functions are `local` (except `ModEngine` global)
 - [ ] Module pattern: `local M = {} ... return M`
 - [ ] No dead code left in the file
 - [ ] No tabs — 4 spaces only
@@ -99,11 +99,11 @@ Before submitting a pull request, verify:
 
 ### New Modules
 
-Every new module in `engines/UI-Engine/` must have a corresponding test file:
+Every new module in `engines/0-Mod-Engine/` must have a corresponding test file:
 
 ```
-engines/UI-Engine/core.lua  →  tests/unit/core_test.lua
-engines/UI-Engine/api/events.lua  →  tests/unit/events_test.lua
+engines/0-Mod-Engine/core.lua  →  tests/unit/core_test.lua
+engines/0-Mod-Engine/api/events.lua  →  tests/unit/events_test.lua
 ```
 
 ### Test File Structure

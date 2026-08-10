@@ -1,16 +1,16 @@
-# API Reference — UI-Engine
+# API Reference — 0-Mod-Engine
 
 ## Overview
 
-UI-Engine exposes its public API through `_G.UIEngine`. Consumer mods access UI components through a `ctx` (context) object returned by `UIEngine.GetContext(id)`.
+0-Mod-Engine exposes its public API through the `ModEngine` global (with backward-compatible `UIEngine`, `ConfigEngine`, and `LogEngine` aliases). Consumer mods access UI components through a `ctx` (context) object returned by `ModEngine.GetContext(id)`.
 
 ---
 
-## Global API — `_G.UIEngine`
+## Global API — `ModEngine`
 
 ### Registration
 
-#### `UIEngine.Register(id, spec)`
+#### `ModEngine.Register(id, spec)`
 
 Register a mod panel in the UI-Engine sidebar.
 
@@ -33,7 +33,7 @@ Register a mod panel in the UI-Engine sidebar.
 **Returns:** `true, nil` on success; `false, errorString` on failure.
 
 ```lua
-local ok, err = UIEngine.Register("my-mod", {
+local ok, err = ModEngine.Register("my-mod", {
     title = "My Mod",
     version = "1.0.0",
     draw = function(ctx)
@@ -46,7 +46,11 @@ if not ok then
 end
 ```
 
-#### `UIEngine.RegisterWindow(id, spec)`
+#### `ModEngine.Unregister(id)`
+
+Remove a mod from UI-Engine. Cleans up events, state, and context.
+
+#### `ModEngine.RegisterWindow(id, spec)`
 
 Register a standalone window (not in sidebar).
 
@@ -54,20 +58,7 @@ Register a standalone window (not in sidebar).
 
 **Returns:** `true, nil` on success; `false, errorString` on failure.
 
-#### `UIEngine.Unregister(id)`
-
-Remove a mod from UI-Engine. Cleans up events, state, and context.
-
-**Parameters:**
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `id` | string | yes | Mod identifier to unregister |
-
----
-
-### Context
-
-#### `UIEngine.GetContext(id)`
+#### `ModEngine.GetContext(id)`
 
 Get the context object for a registered mod.
 
@@ -82,13 +73,13 @@ Get the context object for a registered mod.
 
 ### Theme
 
-#### `UIEngine.GetTheme()`
+#### `ModEngine.GetTheme()`
 
 Get the current theme name.
 
 **Returns:** string (theme name, e.g., `"Red"`, `"Cyan"`, `"Dark"`).
 
-#### `UIEngine.SetTheme(themeName)`
+#### `ModEngine.SetTheme(themeName)`
 
 Set the current theme.
 
@@ -99,17 +90,69 @@ Set the current theme.
 
 **Returns:** `true, nil` on success; `false, errorString` on failure.
 
-#### `UIEngine.GetThemeList()`
+#### `ModEngine.GetThemeList()`
 
 Get all available theme names.
 
 **Returns:** table of theme name strings.
 
+#### `ModEngine.GetContrastLevel()` / `ModEngine.SetContrastLevel(level)`
+
+Get/set the accessibility contrast level (1=normal, 2=high, 3=very high).
+
+#### `ModEngine.Enable(id)` / `ModEngine.Disable(id)`
+
+Enable or disable a registered mod.
+
+#### `ModEngine.IsRegistered(id)`
+
+Check if a mod is registered. Returns boolean.
+
+#### `ModEngine.GetRegisteredMods()`
+
+Get list of all registered mod IDs. Returns table of strings.
+
+---
+
+### Config-Engine API
+
+#### `ModEngine.RegisterMod(id, spec)`
+
+Register a mod with Config-Engine (settings schema).
+
+#### `ModEngine.UnregisterMod(id)`
+
+Unregister a mod from Config-Engine.
+
+#### `ModEngine.GetMod(id)`
+
+Get a registered mod's info from Config-Engine.
+
+#### `ModEngine.GetModSettings(id)`
+
+Get current settings values for a mod.
+
+#### `ModEngine.SetModSettings(id, settings)`
+
+Update settings values for a mod.
+
+#### `ModEngine.ResetModSettings(id)`
+
+Reset a mod's settings to schema defaults.
+
+#### `ModEngine.Undo()` / `ModEngine.Redo()`
+
+Undo/redo the last Config-Engine setting change.
+
+#### `ModEngine.CanUndo()` / `ModEngine.CanRedo()`
+
+Check if undo/redo is available.
+
 ---
 
 ### Events
 
-#### `UIEngine.On(event, handler, source)`
+#### `ModEngine.On(event, handler, source)`
 
 Subscribe to an event.
 
@@ -120,7 +163,7 @@ Subscribe to an event.
 | `handler` | function | yes | Callback function |
 | `source` | string | no | Source label for debugging |
 
-#### `UIEngine.Emit(event, ...)`
+#### `ModEngine.Emit(event, ...)`
 
 Emit an event to all subscribers.
 
@@ -130,15 +173,63 @@ Emit an event to all subscribers.
 | `event` | string | yes | Event name |
 | `...` | any | no | Event arguments |
 
-#### `UIEngine.Off(event, handler)`
+#### `ModEngine.Off(event, handler)`
 
 Unsubscribe from an event.
+
+#### `ModEngine.IsOverlayOpen()`
+
+Check if CET overlay is currently visible. Returns boolean.
+
+#### `ModEngine.GetVersion()`
+
+Get the engine version string.
+
+---
+
+### Logging API
+
+#### `ModEngine.Log(modName, message, level)`
+
+Log a message via both Logger (ring buffer) and Log-Engine (file output).
+
+#### `ModEngine.CreateLogger(modName, config)`
+
+Create a logger instance via Log-Engine.
+
+#### `ModEngine.GetLogger(modName)`
+
+Get an existing logger instance.
+
+---
+
+### Internal Access
+
+#### `ModEngine.Core`
+
+Direct access to Core state module.
+
+#### `ModEngine.Theme`
+
+Direct access to Theme engine module.
+
+#### `ModEngine.Storage`
+
+Direct access to Storage module.
+
+#### `ModEngine.Events`
+
+Direct access to Events module.
+
+#### `ModEngine.Components`
+
+Direct access to Components library.
 
 ---
 
 ### Utility
 
-#### `UIEngine.Deprecated(name, alternative)`
+#### `ModEngine.Deprecated(name, alternative)`
 
 Log a deprecation warning. Use when changing public API.
 
@@ -148,7 +239,7 @@ Log a deprecation warning. Use when changing public API.
 | `name` | string | yes | Deprecated function/method name |
 | `alternative` | string | no | Suggested replacement |
 
-#### `UIEngine.ResolveLogger(name, level)`
+#### `ModEngine.ResolveLogger(name, level)`
 
 Resolve a logger instance from Log-Engine with safe fallback.
 
@@ -160,7 +251,7 @@ Resolve a logger instance from Log-Engine with safe fallback.
 
 **Returns:** `Logger` instance or `nil` if Log-Engine is unavailable.
 
-#### `UIEngine.GetThemeCacheKey(core)`
+#### `ModEngine.GetThemeCacheKey(core)`
 
 Generate a unique cache key based on the current theme state (name, accent, contrast).
 

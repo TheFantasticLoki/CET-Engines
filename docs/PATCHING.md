@@ -151,18 +151,18 @@ end
 
 ```lua
 -- In your mod's init.lua
-local function getUIEngine()
-    local ui = GetMod("0-Engine-UI")
-    if ui then
-        return ui
+local function getModEngine()
+    local engine = GetMod("0-Mod-Engine")
+    if engine then
+        return engine
     end
     return nil
 end
 ```
 
-### Step 2: Register with UI-Engine
+### Step 2: Register with ModEngine
 
-Replace custom window/UI code with UI-Engine registration:
+Replace custom window/UI code with ModEngine registration:
 
 ```lua
 -- Before: custom window management
@@ -172,11 +172,11 @@ function M.init()
     -- Manage window state
 end
 
--- After: register with UI-Engine
+-- After: register with ModEngine
 function M.onInit()
-    local ui = getUIEngine()
-    if ui then
-        ui.Register("my-mod", {
+    local engine = getModEngine()
+    if engine then
+        engine.Register("my-mod", {
             title = "My Mod",
             version = "1.0.0",
             draw = function(ctx)

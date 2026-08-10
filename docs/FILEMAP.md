@@ -138,52 +138,43 @@ Complete directory structure with file descriptions and module relationships.
 │   │   └── presets.lua           # Per-mod presets (may move to Config-Engine)
 │   ├── modules/
 │   │   ├── logger.lua            # Leveled logging, ring buffer, overlay
-│   │   └── storage.lua           # Atomic JSON key-value (may move to Config-Engine)
-│   ├── config/
-│   │   ├── default_config.lua    # Default configuration values
-│   │   └── themes.lua            # 16 built-in theme definitions
-│   ├── mcm_bridge/
-│   │   └── init.lua              # MCM provider adapter (may move to Config-Engine)
-│   └── examples/
-│       └── example_consumer.lua  # Integration example for mod authors
-│
-└── Config-Engine/                # Config management (consumer app)
-    ├── init.lua                  # Entry point, CET hooks, UIEngine registration
-    ├── core.lua                  # Config-Engine state store (extends UI-Engine Core)
-    ├── modules/
-    │   ├── mod_manager.lua       # Mod discovery, registration, lifecycle
-    │   ├── settings_schema.lua   # Schema definitions, validation, types
-    │   ├── settings_renderer.lua # Schema → ImGui auto-generation
-    │   ├── settings_resolver.lua # Schema merging, defaults, validation
-    │   ├── render_mode.lua       # Detect schema/custom/hybrid/external modes
-    │   ├── undo_redo.lua         # Undo/redo system (command pattern, ring buffer)
-    │   └── state_sync.lua        # Sync to UI-Engine Storage, auto-save
-    ├── ui/
-    │   ├── window.lua            # Main window orchestrator (sidebar + content)
-    │   ├── sidebar.lua           # Sidebar: mod list, search, categories
-    │   └── content_area.lua      # Content dispatch to mod's draw/schema
-    └── config/
-        ├── default_config.lua    # Config-Engine defaults
-        └── categories.lua        # Built-in category definitions
+│   │   └── storage.lua           # Atomic JSON key-value storage
+│   └── config/
+│       └── themes.lua            # 16 built-in theme definitions
 ```
 
-### UI-Engine Module Relationships
+### 0-Mod-Engine Module Relationships
 
 ```
 init.lua
-  ├── core.lua              (state store)
-  ├── modules/logger.lua    (logging)
-  ├── modules/storage.lua   (persistence)
-  ├── api/events.lua        (pub/sub)
-  ├── config/themes.lua     (theme definitions)
-  ├── ui/tokens.lua         (design tokens)
-  ├── ui/color_engine.lua   (color science)
-  ├── ui/theme.lua          (theme engine)
-  ├── ui/components/        (widget library)
-  ├── api/context.lua       (context proxy)
-  ├── api/registry.lua      (registration)
-  ├── ui/window.lua         (window orchestrator)
-  └── features/             (favorites, presets)
+  ├── log/init.lua           (Log-Engine entry point)
+  ├── core.lua               (state store)
+  ├── modules/logger.lua     (ring buffer logging)
+  ├── modules/storage.lua    (persistence)
+  ├── api/events.lua         (pub/sub)
+  ├── ui/utils.lua           (shared utilities)
+  ├── config/themes.lua      (theme definitions)
+  ├── ui/color_engine.lua    (color science)
+  ├── ui/tokens.lua          (design tokens)
+  ├── ui/theme.lua           (theme engine)
+  ├── ui/animation.lua       (easing, lerp, timer)
+  ├── ui/components/         (widget library)
+  ├── api/context.lua        (context proxy)
+  ├── api/registry.lua       (registration)
+  ├── api/windows.lua        (standalone windows)
+  ├── cfg/core.lua           (Config-Engine state)
+  ├── cfg/mod_manager.lua    (mod registration)
+  ├── cfg/settings_schema.lua
+  ├── cfg/settings_resolver.lua
+  ├── cfg/settings_renderer.lua
+  ├── cfg/setting_applier.lua
+  ├── cfg/undo_redo.lua
+  ├── cfg/state_sync.lua
+  ├── cfg/render_mode.lua
+  ├── cfg/search_parser.lua
+  ├── cfg/test_runner.lua
+  ├── cfg/test_results.lua
+  └── cfg/ui/                (window, sidebar, content_area)
 ```
 
 ---
@@ -320,8 +311,10 @@ tests/
 ### Test File Naming Convention
 
 ```
-engines/UI-Engine/core.lua  →  tests/unit/core_test.lua
-engines/UI-Engine/api/events.lua  →  tests/unit/events_test.lua
+engines/0-Mod-Engine/core.lua          →  tests/unit/core_test.lua
+engines/0-Mod-Engine/api/events.lua    →  tests/unit/events_test.lua
+engines/0-Mod-Engine/ui/theme.lua      →  tests/unit/theme_test.lua
+engines/0-Mod-Engine/cfg/core.lua      →  tests/unit/configengine_core_test.lua
 ```
 
 ---
@@ -334,9 +327,7 @@ engines/UI-Engine/api/events.lua  →  tests/unit/events_test.lua
 versions/
 ├── README.md                   # Versioning system explanation
 └── vX.Y.Z/                     # Snapshot directories (gitignored)
-    ├── UI-Engine/              # Copy of UI-Engine at snapshot time
-    ├── Config-Engine/          # Copy of Config-Engine (if exists)
-    └── manifest.txt            # Version metadata
+    └── 0-Mod-Engine/           # Copy of unified engine at snapshot time
 ```
 
 **Rules:** `versions/` contents are gitignored (except README). Created by `scripts/version.sh`.

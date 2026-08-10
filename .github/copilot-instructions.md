@@ -59,6 +59,7 @@ engines/0-Mod-Engine/
 │   ├── settings_schema.lua   # 14 setting types with validation
 │   ├── settings_resolver.lua # Merge defaults + saved, dot-path get/set
 │   ├── settings_renderer.lua # Schema → ImGui auto-generation
+│   ├── setting_applier.lua   # Apply settings to engine subsystems
 │   ├── undo_redo.lua         # Command pattern, 50-step ring buffer, batch mode
 │   ├── state_sync.lua        # Auto-save debounce (0.5s), load on init
 │   ├── render_mode.lua       # Detects schema/custom/hybrid/external
@@ -72,10 +73,13 @@ engines/0-Mod-Engine/
 ├── config/
 │   ├── themes.lua            # 16 theme definitions (accent + roles)
 │   ├── engine_schemas.lua    # Built-in schemas for 0-Engine-UI/Log/Config
-│   ├── categories.lua        # 6 categories with subcategories
-│   └── default_config.lua    # Default values for all modules
+│   └── categories.lua        # 6 categories with subcategories
 └── log/
-    └── init.lua              # Log-Engine entry point
+    ├── init.lua              # Log-Engine entry point
+    ├── config.lua            # Log configuration defaults
+    ├── file_output.lua       # File rotation and output
+    ├── logger.lua            # Logger instance logic
+    └── stats.lua             # Log statistics and metrics
 ```
 
 ---
@@ -123,12 +127,27 @@ spec.settings = {
 ### Public API (ModEngine global)
 ```lua
 ModEngine.Register(id, spec)        -- UI-Engine registration
-ModEngine.RegisterMod(id, spec)     -- Config-Engine registration
+ModEngine.Unregister(id)            -- UI-Engine unregistration
 ModEngine.GetContext(id)            -- Get ctx proxy
+ModEngine.Enable(id) / Disable(id) -- Enable/disable a mod
+
+ModEngine.RegisterMod(id, spec)     -- Config-Engine registration
+ModEngine.UnregisterMod(id)         -- Config-Engine unregistration
+ModEngine.GetMod(id)                -- Get Config-Engine mod info
+ModEngine.GetModSettings(id)        -- Get current settings values
+ModEngine.SetModSettings(id, val)   -- Update settings values
+ModEngine.ResetModSettings(id)      -- Reset to schema defaults
+ModEngine.Undo / Redo               -- Config undo/redo
+ModEngine.CanUndo / CanRedo         -- Check undo/redo availability
+
 ModEngine.On / Emit / Off           -- Events
 ModEngine.GetTheme / SetTheme       -- Theme
-ModEngine.Undo / Redo               -- Config undo/redo
+ModEngine.GetThemeList              -- List available themes
+ModEngine.GetContrastLevel / SetContrastLevel -- Accessibility
+
 ModEngine.Core                      -- Direct state access
+ModEngine.Storage                   -- Direct storage access
+ModEngine.Theme                     -- Direct theme engine access
 ```
 
 ---

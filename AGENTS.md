@@ -89,7 +89,7 @@ These practices must be followed throughout all development. They are enforced b
 
 ### Code Organization
 
-1. **`local` everywhere** — only public API symbols are global. Never pollute `_G` except for `_G.UIEngine`.
+1. **`local` everywhere** — only public API symbols are global. Never pollute `_G` (CET sandbox doesn't expose it).
 2. **Module pattern** — every file: `local M = {} ... return M`. No exceptions.
 3. **One module per file** — each file has a single clear responsibility.
 4. **No dead code** — if it's not used, remove it. Don't leave "just in case" code.
@@ -212,8 +212,7 @@ Config-Engine Lines: 0
 ### Deployment Targets
 | Source | Destination |
 |--------|-------------|
-| `engines/UI-Engine/` | `deployment/game/0-Engine-UI/` |
-| `engines/Config-Engine/` | `deployment/game/0-Engine-Config/` |
+| `engines/0-Mod-Engine/` | `deployment/game/0-Mod-Engine/` |
 | `dependencies/0-Engine/` | `deployment/game/0-Engine/` |
 | `patched/` content | `deployment/game/` (preserving structure) |
 

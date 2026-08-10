@@ -57,7 +57,7 @@ end
 
 **Rules:**
 - `local` for all variables and functions unless intentionally global
-- Only `_G.UIEngine` is an intentional global — never pollute `_G` otherwise
+- Only `ModEngine` (and backward-compat aliases `UIEngine`, `ConfigEngine`, `LogEngine`) are intentional globals — never pollute `_G` otherwise
 - Use descriptive names, avoid abbreviations except for common ones (`id`, `fn`, `ctx`)
 - Private functions use `local function name()` (not exposed on module table)
 
@@ -198,20 +198,26 @@ local Logger = require("src/modules/logger")
 
 ## Cross-Mod Dependencies
 
-Never use `require()` for cross-mod dependencies. Use `GetMod()`:
+For 0-Mod-Engine, use direct `require()` since all modules are in the same mod:
 
 ```lua
--- Correct: lazy resolution via GetMod()
-local function getUIEngine()
-    local ui = GetMod("0-Engine-UI")
-    if ui then
-        return ui
+-- Correct: require within the same mod
+local Core = require("core")
+local Events = require("api.events")
+local Theme = require("ui.theme")
+```
+
+For cross-mod dependencies (different CET mods), use `GetMod()`:
+
+```lua
+-- Correct: lazy resolution via GetMod() for external mods
+local function getOtherMod()
+    local mod = GetMod("SomeOtherMod")
+    if mod then
+        return mod
     end
     return nil
 end
-
--- Wrong: direct require across mods
-local UIEngine = require("0-Engine-UI/init")  -- DON'T DO THIS
 ```
 
 **Why:** Mods may load in any order. `GetMod()` returns nil if the mod hasn't loaded yet, allowing graceful degradation.
