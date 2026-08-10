@@ -447,6 +447,50 @@ function M.reset()
     initialized = false
 end
 
+--- Create a deep copy of current state (safe for tests).
+---@return table snapshot Deep copy of state
+function M.snapshot()
+    local function deepCopy(t)
+        if type(t) ~= "table" then return t end
+        local copy = {}
+        for k, v in pairs(t) do
+            copy[k] = deepCopy(v)
+        end
+        return copy
+    end
+    return {
+        panels = deepCopy(panels),
+        windows = deepCopy(windows),
+        ui = deepCopy(ui),
+        theme = deepCopy(theme),
+        sidebar = deepCopy(sidebar),
+        features = deepCopy(features),
+        settings = deepCopy(settings),
+    }
+end
+
+--- Restore state from a snapshot (safe for tests).
+---@param snapshot table Previously saved snapshot
+---@return nil
+function M.restore(snapshot)
+    if type(snapshot) ~= "table" then return end
+    local function deepCopy(t)
+        if type(t) ~= "table" then return t end
+        local copy = {}
+        for k, v in pairs(t) do
+            copy[k] = deepCopy(v)
+        end
+        return copy
+    end
+    if snapshot.panels then panels = deepCopy(snapshot.panels) end
+    if snapshot.windows then windows = deepCopy(snapshot.windows) end
+    if snapshot.ui then ui = deepCopy(snapshot.ui) end
+    if snapshot.theme then theme = deepCopy(snapshot.theme) end
+    if snapshot.sidebar then sidebar = deepCopy(snapshot.sidebar) end
+    if snapshot.features then features = deepCopy(snapshot.features) end
+    if snapshot.settings then settings = deepCopy(snapshot.settings) end
+end
+
 --- Initialize the core module (idempotent)
 function M.init()
     if initialized then

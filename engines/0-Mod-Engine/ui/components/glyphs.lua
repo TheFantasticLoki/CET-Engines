@@ -34,6 +34,18 @@
 local M = {}
 
 -- ============================================================================
+-- Logger (late-bound)
+-- ============================================================================
+
+local _log = nil
+
+--- Initialize the logger (called by init.lua after first logger is created)
+---@param logger table|nil Logger instance or nil to disable
+function M.setLogger(logger)
+    _log = logger
+end
+
+-- ============================================================================
 -- Feature detection (cached at load time)
 -- ============================================================================
 
@@ -64,6 +76,28 @@ function M.Get(name, fallback)
     if not IconGlyphs or not name then return fallback end
     local glyph = IconGlyphs[name]
     if type(glyph) == "string" and glyph ~= "" then return glyph end
+    return fallback
+end
+
+--- Get an icon glyph with debug logging
+---@param name string Icon name (e.g., "Check", "AlphaX")
+---@param fallback string|nil Fallback if glyph unavailable
+---@return string|nil glyph
+function M.GetLogged(name, fallback)
+    if not IconGlyphs then
+        if _log then _log.debug("Glyphs.GetLogged: IconGlyphs global is nil") end
+        return fallback
+    end
+    if not name then
+        if _log then _log.debug("Glyphs.GetLogged: name is nil") end
+        return fallback
+    end
+    local glyph = IconGlyphs[name]
+    if type(glyph) == "string" and glyph ~= "" then
+        if _log then _log.debug(string.format("Glyphs.Get(%s) = found", name)) end
+        return glyph
+    end
+    if _log then _log.debug(string.format("Glyphs.Get(%s) = not found, fallback=%s", name, tostring(fallback))) end
     return fallback
 end
 

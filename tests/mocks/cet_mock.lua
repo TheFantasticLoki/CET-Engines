@@ -300,6 +300,255 @@ function _G._getCronJobs()
     return cronJobs
 end
 
+-- ============================================================================
+-- spdlog Mock
+-- ============================================================================
+
+_G.spdlog = {}
+
+function _G.spdlog.trace(message)
+end
+
+function _G.spdlog.debug(message)
+end
+
+function _G.spdlog.info(message)
+end
+
+function _G.spdlog.warning(message)
+end
+
+function _G.spdlog.error(message)
+end
+
+function _G.spdlog.critical(message)
+end
+
+-- ============================================================================
+-- Additional CET Functions
+-- ============================================================================
+
+--- Mock registerInput()
+_G.registerInputCallbacks = {}
+function _G.registerInput(id, description, callback)
+    _G.registerInputCallbacks[id] = {
+        description = description,
+        callback = callback,
+    }
+end
+
+--- Mock IsBound()
+function _G.IsBound(id)
+    return false
+end
+
+--- Mock GetBind()
+function _G.GetBind(id)
+    return ""
+end
+
+--- Mock Observe()
+function _G.Observe(typeName, funcName, callback)
+    return "observe_" .. typeName .. "_" .. funcName
+end
+
+--- Mock ObserveBefore()
+function _G.ObserveBefore(typeName, funcName, callback)
+    return "observeBefore_" .. typeName .. "_" .. funcName
+end
+
+--- Mock ObserveAfter()
+function _G.ObserveAfter(typeName, funcName, callback)
+    return "observeAfter_" .. typeName .. "_" .. funcName
+end
+
+--- Mock Override()
+function _G.Override(typeName, funcName, callback)
+    return "override_" .. typeName .. "_" .. funcName
+end
+
+--- Mock NewObject()
+function _G.NewObject(typeName)
+    return {}
+end
+
+--- Mock GetSingleton()
+function _G.GetSingleton(typeName)
+    return {}
+end
+
+--- Mock GetVersion()
+function _G.GetVersion()
+    return "1.27.1-test"
+end
+
+--- Mock GetDisplayResolution()
+function _G.GetDisplayResolution()
+    return 1920, 1080
+end
+
+--- Mock GameDump()
+function _G.GameDump(object)
+    return tostring(object)
+end
+
+--- Mock Dump()
+function _G.Dump(object, detailed)
+    return tostring(object)
+end
+
+--- Mock DumpType()
+function _G.DumpType(name, detailed)
+    return "MockType: " .. tostring(name)
+end
+
+--- Mock DumpAllTypeNames()
+function _G.DumpAllTypeNames()
+end
+
+--- Mock dir()
+function _G.dir(path)
+    return {}
+end
+
+--- Mock ModArchiveExists()
+function _G.ModArchiveExists(name)
+    return false
+end
+
+-- ============================================================================
+-- TweakDB Mock
+-- ============================================================================
+
+_G.TweakDB = {}
+
+function _G.TweakDB:GetRecords(recordType)
+    return {}
+end
+
+function _G.TweakDB:GetRecord(path_or_id)
+    return nil
+end
+
+function _G.TweakDB:Query(path_or_id)
+    return nil
+end
+
+function _G.TweakDB:GetFlat(flatPath_or_id)
+    return nil
+end
+
+function _G.TweakDB:SetFlat(flatPath_or_id, flatData)
+    return true
+end
+
+function _G.TweakDB:SetFlatNoUpdate(flatPath_or_id, flatData)
+    return true
+end
+
+function _G.TweakDB:Update(recordPath_or_id_or_record)
+    return true
+end
+
+function _G.TweakDB:SetFlats(recordID, recordData)
+    return true
+end
+
+function _G.TweakDB:CreateRecord(path, recordType)
+    return true
+end
+
+function _G.TweakDB:CloneRecord(path, clonedPath_or_id)
+    return true
+end
+
+function _G.TweakDB:DeleteRecord(path)
+    return true
+end
+
+-- ============================================================================
+-- GameOptions Mock
+-- ============================================================================
+
+_G.GameOptions = {}
+
+function _G.GameOptions.Print(category, name)
+end
+
+function _G.GameOptions.Get(category, name)
+    return ""
+end
+
+function _G.GameOptions.GetBool(category, name)
+    return false
+end
+
+function _G.GameOptions.GetInt(category, name)
+    return 0
+end
+
+function _G.GameOptions.GetFloat(category, name)
+    return 0.0
+end
+
+function _G.GameOptions.Set(category, name, value)
+end
+
+function _G.GameOptions.SetBool(category, name, value)
+end
+
+function _G.GameOptions.SetInt(category, name, value)
+end
+
+function _G.GameOptions.SetFloat(category, name, value)
+end
+
+function _G.GameOptions.Toggle(category, name)
+end
+
+function _G.GameOptions.List(category)
+    return {}
+end
+
+function _G.GameOptions.Dump()
+end
+
+-- ============================================================================
+-- exEntitySpawner Mock
+-- ============================================================================
+
+_G.exEntitySpawner = {}
+
+function _G.exEntitySpawner.SpawnRecord(recordID, transform, appearance)
+    return 0
+end
+
+function _G.exEntitySpawner.Spawn(entityPath, transform, appearance, recordID)
+    return 0
+end
+
+function _G.exEntitySpawner.Despawn(entity)
+end
+
+-- ============================================================================
+-- WorldFunctionalTests Mock
+-- ============================================================================
+
+_G.WorldFunctionalTests = {}
+
+function _G.WorldFunctionalTests.SpawnEntity(entityPath, transform, unknown)
+    return 0
+end
+
+function _G.WorldFunctionalTests.DespawnEntity(entity)
+end
+
+-- ============================================================================
+-- IconGlyphs Mock (empty table - icons are optional)
+-- ============================================================================
+
+_G.IconGlyphs = {}
+
 --- Clear all cron jobs (for testing)
 function _G._clearCronJobs()
     cronJobs = {}

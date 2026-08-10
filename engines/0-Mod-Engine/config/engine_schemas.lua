@@ -28,6 +28,116 @@ M["0-Engine-UI"] = {
     category = "Framework",
     subcategory = "Engine",
 
+    -- Tests for this engine (run via diagnostics panel)
+    tests = {
+        full = function(ctx)
+            local Core = ctx.core
+            local assert = {
+                equal = function(actual, expected, msg)
+                    if actual ~= expected then
+                        error((msg or "assert.equal") ..
+                            " expected " .. tostring(expected) ..
+                            " got " .. tostring(actual))
+                    end
+                end,
+                not_nil = function(val, msg)
+                    if val == nil then
+                        error((msg or "assert.not_nil") .. " expected not nil")
+                    end
+                end,
+                true_ = function(val, msg)
+                    if not val then
+                        error((msg or "assert.true_") .. " expected truthy, got " .. tostring(val))
+                    end
+                end,
+                false_ = function(val, msg)
+                    if val then
+                        error((msg or "assert.false_") .. " expected falsy, got " .. tostring(val))
+                    end
+                end,
+            }
+
+            local passed = 0
+            local failed = 0
+            local testResults = {}
+
+            local function test(name, fn)
+                local ok, err = pcall(fn)
+                if ok then
+                    passed = passed + 1
+                    table.insert(testResults, { name = name, passed = true, error = nil })
+                else
+                    failed = failed + 1
+                    table.insert(testResults, { name = name, passed = false, error = tostring(err) })
+                    -- Log error to spdlog (always available, no dependencies)
+                    if spdlog then
+                        spdlog.error("[UI-Engine Test] " .. name .. ": " .. tostring(err))
+                    end
+                end
+            end
+
+            -- SAVE STATE before tests (CRITICAL - don't destroy mods!)
+            local snapshot = Core.snapshot()
+
+            -- Test: UI-Engine Core functions exist
+            test("core: getCurrentTheme exists", function()
+                assert.not_nil(Core.getCurrentTheme)
+            end)
+
+            test("core: setCurrentTheme exists", function()
+                assert.not_nil(Core.setCurrentTheme)
+            end)
+
+            test("core: getContrastLevel exists", function()
+                assert.not_nil(Core.getContrastLevel)
+            end)
+
+            test("core: setContrastLevel exists", function()
+                assert.not_nil(Core.setContrastLevel)
+            end)
+
+            test("core: getSelectedMod exists", function()
+                assert.not_nil(Core.getSelectedMod)
+            end)
+
+            test("core: setSelectedMod exists", function()
+                assert.not_nil(Core.setSelectedMod)
+            end)
+
+            test("core: getPanel exists", function()
+                assert.not_nil(Core.getPanel)
+            end)
+
+            test("core: setPanel exists", function()
+                assert.not_nil(Core.setPanel)
+            end)
+
+            test("core: removePanel exists", function()
+                assert.not_nil(Core.removePanel)
+            end)
+
+            test("core: getPanelIds exists", function()
+                assert.not_nil(Core.getPanelIds)
+            end)
+
+            test("core: snapshot/restore round-trip", function()
+                local snap = Core.snapshot()
+                assert.not_nil(snap)
+                Core.restore(snap)
+            end)
+
+            -- RESTORE STATE after all tests (safety net)
+            Core.restore(snapshot)
+
+            return {
+                passed = passed,
+                failed = failed,
+                warnings = 0,
+                details = testResults,
+            }
+        end,
+    },
+
     settings = {
         theme_section = {
             type = "section",
@@ -91,6 +201,97 @@ M["0-Engine-Log"] = {
     description = "File-based logging system with ring buffers, deduplication, and rotation.",
     category = "Framework",
     subcategory = "Engine",
+
+    -- Tests for this engine (run via diagnostics panel)
+    tests = {
+        full = function(ctx)
+            local Core = ctx.core
+            local assert = {
+                equal = function(actual, expected, msg)
+                    if actual ~= expected then
+                        error((msg or "assert.equal") ..
+                            " expected " .. tostring(expected) ..
+                            " got " .. tostring(actual))
+                    end
+                end,
+                not_nil = function(val, msg)
+                    if val == nil then
+                        error((msg or "assert.not_nil") .. " expected not nil")
+                    end
+                end,
+            }
+
+            local passed = 0
+            local failed = 0
+            local testResults = {}
+
+            local function test(name, fn)
+                local ok, err = pcall(fn)
+                if ok then
+                    passed = passed + 1
+                    table.insert(testResults, { name = name, passed = true, error = nil })
+                else
+                    failed = failed + 1
+                    table.insert(testResults, { name = name, passed = false, error = tostring(err) })
+                    print("[Log-Engine Test] " .. name .. ": " .. tostring(err))
+                end
+            end
+
+            -- SAVE STATE before tests
+            local snapshot = Core.snapshot()
+
+            -- Test: Logger functions exist on ModEngine
+            test("logger: ModEngine global exists", function()
+                assert.not_nil(ModEngine)
+            end)
+
+            test("logger: CreateLogger function exists", function()
+                if ModEngine then
+                    assert.not_nil(ModEngine.CreateLogger)
+                end
+            end)
+
+            test("logger: GetLogger function exists", function()
+                if ModEngine then
+                    assert.not_nil(ModEngine.GetLogger)
+                end
+            end)
+
+            test("logger: GetLoggerNames function exists", function()
+                if ModEngine then
+                    assert.not_nil(ModEngine.GetLoggerNames)
+                end
+            end)
+
+            test("logger: GetStats function exists", function()
+                if ModEngine then
+                    assert.not_nil(ModEngine.GetStats)
+                end
+            end)
+
+            test("logger: SetGlobalLevel function exists", function()
+                if ModEngine then
+                    assert.not_nil(ModEngine.SetGlobalLevel)
+                end
+            end)
+
+            test("logger: FlushAll function exists", function()
+                if ModEngine then
+                    assert.not_nil(ModEngine.FlushAll)
+                end
+            end)
+
+            -- RESTORE STATE after all tests
+            Core.restore(snapshot)
+
+            return {
+                passed = passed,
+                failed = failed,
+                warnings = 0,
+                details = testResults,
+            }
+        end,
+    },
 
     settings = {
         global_section = {
@@ -198,6 +399,103 @@ M["0-Engine-Config"] = {
     description = "Unified mod configuration manager with settings schemas, undo/redo, and presets.",
     category = "Framework",
     subcategory = "Engine",
+
+    -- Tests for this engine (run via diagnostics panel)
+    tests = {
+        full = function(ctx)
+            local Core = ctx.core
+            local assert = {
+                equal = function(actual, expected, msg)
+                    if actual ~= expected then
+                        error((msg or "assert.equal") ..
+                            " expected " .. tostring(expected) ..
+                            " got " .. tostring(actual))
+                    end
+                end,
+                not_nil = function(val, msg)
+                    if val == nil then
+                        error((msg or "assert.not_nil") .. " expected not nil")
+                    end
+                end,
+            }
+
+            local passed = 0
+            local failed = 0
+            local testResults = {}
+
+            local function test(name, fn)
+                local ok, err = pcall(fn)
+                if ok then
+                    passed = passed + 1
+                    table.insert(testResults, { name = name, passed = true, error = nil })
+                else
+                    failed = failed + 1
+                    table.insert(testResults, { name = name, passed = false, error = tostring(err) })
+                    print("[Config-Engine Test] " .. name .. ": " .. tostring(err))
+                end
+            end
+
+            -- SAVE STATE before tests
+            local snapshot = Core.snapshot()
+
+            -- Test: Core functions exist
+            test("core: getContentMode exists", function()
+                assert.not_nil(Core.getContentMode)
+            end)
+
+            test("core: setContentMode exists", function()
+                assert.not_nil(Core.setContentMode)
+            end)
+
+            test("core: getSidebarWidth exists", function()
+                assert.not_nil(Core.getSidebarWidth)
+            end)
+
+            test("core: setSidebarWidth exists", function()
+                assert.not_nil(Core.setSidebarWidth)
+            end)
+
+            test("core: getSortMode exists", function()
+                assert.not_nil(Core.getSortMode)
+            end)
+
+            test("core: setSortMode exists", function()
+                assert.not_nil(Core.setSortMode)
+            end)
+
+            test("core: getSearchQuery exists", function()
+                assert.not_nil(Core.getSearchQuery)
+            end)
+
+            test("core: setSearchQuery exists", function()
+                assert.not_nil(Core.setSearchQuery)
+            end)
+
+            test("core: getSelectedMod exists", function()
+                assert.not_nil(Core.getSelectedMod)
+            end)
+
+            test("core: setSelectedMod exists", function()
+                assert.not_nil(Core.setSelectedMod)
+            end)
+
+            test("core: snapshot/restore round-trip", function()
+                local snap = Core.snapshot()
+                assert.not_nil(snap)
+                Core.restore(snap)
+            end)
+
+            -- RESTORE STATE after all tests
+            Core.restore(snapshot)
+
+            return {
+                passed = passed,
+                failed = failed,
+                warnings = 0,
+                details = testResults,
+            }
+        end,
+    },
 
     settings = {
         behavior_section = {

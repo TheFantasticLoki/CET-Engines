@@ -263,6 +263,15 @@ function M.draw()
         end
         Core.setSortMode(modes[nextIdx], true)
     end
+    ImGui.SameLine()
+
+    -- Diagnostics button (bug icon) — right-aligned
+    local cursorX = ImGui.GetCursorPosX()
+    local windowW = ImGui.GetWindowWidth()
+    ImGui.SetCursorPosX(windowW - btnSize - 8)  -- 8px padding from right edge
+    if Glyphs and Glyphs.Button("sidebar_diagnostics", "Bug", { size = btnSize, tooltip = "Diagnostics (tests, engine info)", fallback = "D" }) then
+        Core.setContentMode("diagnostics")
+    end
 
     -- ====================================================================
     -- Filter popup

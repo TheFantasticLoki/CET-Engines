@@ -244,19 +244,8 @@ function M.create(modName, config, currentFrameRef)
             return
         end
 
-        -- Rate limiting for debug messages
-        if levelNum == LEVEL_DEBUG then
-            debugCountThisFrame = debugCountThisFrame + 1
-            if debugCountThisFrame > maxDebugPerFrame then
-                -- Queue the message instead of dropping it
-                if #debugQueue < DEBUG_QUEUE_MAX then
-                    table.insert(debugQueue, { message = message, level = levelNum })
-                end
-                return
-            end
-        end
-
-        -- Deduplication
+        -- Deduplication FIRST (before rate limiting)
+        -- This prevents the same message from being logged multiple times across frames
         if dedupEnabled then
             local dedupKey = levelNum .. ":" .. (message or "")
             local existing = dedupTable[dedupKey]
@@ -267,7 +256,7 @@ function M.create(modName, config, currentFrameRef)
                 existing.lastSeen = getTimestamp()
                 return
             else
-                -- New message: track it (don't flush the whole table — that destroys dedup for concurrent messages)
+                -- New message: track it
                 dedupTable[dedupKey] = {
                     count = 1,
                     firstSeen = getTimestamp(),
@@ -276,6 +265,19 @@ function M.create(modName, config, currentFrameRef)
                 }
                 table.insert(dedupOrder, dedupKey)
                 evictOldestDedup()
+            end
+        end
+
+        -- Rate limiting for debug messages (after deduplication)
+        -- This only limits truly unique debug messages per frame
+        if levelNum == LEVEL_DEBUG then
+            debugCountThisFrame = debugCountThisFrame + 1
+            if debugCountThisFrame > maxDebugPerFrame then
+                -- Queue the message instead of dropping it
+                if #debugQueue < DEBUG_QUEUE_MAX then
+                    table.insert(debugQueue, { message = message, level = levelNum })
+                end
+                return
             end
         end
 

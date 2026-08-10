@@ -26,7 +26,7 @@ local state = {
     sortMode = "name",
     sortAscending = true,
     searchQuery = "",
-    contentMode = "mod",   -- "mod" | "settings" | "tests"
+    contentMode = "mod",   -- "mod" | "settings" | "tests" | "diagnostics"
     activeFilters = {},     -- { { key = "tag", value = "favorite" }, ... }
 
     -- Auto-save
@@ -72,7 +72,7 @@ function M.init()
     resolveLog()
 end
 
---- Reset state (for testing).
+--- Reset state (for testing — DANGEROUS in production, destroys all mods).
 ---@return nil
 function M.reset()
     state = {
@@ -93,8 +93,38 @@ function M.reset()
         contentMode = "mod",
         activeFilters = {},
         dirty = false,
-        initialized = false,
+        initialized = state.initialized,  -- preserve initialized flag
     }
+end
+
+--- Create a deep copy of current state (safe for tests).
+---@return table snapshot Deep copy of state
+function M.snapshot()
+    local function deepCopy(t)
+        if type(t) ~= "table" then return t end
+        local copy = {}
+        for k, v in pairs(t) do
+            copy[k] = deepCopy(v)
+        end
+        return copy
+    end
+    return deepCopy(state)
+end
+
+--- Restore state from a snapshot (safe for tests).
+---@param snapshot table Previously saved snapshot
+---@return nil
+function M.restore(snapshot)
+    if type(snapshot) ~= "table" then return end
+    local function deepCopy(t)
+        if type(t) ~= "table" then return t end
+        local copy = {}
+        for k, v in pairs(t) do
+            copy[k] = deepCopy(v)
+        end
+        return copy
+    end
+    state = deepCopy(snapshot)
 end
 
 -- ============================================================

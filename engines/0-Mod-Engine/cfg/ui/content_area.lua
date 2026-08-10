@@ -529,10 +529,13 @@ local function drawSettingsPanel()
                 if TestResults then
                     local r = TestResults.get(engine.id)
                     if r then
-                        if r.passed == r.total then
-                            testStatus = string.format("  [PASS %d/%d]", r.passed, r.total)
+                        local total = (r.passed or 0) + (r.failed or 0)
+                        if total > 0 and (r.failed or 0) == 0 then
+                            testStatus = string.format("  [PASS %d/%d]", r.passed, total)
+                        elseif total > 0 then
+                            testStatus = string.format("  [FAIL %d/%d]", r.passed, total)
                         else
-                            testStatus = string.format("  [FAIL %d/%d]", r.passed, r.total)
+                            testStatus = "  [NO TESTS]"
                         end
                     else
                         testStatus = "  [NO TESTS]"
@@ -631,13 +634,35 @@ local function drawSettingsPanel()
 end
 
 -- ====================================================================
+-- Shared Engine Tests (run from engines/0-Mod-Engine/tests/)
+-- ====================================================================
+
+-- ====================================================================
 -- Test Panel (central test management)
 -- ====================================================================
 local function drawTestPanel()
     resolveLogger()
     if log then log.info("drawTestPanel: START") end
 
-    ImGui.Text("Test Results")
+    -- Ensure Glyphs module is loaded
+    resolveGlyphs()
+    if log then log.debug("drawTestPanel: Glyphs loaded=" .. tostring(Glyphs ~= nil)) end
+
+    -- Header with back button and run all buttons
+    ImGui.Text("Diagnostics")
+    local availW = ImGui.GetContentRegionAvail()
+    ImGui.SameLine(availW - 200)
+    ImGui.PushStyleColor(ImGuiCol.Button, 0.3, 0.3, 0.3, 0.6)
+    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, 0.4, 0.4, 0.4, 0.8)
+    ImGui.PushStyleColor(ImGuiCol.Text, 0.9, 0.9, 0.9, 1.0)
+    if ImGui.Button("Run All", 60, 22) then
+        TestRunner.runAllTests("full")
+    end
+    ImGui.SameLine()
+    if ImGui.Button("Back to Mods", 80, 22) then
+        Core.setContentMode("mod")
+    end
+    ImGui.PopStyleColor(3)
     ImGui.Separator()
 
     if not TestResults or not TestRunner then
@@ -646,94 +671,198 @@ local function drawTestPanel()
         return
     end
 
-    -- Aggregate stats
-    local stats = TestResults.getAggregateStats()
-    ImGui.Text(string.format("Total: %d mods with tests", stats.total))
-    local cPass = Tokens and Tokens.color4n("success") or {r=0.3, g=0.9, b=0.3}
-    local cFail = Tokens and Tokens.color4n("warning") or {r=0.9, g=0.9, b=0.2}
-    local cErr = Tokens and Tokens.color4n("error") or {r=0.9, g=0.3, b=0.3}
-    ImGui.TextColored(cPass.r, cPass.g, cPass.b, 1, string.format("  Passing: %d", stats.passing))
-    ImGui.TextColored(cFail.r, cFail.g, cFail.b, 1, string.format("  Failing: %d", stats.failing))
-    ImGui.TextColored(cErr.r, cErr.g, cErr.b, 1, string.format("  Errors: %d", stats.errors))
+    if log then log.debug("drawTestPanel: TestResults and TestRunner available") end
 
-    ImGui.Spacing()
-    ImGui.Separator()
-    ImGui.Spacing()
+    -- Collect mods with test info
+    local mods = Core.getAllMods()
+    local modList = {}
+    local modsWithTests = 0
+    local totalMods = 0
+    local totalPassed = 0
+    local totalFailed = 0
+    local totalErrors = 0
+    local hasAnyResults = false
 
-    -- Run all button
-    if ImGui.Button("Run All (Startup)") then
-        TestRunner.runAllTests("startup")
-    end
-    ImGui.SameLine()
-    if ImGui.Button("Run All (Full)") then
-        TestRunner.runAllTests("full")
-    end
+    if log then log.debug("drawTestPanel: iterating mods") end
+    for modId, _ in pairs(mods) do
+        local mod = Core.getMod(modId)
+        if mod then
+            totalMods = totalMods + 1
+            local hasTests = mod.tests ~= nil
+            if hasTests then
+                modsWithTests = modsWithTests + 1
+                if log then log.debug("drawTestPanel: mod " .. modId .. " has tests, type=" .. type(mod.tests)) end
+                table.insert(modList, { id = modId, mod = mod })
+            end
 
-    ImGui.Spacing()
-    ImGui.Separator()
-    ImGui.Spacing()
-
-    -- Per-mod results table
-    if ImGui.BeginTable("##test_results_table", 4, ImGuiTableFlags.Borders + ImGuiTableFlags.RowBg) then
-        ImGui.TableSetupColumn("Mod", ImGuiTableColumnFlags.WidthStretch)
-        ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthFixed, 60)
-        ImGui.TableSetupColumn("Results", ImGuiTableColumnFlags.WidthFixed, 80)
-        ImGui.TableSetupColumn("Action", ImGuiTableColumnFlags.WidthFixed, 60)
-        ImGui.TableHeadersRow()
-
-        local mods = Core.getAllMods()
-        for modId, _ in pairs(mods) do
-            local mod = Core.getMod(modId)
-            if mod then
-                local spec = mod.spec or {}
-                local r = TestResults.get(modId)
-
-                ImGui.TableNextRow()
-
-                -- Mod name
-                ImGui.TableSetColumnIndex(0)
-                ImGui.Text(spec.name or modId)
-
-                -- Status
-                ImGui.TableSetColumnIndex(1)
-                if r then
-                    local icon, status = TestResults.getStatusIcon(modId)
-                    if status == "pass" then
-                        ImGui.TextColored(0.3, 0.9, 0.3, 1, icon)
-                    elseif status == "fail" then
-                        ImGui.TextColored(0.9, 0.9, 0.2, 1, icon)
-                    else
-                        ImGui.TextColored(0.9, 0.3, 0.3, 1, icon)
-                    end
-                else
-                    ImGui.TextDisabled("○")
-                end
-
-                -- Results
-                ImGui.TableSetColumnIndex(2)
-                if r then
-                    ImGui.Text(string.format("%d/%d", r.passed, r.passed + r.failed))
-                else
-                    ImGui.TextDisabled("—")
-                end
-
-                -- Action
-                ImGui.TableSetColumnIndex(3)
-                local btnLabel = "Run##" .. modId
-                if ImGui.SmallButton(btnLabel) then
-                    TestRunner.runModTests(modId, "full")
-                end
+            local r = TestResults.get(modId)
+            if r then
+                hasAnyResults = true
+                totalPassed = totalPassed + (r.passed or 0)
+                totalFailed = totalFailed + (r.failed or 0)
+                if r.status == "error" then totalErrors = totalErrors + 1 end
+                if log then log.debug("drawTestPanel: mod " .. modId .. " has results: status=" .. (r.status or "nil") .. ", passed=" .. (r.passed or 0) .. ", failed=" .. (r.failed or 0) .. ", details=" .. type(r.details)) end
             end
         end
-
-        ImGui.EndTable()
     end
 
-    -- Back to mod view
+    if log then log.debug(string.format("drawTestPanel: totalMods=%d, modsWithTests=%d, hasAnyResults=%s", totalMods, modsWithTests, tostring(hasAnyResults))) end
+
+    -- Stats card
+    ImGui.Text(string.format("Mods with tests: %d / %d", modsWithTests, totalMods))
+    if hasAnyResults then
+        if totalPassed > 0 then
+            ImGui.SameLine()
+            ImGui.TextColored(0.3, 0.9, 0.3, 1, string.format("  Passed: %d", totalPassed))
+        end
+        if totalFailed > 0 then
+            ImGui.SameLine()
+            ImGui.TextColored(0.9, 0.9, 0.2, 1, string.format("  Failed: %d", totalFailed))
+        end
+        if totalErrors > 0 then
+            ImGui.SameLine()
+            ImGui.TextColored(0.9, 0.3, 0.3, 1, string.format("  Errors: %d", totalErrors))
+        end
+    end
+
     ImGui.Spacing()
-    if ImGui.Button("Back to Mods") then
-        Core.setContentMode("mod")
+    ImGui.Separator()
+    ImGui.Spacing()
+
+    -- Tab system for mod-specific tests
+    if log then log.debug("drawTestPanel: drawing tab bar") end
+    if ImGui.BeginTabBar("##diagnostics_mod_tabs", ImGuiTabBarFlags.NoCloseWithMiddleMouseButton) then
+        if log then log.debug("drawTestPanel: tab bar created, iterating " .. #modList .. " mods") end
+        for _, entry in ipairs(modList) do
+            local modId = entry.id
+            local mod = entry.mod
+            local spec = mod.spec or {}
+            local r = TestResults.get(modId)
+            local hasTests = mod.tests ~= nil
+
+            if log then log.debug(string.format("drawTestPanel: tab for %s, hasTests=%s, hasResults=%s", modId, tostring(hasTests), tostring(r ~= nil))) end
+
+            -- Tab label with status indicator using IconGlyphs
+            local tabLabel = spec.name or modId
+            if r then
+                local total = (r.passed or 0) + (r.failed or 0)
+                if total > 0 and (r.failed or 0) == 0 then
+                    tabLabel = tabLabel .. " +"
+                elseif total > 0 then
+                    tabLabel = tabLabel .. " x"
+                end
+            end
+
+            if ImGui.BeginTabItem(tabLabel) then
+                if log then log.debug("drawTestPanel: drawing tab content for " .. modId) end
+
+                -- Mod info card
+                ImGui.TextDisabled("Version: " .. (spec.version or "unknown"))
+                ImGui.SameLine()
+                ImGui.TextDisabled("Author: " .. (spec.author or "unknown"))
+                if spec.description then
+                    ImGui.TextWrapped(spec.description)
+                end
+
+                ImGui.Spacing()
+                ImGui.Separator()
+                ImGui.Spacing()
+
+                -- Test results summary
+                if r then
+                    if log then log.debug(string.format("drawTestPanel: drawing results for %s, status=%s, passed=%d, failed=%d, details=%s", modId, r.status or "nil", r.passed or 0, r.failed or 0, type(r.details))) end
+                    if r.details and type(r.details) == "table" then
+                        if log then log.debug(string.format("drawTestPanel: details has %d entries", #r.details)) end
+                    end
+
+                    local total = (r.passed or 0) + (r.failed or 0)
+                    if r.status == "pass" then
+                        ImGui.TextColored(0.3, 0.9, 0.3, 1, string.format("PASSED: %d tests", r.passed))
+                    elseif r.status == "fail" then
+                        ImGui.TextColored(0.9, 0.9, 0.2, 1, string.format("FAILED: %d passed, %d failed", r.passed, r.failed))
+                    elseif r.status == "error" then
+                        ImGui.TextColored(0.9, 0.3, 0.3, 1, "ERROR")
+                    end
+
+                    -- Error message
+                    if r.error and r.error ~= "" then
+                        ImGui.Spacing()
+                        ImGui.TextColored(0.9, 0.3, 0.3, 1, "Error:")
+                        ImGui.Indent()
+                        ImGui.TextWrapped(r.error)
+                        ImGui.Unindent()
+                    end
+
+                    -- Individual test results table with collapsible sections
+                    if r.details and type(r.details) == "table" then
+                        if log then log.debug(string.format("drawTestPanel: details has %d entries", #r.details)) end
+                        if #r.details > 0 then
+                            ImGui.Spacing()
+                            for i, detail in ipairs(r.details) do
+                                local testId = "##test_" .. modId .. "_" .. i
+                                local headerFlags = 0
+                                if not detail.passed then
+                                    headerFlags = ImGuiTreeNodeFlags.DefaultOpen
+                                end
+
+                                -- Status icon using IconGlyphs
+                                local statusIcon = "?"
+                                if detail.passed then
+                                    local glyph = Glyphs.GetLogged("Check")
+                                    if glyph then statusIcon = glyph end
+                                else
+                                    local glyph = Glyphs.GetLogged("AlphaX")
+                                    if glyph then statusIcon = glyph end
+                                end
+
+                                -- Test header (collapsible)
+                                local headerText = statusIcon .. " " .. (detail.name or "unnamed")
+                                if ImGui.TreeNodeEx(testId, headerFlags, headerText) then
+                                    -- Test details
+                                    if detail.error and detail.error ~= "" then
+                                        ImGui.TextColored(0.9, 0.3, 0.3, 1, "Error:")
+                                        ImGui.Indent()
+                                        ImGui.TextWrapped(detail.error)
+                                        ImGui.Unindent()
+                                    else
+                                        ImGui.TextDisabled("Test passed successfully")
+                                    end
+                                    ImGui.TreePop()
+                                end
+                            end
+                        else
+                            if log then log.debug("drawTestPanel: details table is empty") end
+                        end
+                    else
+                        if log then log.debug("drawTestPanel: no details table found") end
+                    end
+
+                    -- Timestamp
+                    if r.timestamp then
+                        ImGui.Spacing()
+                        ImGui.TextDisabled("Last run: " .. os.date("%H:%M:%S", r.timestamp))
+                    end
+                else
+                    -- No results yet
+                    if log then log.debug("drawTestPanel: no results for " .. modId) end
+                    if hasTests then
+                        ImGui.TextDisabled("No test results yet")
+                        ImGui.Spacing()
+                        if ImGui.Button("Run Tests") then
+                            TestRunner.runModTests(modId, "full")
+                        end
+                    else
+                        ImGui.TextDisabled("No tests registered for this mod")
+                    end
+                end
+
+                ImGui.EndTabItem()
+            end
+        end
+        ImGui.EndTabBar()
     end
+
+    if log then log.info("drawTestPanel: END") end
 end
 
 --- Draw detached mod windows (right-click → "Open in Window").
@@ -820,7 +949,7 @@ function M.draw()
 
     if mode == "settings" then
         drawSettingsPanel()
-    elseif mode == "tests" then
+    elseif mode == "tests" or mode == "diagnostics" then
         drawTestPanel()
     else
         drawModPanel()
